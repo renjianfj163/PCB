@@ -168,6 +168,8 @@ export interface BootInfo {
 	defaultCwd: string;
 	ompVersion: string;
 	auth: { provider: string; name: string; authenticated: boolean }[];
+	/** Gating for the terminal's shell choice: PowerShell only exists on Windows. */
+	platform: string;
 }
 
 export interface CreateSessionBody {
@@ -206,3 +208,53 @@ export interface FilePreview {
 	kind: "text" | "binary" | "too_large";
 	text?: string;
 }
+
+/**
+ * Whether a page may be shown in the rail's frame. Sites that send
+ * X-Frame-Options or a restrictive CSP frame-ancestors load as a blank box, so
+ * the shell asks before it builds one.
+ */
+export interface FrameCheck {
+	/** The request itself worked (DNS, connection, a reply). */
+	ok: boolean;
+	/** The page may appear in an iframe. */
+	frameable: boolean;
+	/** Final URL after redirects. */
+	url?: string;
+	status?: number;
+	/** Why it cannot be framed, in the user's words. */
+	reason?: string;
+	/** What the name resolved to — the difference between "slow" and "hijacked DNS". */
+	addresses?: string[];
+}
+
+/**
+ * A picture of a page, taken by the local browser because the site refuses to
+ * live inside a frame. Nothing interactive: read-only by nature.
+ */
+export interface PageShot {
+	ok: boolean;
+	/** data: URL of the PNG. */
+	image?: string;
+	url?: string;
+	addresses?: string[];
+	reason?: string;
+	ms?: number;
+}
+
+/** One command the user typed into the rail's terminal. */
+export interface ExecResult {
+	/** Exit code, or null when the command timed out or never started. */
+	code: number | null;
+	output: string;
+	truncated: boolean;
+	timedOut: boolean;
+	ms: number;
+	/** Which interpreter ran it. */
+	shell?: ShellKind;
+	/** Where the process ended up: this makes `cd` stick between commands. */
+	cwd?: string;
+}
+
+/** The two shells a Windows user can pick from in the rail's terminal. */
+export type ShellKind = "cmd" | "powershell";

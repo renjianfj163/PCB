@@ -1,5 +1,6 @@
 import type { AgentMessage, Phase, TodoPhase } from "../../../shared/protocol.ts";
 import { toolCallLine, toolCallsOf, userText } from "../adapters.ts";
+import { t } from "../i18n.ts";
 import { Markdown } from "../markdown.tsx";
 
 const STATUS_MARK: Record<string, string> = {
@@ -8,6 +9,9 @@ const STATUS_MARK: Record<string, string> = {
 	blocked: "✕",
 	pending: "○",
 };
+
+/** Same three words the composer uses, so the chip and the picker never disagree. */
+const PHASE_LABEL: Record<Phase, string> = { plan: "规划", build: "执行", chat: "聊天" };
 
 function TodoList({ todos }: { todos: TodoPhase[] }) {
 	return (
@@ -36,7 +40,7 @@ function PlanMessage({ message }: { message: AgentMessage }) {
 	if (message.role === "user") {
 		return (
 			<div className="plan-user">
-				<span className="plan-user-label">你</span>
+				<span className="plan-user-label">{t("你")}</span>
 				<div className="plan-user-text">{userText(message)}</div>
 			</div>
 		);
@@ -97,45 +101,63 @@ export function PlanPage({
 	);
 
 	return (
-		<div className="rail-body">
-			<div className="rail-section-head">
-				<h2>计划</h2>
+		<div className="rail-body rail-body-plan">
+			<div className="rail-subhead">
+				<span className={`sub-chip phase-${phase}`}>{t(PHASE_LABEL[phase])}</span>
+				<span className="sub-meta">{total > 0 ? t("待办 {a}/{b}", { a: done, b: total }) : t("还没有待办")}</span>
 				{total > 0 ? (
-					<span className="plan-count">
-						{done}/{total}
+					<span className="rail-progress" aria-hidden>
+						<i style={{ width: `${Math.round((done / total) * 100)}%` }} />
 					</span>
 				) : null}
 			</div>
+			<div className="rail-scroll">
+				<div className="plan-body">
+					{segment.length === 0 ? (
+						<p className="rail-empty">{t("还没有规划内容。在下方输入框把阶段切到「规划」再提问。")}</p>
+					) : (
+						segment
+							.filter(message => message.role === "user" || message.role === "assistant")
+							.map((message, index) => <PlanMessage key={index} message={message} />)
+					)}
+				</div>
 
-			<div className="plan-body">
-				{segment.length === 0 ? (
-					<p className="plan-empty">还没有规划内容。在下方输入框把阶段切到「规划」再提问。</p>
+				{total > 0 ? <TodoList todos={todos} /> : null}
+			</div>
+
+			<div className="plan-foot">
+				{phase === "plan" ? (
+					<div className="plan-actions">
+						<button
+							type="button"
+							className="primary"
+							disabled={!canApprove}
+							title={canApprove ? t("切到执行阶段，按这份计划动手") : t("等助手写出计划后才能批准")}
+							onClick={onApprove}
+						>
+							{t("按这个做")}
+						</button>
+						<button type="button" className="secondary" onClick={onRevise}>
+							{t("再改一改")}
+						</button>
+					</div>
 				) : (
-					segment
-						.filter(message => message.role === "user" || message.role === "assistant")
-						.map((message, index) => <PlanMessage key={index} message={message} />)
+					<div className="plan-actions">
+						<button type="button" className="secondary" onClick={onRevise}>
+							{t("改成别的")}
+						</button>
+					</div>
 				)}
+				<p className="plan-hint">
+					{phase === "build"
+						? t("已经在执行阶段。切回「规划」只影响下一条消息。")
+						: phase === "chat"
+							? t("聊天阶段只回答问题，不改文件、不跑命令；需要动手时切到「执行」。")
+							: canApprove
+								? t("「按这个做」会切到执行阶段；写文件自动进行，跑命令仍会问你。")
+								: t("等助手写出计划后才能批准。")}
+				</p>
 			</div>
-
-			{total > 0 ? <TodoList todos={todos} /> : null}
-
-			<div className="plan-actions">
-				<button type="button" className="primary" disabled={!canApprove} onClick={onApprove}>
-					按这个做
-				</button>
-				<button type="button" className="secondary" onClick={onRevise}>
-					再改一改
-				</button>
-			</div>
-			<p className="plan-hint">
-				{phase === "build"
-					? "已经在执行阶段。切回「规划」只影响下一条消息。"
-					: phase === "chat"
-						? "聊天阶段只回答问题，不改文件、不跑命令；需要动手时切到「执行」。"
-						: canApprove
-							? "「按这个做」会切到执行阶段；写文件自动进行，跑命令仍会问你。"
-							: "等助手写出计划后才能批准。"}
-			</p>
 		</div>
 	);
 }

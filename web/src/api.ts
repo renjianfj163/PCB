@@ -1,3 +1,4 @@
+import { t } from "./i18n.ts";
 import type {
 	AgentMessage,
 	Automation,
@@ -6,10 +7,14 @@ import type {
 	CreateSessionBody,
 	DialogAnswer,
 	DirListing,
+	ExecResult,
 	FilePreview,
+	FrameCheck,
 	ModelsInfo,
+	PageShot,
 	Phase,
 	PolicyDecision,
+	ShellKind,
 	SessionState,
 	SessionSummary,
 } from "../../shared/protocol.ts";
@@ -32,7 +37,7 @@ async function json<T>(path: string, init?: RequestInit): Promise<T> {
 	const body = text ? (JSON.parse(text) as unknown) : {};
 	if (!response.ok) {
 		const message = (body as { error?: string }).error ?? `HTTP ${response.status}`;
-		throw new Error(message);
+		throw new Error(t(message));
 	}
 	return body as T;
 }
@@ -99,6 +104,16 @@ export const api = {
 
 	file: (cwd: string, path: string) =>
 		json<FilePreview>(`/api/projects/file?cwd=${encodeURIComponent(cwd)}&path=${encodeURIComponent(path)}`),
+
+	/** Can this page live in the rail's frame, or does the site forbid it? */
+	frameCheck: (target: string) => json<FrameCheck>(`/api/frame/check?url=${encodeURIComponent(target)}`),
+
+	/** A picture of a page, for the sites that refuse to be framed. Slow on purpose: a browser has to start. */
+	pageShot: (target: string) => json<PageShot>(`/api/frame/shot?url=${encodeURIComponent(target)}`),
+
+	/** The user's own command, run in their project folder. */
+	exec: (cwd: string, command: string, shell: ShellKind) =>
+		json<ExecResult>("/api/exec", { method: "POST", body: JSON.stringify({ cwd, command, shell }) }),
 
 	automations: () => json<{ automations: Automation[] }>("/api/automations"),
 

@@ -7,6 +7,9 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { extname, join, normalize, resolve } from "node:path";
 import type { Hub } from "./hub.ts";
 import { readBlob } from "./blobs.ts";
+import { runCommand } from "./exec-box.ts";
+import { frameCheck } from "./frame-check.ts";
+import { pageShot } from "./screenshot.ts";
 import { PathRefused, listDirectory, readPreview } from "./project-files.ts";
 import { PcbSession } from "./session.ts";
 import type { Store, SessionRecord } from "./store.ts";
@@ -285,6 +288,7 @@ export class App {
 				defaultCwd: process.cwd(),
 				ompVersion: this.#ompVersion,
 				auth: this.#auth,
+				platform: process.platform,
 			};
 			this.#json(response, 200, boot);
 			return;
@@ -322,6 +326,41 @@ export class App {
 				"cache-control": "private, max-age=300",
 			});
 			response.end(blob.bytes);
+			return;
+		}
+
+		if (head === "frame" && id === "check" && method === "GET") {
+			const check = await frameCheck(url.searchParams.get("url") ?? "");
+			this.#json(response, 200, check);
+			return;
+		}
+
+		if (head === "frame" && id === "shot" && method === "GET") {
+			this.#json(response, 200, await pageShot(url.searchParams.get("url") ?? ""));
+			return;
+		}
+
+		if (head === "exec" && method === "POST") {
+			const body = (await this.#readJson(request)) as { cwd?: string; command?: string; shell?: string };
+			const cwd = typeof body.cwd === "string" ? resolve(body.cwd) : "";
+			const command = typeof body.command === "string" ? body.command.trim() : "";
+			if (!command) {
+				this.#json(response, 400, { error: "命令是空的" });
+				return;
+			}
+			if (command.length > 2000) {
+				this.#json(response, 400, { error: "命令太长，分几次跑" });
+				return;
+			}
+			// A terminal has to let `cd` leave the folder, or it is not a terminal. The
+			// session still starts in its project; the boundary is the loopback bind
+			// plus the request marker, and the target must be a real directory.
+			if (!cwd || !existsSync(cwd) || !statSync(cwd).isDirectory()) {
+				this.#json(response, 400, { error: "这个目录不存在" });
+				return;
+			}
+			const shell = body.shell === "powershell" ? "powershell" : "cmd";
+			this.#json(response, 200, await runCommand(cwd, command, shell));
 			return;
 		}
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Phase, SessionState } from "../../../shared/protocol.ts";
+import { t } from "../i18n.ts";
 
 /** Small amounts need the extra digits to move at all. */
 function money(usd: number): string {
@@ -12,19 +13,24 @@ export function Composer({
 	phase,
 	state,
 	disabled,
+	resuming,
 	textAreaRef,
 	onSend,
 	onAbort,
 	onPhase,
+	onResume,
 }: {
 	phase: Phase;
 	state: SessionState | undefined;
 	disabled: boolean;
+	/** A resume is in flight for this conversation. */
+	resuming: boolean;
 	textAreaRef?: React.RefObject<HTMLTextAreaElement | null>;
 	onSend: (text: string) => Promise<void>;
 	onAbort: () => Promise<void>;
 	/** Changes only the phase the next message carries — never sends anything. */
 	onPhase: (phase: Phase) => void;
+	onResume: () => Promise<void>;
 }) {
 	const [text, setText] = useState("");
 	const [busy, setBusy] = useState(false);
@@ -45,11 +51,19 @@ export function Composer({
 	return (
 		<div className="composer">
 			<div className="composer-card">
+				{disabled ? (
+					<div className="composer-ended">
+						<span>{resuming ? t("正在恢复这个对话…") : t("这个对话的后台进程已经退出，恢复后才能继续。")}</span>
+						<button type="button" className="secondary" disabled={resuming} onClick={() => void onResume()}>
+							{resuming ? t("恢复中…") : t("恢复会话")}
+						</button>
+					</div>
+				) : null}
 				<textarea
 					ref={textAreaRef}
 					value={text}
 					disabled={disabled}
-					placeholder={disabled ? "会话已结束，先恢复" : "说你想做什么…"}
+					placeholder={disabled ? t("会话已结束，先恢复") : t("说你想做什么…")}
 					rows={2}
 					onChange={event => setText(event.target.value)}
 					onKeyDown={event => {
@@ -61,10 +75,10 @@ export function Composer({
 				/>
 				<div className="composer-row">
 					<span className="composer-meta">
-						{state?.contextUsage ? `上下文 ${state.contextUsage.percent.toFixed(0)}%` : ""}
+						{state?.contextUsage ? t("上下文 {n}%", { n: state.contextUsage.percent.toFixed(0) }) : ""}
 						{typeof state?.costUsd === "number" ? (
 							<span title={`${state.totalTokens ?? 0} tokens`}>
-								{state.contextUsage ? " · " : ""}已花费 {money(state.costUsd)}
+								{state.contextUsage ? " · " : ""}{t("已花费 {s}", { s: money(state.costUsd) })}
 							</span>
 						) : null}
 					</span>
@@ -73,19 +87,19 @@ export function Composer({
 							className="phase-select"
 							value={phase}
 							disabled={disabled}
-							title="下一条消息使用的阶段"
+							title={t("下一条消息使用的阶段")}
 							onChange={event => {
 								const value = event.target.value;
 								onPhase(value === "build" ? "build" : value === "chat" ? "chat" : "plan");
 							}}
 						>
-							<option value="plan">规划</option>
-							<option value="build">执行</option>
-							<option value="chat">聊天</option>
+							<option value="plan">{t("规划")}</option>
+							<option value="build">{t("执行")}</option>
+							<option value="chat">{t("聊天")}</option>
 						</select>
 						{streaming ? (
 							<button type="button" className="danger" onClick={() => void onAbort()}>
-								停止
+								{t("停止")}
 							</button>
 						) : (
 							<button
@@ -94,7 +108,7 @@ export function Composer({
 								disabled={disabled || busy || !text.trim()}
 								onClick={() => void send()}
 							>
-								发送
+								{t("发送")}
 							</button>
 						)}
 					</div>

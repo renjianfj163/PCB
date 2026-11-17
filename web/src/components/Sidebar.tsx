@@ -1,15 +1,8 @@
-import { useState } from "react";
-import type { Automation, BootInfo, SessionSummary } from "../../../shared/protocol.ts";
-
-function shortPath(path: string): string {
-	const parts = path.split(/[\\/]/).filter(Boolean);
-	return parts.length <= 2 ? path : `…/${parts.slice(-2).join("/")}`;
-}
-
-function baseName(path: string): string {
-	const parts = path.split(/[\\/]/).filter(Boolean);
-	return parts.at(-1) ?? path;
-}
+import { useEffect, useState } from "react";
+import type { Automation, BootInfo, SessionState, SessionSummary } from "../../../shared/protocol.ts";
+import { baseName, shortPath } from "../paths.ts";
+import { setLocale, t, useLocale } from "../i18n.ts";
+import { ModelPicker } from "./ModelPicker.tsx";
 
 function IconPlus() {
 	return (
@@ -37,14 +30,6 @@ function IconClock() {
 	);
 }
 
-function IconChevron({ open }: { open: boolean }) {
-	return (
-		<svg width="10" height="10" viewBox="0 0 16 16" aria-hidden className={open ? "chevron open" : "chevron"}>
-			<path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-		</svg>
-	);
-}
-
 function IconPanel() {
 	return (
 		<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
@@ -54,6 +39,32 @@ function IconPanel() {
 	);
 }
 
+function IconChevron({ open }: { open: boolean }) {
+	return (
+		<svg width="10" height="10" viewBox="0 0 16 16" aria-hidden className={open ? "chevron open" : "chevron"}>
+			<path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+		</svg>
+	);
+}
+
+function IconGear() {
+	return (
+		<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
+			<circle cx="8" cy="8" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.3" />
+			<path
+				d="M8 2.2v2.6M8 11.2v2.6M2.2 8h2.6M11.2 8h2.6M3.9 3.9l1.9 1.9M10.2 10.2l1.9 1.9M12.1 3.9l-1.9 1.9M5.8 10.2l-1.9 1.9"
+				stroke="currentColor"
+				strokeWidth="1.3"
+				strokeLinecap="round"
+			/>
+		</svg>
+	);
+}
+
+/**
+ * One project at a time: the project row shows the current folder plus a "+" for
+ * adding folders, and only the selected project carries its conversations.
+ */
 export function Sidebar({
 	open,
 	collapsed,
@@ -64,16 +75,18 @@ export function Sidebar({
 	projects,
 	automations,
 	boot,
+	session,
+	state,
 	onNew,
 	onSearch,
 	onSelectProject,
 	onAddProject,
-	onAddProjectPath,
 	onRemoveProject,
 	onSelectSession,
 	onDeleteSession,
 	onOpenAutomations,
 	onCollapse,
+	onModel,
 }: {
 	open: boolean;
 	collapsed: boolean;
@@ -84,23 +97,34 @@ export function Sidebar({
 	projects: string[];
 	automations: Automation[];
 	boot: BootInfo | null;
+	session: SessionSummary | null;
+	state: SessionState | undefined;
 	onNew: () => void;
 	onSearch: () => void;
 	onSelectProject: (cwd: string) => void;
 	onAddProject: () => Promise<void>;
-	onAddProjectPath: (cwd: string) => Promise<void>;
 	onRemoveProject: (cwd: string) => Promise<void>;
 	onSelectSession: (id: string) => void;
 	onDeleteSession: (id: string) => Promise<void>;
 	onOpenAutomations: () => void;
 	onCollapse: () => void;
+	onModel: (provider: string, id: string) => Promise<void>;
 }) {
-	const [projectsOpen, setProjectsOpen] = useState(true);
+	const [projectsOpen, setProjectsOpen] = useState(false);
+	const [configOpen, setConfigOpen] = useState(false);
 	const [picking, setPicking] = useState(false);
-	const [manual, setManual] = useState(false);
-	const [manualPath, setManualPath] = useState("");
+	const locale = useLocale();
 
-	const conversations = project ? sessions.filter(session => session.cwd === project) : [];
+	const conversations = project ? sessions.filter(item => item.cwd === project) : [];
+
+	useEffect(() => {
+		if (!configOpen) return;
+		const onKey = (event: KeyboardEvent) => {
+			if (event.key === "Escape") setConfigOpen(false);
+		};
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [configOpen]);
 
 	const addProject = async () => {
 		setPicking(true);
@@ -111,22 +135,45 @@ export function Sidebar({
 		}
 	};
 
-	const submitManual = async (cwd: string) => {
-		try {
-			await onAddProjectPath(cwd);
-			setManual(false);
-			setManualPath("");
-		} catch {
-			// the caller surfaces the reason; keep the field for a retry
-		}
-	};
+	const renderConversations = () =>
+		conversations.length === 0 ? (
+			<p className="sidebar-empty">{t("这个项目还没有对话。")}</p>
+		) : (
+			conversations.map(item => (
+				<div
+					key={item.id}
+					className={`session-row${item.id === activeId ? " active" : ""}`}
+					onClick={() => onSelectSession(item.id)}
+					role="button"
+					tabIndex={0}
+					onKeyDown={event => {
+						if (event.key === "Enter") onSelectSession(item.id);
+					}}
+				>
+					<span className={`dot status-${item.status}`} aria-hidden />
+					<span className="session-name">{item.name}</span>
+					{item.phase === "plan" ? <span className="phase-chip small">{t("规划")}</span> : null}
+					<button
+						type="button"
+						className="row-delete"
+						title={t("删除这个会话记录（不删项目文件）")}
+						onClick={event => {
+							event.stopPropagation();
+							void onDeleteSession(item.id);
+						}}
+					>
+						×
+					</button>
+				</div>
+			))
+		);
 
 	return (
-		<nav className={['sidebar', open ? 'open' : '', collapsed ? 'collapsed' : ''].filter(Boolean).join(' ')}>
+		<nav className={["sidebar", open ? "open" : "", collapsed ? "collapsed" : ""].filter(Boolean).join(" ")}>
 			<div className="brand">
 				<span className="brand-mark">PCB</span>
 				<span className="brand-version">{boot?.ompVersion ?? ""}</span>
-				<button type="button" className="icon-btn brand-collapse" title="收起侧栏" onClick={onCollapse}>
+				<button type="button" className="icon-btn brand-collapse" title={t("收起侧栏")} onClick={onCollapse}>
 					<IconPanel />
 				</button>
 			</div>
@@ -146,88 +193,6 @@ export function Sidebar({
 				<kbd className="nav-kbd">Ctrl K</kbd>
 			</button>
 
-			<section className="nav-section">
-				<button
-					type="button"
-					className="nav-heading"
-					onClick={() => setProjectsOpen(open => !open)}
-					aria-expanded={projectsOpen}
-				>
-					<span className="nav-caret" aria-hidden>
-						<IconChevron open={projectsOpen} />
-					</span>
-					Projects
-				</button>
-				{projectsOpen ? (
-					<div className="project-list">
-						{projects.map(cwd => (
-							<div
-								key={cwd}
-								className={`project-row${cwd === project ? " active" : ""}`}
-								role="button"
-								tabIndex={0}
-								title={cwd}
-								onClick={() => onSelectProject(cwd)}
-								onKeyDown={event => {
-									if (event.key === "Enter") onSelectProject(cwd);
-								}}
-							>
-								<span className="project-name">{baseName(cwd)}</span>
-								<span className="project-path">{shortPath(cwd)}</span>
-								<button
-									type="button"
-									className="row-delete"
-									title="从列表移除（不删文件）"
-									onClick={event => {
-										event.stopPropagation();
-										void onRemoveProject(cwd);
-									}}
-								>
-									×
-								</button>
-							</div>
-						))}
-						{projects.length === 0 ? <p className="sidebar-empty">还没有项目文件夹。</p> : null}
-						<button type="button" className="nav-row nav-sub" disabled={picking} onClick={() => void addProject()}>
-							<span className="nav-icon" aria-hidden>
-								<IconPlus />
-							</span>
-							{picking ? "等待选择…" : "添加项目"}
-						</button>
-						{manual ? (
-							<form
-								className="manual-project"
-								onSubmit={event => {
-									event.preventDefault();
-									const value = manualPath.trim();
-									if (!value) return;
-									void submitManual(value);
-								}}
-							>
-								<input
-									autoFocus
-									value={manualPath}
-									placeholder="粘贴文件夹路径，例如 D:\资料"
-									onChange={event => setManualPath(event.target.value)}
-								/>
-								<div className="manual-actions">
-									<button type="submit" className="primary" disabled={!manualPath.trim()}>
-										添加
-									</button>
-									<button type="button" className="ghost" onClick={() => setManual(false)}>
-										取消
-									</button>
-								</div>
-							</form>
-						) : (
-							<button type="button" className="manual-link" onClick={() => setManual(true)}>
-								对话框打不开？手动输入路径
-							</button>
-						)}
-					</div>
-				) : null}
-			</section>
-
 			<button
 				type="button"
 				className={`nav-row${activeView === "automations" ? " active" : ""}`}
@@ -240,44 +205,106 @@ export function Sidebar({
 				{automations.length > 0 ? <span className="nav-badge">{automations.length}</span> : null}
 			</button>
 
-			<section className="nav-section nav-conversations">
-				<div className="nav-heading static">对话</div>
-				<div className="session-list">
-					{project === null ? (
-						<p className="sidebar-empty">选一个项目后，这里显示它的对话。</p>
-					) : conversations.length === 0 ? (
-						<p className="sidebar-empty">这个项目还没有对话。</p>
-					) : (
-						conversations.map(session => (
-							<div
-								key={session.id}
-								className={`session-row${session.id === activeId ? " active" : ""}`}
-								onClick={() => onSelectSession(session.id)}
-								role="button"
-								tabIndex={0}
-								onKeyDown={event => {
-									if (event.key === "Enter") onSelectSession(session.id);
-								}}
-							>
-								<span className={`dot status-${session.status}`} aria-hidden />
-								<span className="session-name">{session.name}</span>
-								{session.phase === "plan" ? <span className="phase-chip small">规划</span> : null}
-								<button
-									type="button"
-									className="row-delete"
-									title="删除这个会话记录（不删项目文件）"
-									onClick={event => {
-										event.stopPropagation();
-										void onDeleteSession(session.id);
-									}}
-								>
-									×
-								</button>
-							</div>
-						))
-					)}
+			<section className="nav-section nav-projects">
+				<div className="nav-project-row">
+					<button
+						type="button"
+						className="nav-row nav-project"
+						aria-expanded={projectsOpen}
+						onClick={() => setProjectsOpen(open => !open)}
+					>
+						Project
+						<span className="nav-project-value" title={project ?? ""}>
+							{project ? baseName(project) : t("未选择")}
+						</span>
+						<span className="nav-caret" aria-hidden>
+							<IconChevron open={projectsOpen} />
+						</span>
+					</button>
+					<button
+						type="button"
+						className="nav-project-add"
+						title={picking ? t("等待选择…") : t("添加项目")}
+						disabled={picking}
+						onClick={() => void addProject()}
+					>
+						<IconPlus />
+					</button>
 				</div>
+
+				{projectsOpen ? (
+					<div className="project-list">
+						{projects.map(cwd => (
+							<div key={cwd} className="project-entry">
+								<div className={`project-option${cwd === project ? " active" : ""}`}>
+									<button
+										type="button"
+										className="project-option-main"
+										title={cwd}
+										onClick={() => onSelectProject(cwd)}
+									>
+										<span className="project-name">{baseName(cwd)}</span>
+										<span className="project-path">{shortPath(cwd)}</span>
+									</button>
+									<button
+										type="button"
+										className="row-delete"
+										title={t("从清单移除（不删磁盘文件）")}
+										onClick={() => void onRemoveProject(cwd)}
+									>
+										×
+									</button>
+								</div>
+								{cwd === project ? <div className="project-sessions">{renderConversations()}</div> : null}
+							</div>
+						))}
+						{projects.length === 0 ? <p className="sidebar-empty">{t("还没有项目文件夹，点右上角的 + 添加。")}</p> : null}
+					</div>
+				) : null}
 			</section>
+
+			<div className="sidebar-foot">
+				{configOpen ? (
+					<div className="config-card" role="dialog" aria-label={t("配置")}>
+						<div className="config-title">{t("模型")}</div>
+						<ModelPicker session={session} state={state} onModel={onModel} />
+						<div className="config-title">{t("语言")}</div>
+						<div className="config-langs" role="group" aria-label={t("语言")}>
+							<button
+								type="button"
+								className={locale === "zh" ? "active" : undefined}
+								aria-pressed={locale === "zh"}
+								onClick={() => setLocale("zh")}
+							>
+								中文
+							</button>
+							<button
+								type="button"
+								className={locale === "en" ? "active" : undefined}
+								aria-pressed={locale === "en"}
+								onClick={() => setLocale("en")}
+							>
+								English
+							</button>
+						</div>
+					</div>
+				) : null}
+				<div className="user-row">
+					<span className="avatar" aria-hidden>
+						J
+					</span>
+					<span className="user-name">Jian Ren</span>
+					<button
+						type="button"
+						className={`icon-btn${configOpen ? " on" : ""}`}
+						title={t("配置")}
+						aria-expanded={configOpen}
+						onClick={() => setConfigOpen(open => !open)}
+					>
+						<IconGear />
+					</button>
+				</div>
+			</div>
 		</nav>
 	);
 }

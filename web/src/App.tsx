@@ -12,10 +12,13 @@ import { Sidebar } from "./components/Sidebar.tsx";
 import { Topbar } from "./components/Topbar.tsx";
 import { Transcript } from "./components/Transcript.tsx";
 import { initialState, reducer } from "./state.ts";
+import { t, useLocale } from "./i18n.ts";
+import { sessionTitle } from "./titles.ts";
 
 const RIGHT_PANEL_KEY = "pcb.rightPanel";
 const LEFT_PANEL_KEY = "pcb.leftPanel";
 const RAIL_WIDTH_KEY = "pcb.railW";
+const PROJECT_KEY = "pcb.project";
 
 function clampRail(width: number): number {
 	const max = Math.max(320, Math.min(600, window.innerWidth - 256 - 420));
@@ -39,11 +42,19 @@ function initialRightOpen(): boolean {
 }
 
 export default function App() {
+	// Any language change re-renders the whole shell.
+	useLocale();
 	const [state, dispatch] = useReducer(reducer, initialState);
 	const [error, setError] = useState<string | null>(null);
 	const [info, setInfo] = useState<string | null>(null);
 	const [view, setView] = useState<"home" | "automations">("home");
-	const [project, setProject] = useState<string | null>(null);
+	const [project, setProjectState] = useState<string | null>(() => window.localStorage.getItem(PROJECT_KEY));
+	// The selected folder survives a reload: it is the sidebar's current project.
+	const setProject = (cwd: string | null) => {
+		setProjectState(cwd);
+		if (cwd) window.localStorage.setItem(PROJECT_KEY, cwd);
+		else window.localStorage.removeItem(PROJECT_KEY);
+	};
 	const [paletteOpen, setPaletteOpen] = useState(false);
 	const [sending, setSending] = useState(false);
 	const [rightOpen, setRightOpen] = useState(initialRightOpen);
@@ -99,18 +110,29 @@ export default function App() {
 		return () => window.removeEventListener("keydown", onKey);
 	}, []);
 
+	useEffect(() => {
+		if (!state.boot || !project) return;
+		if (!state.boot.projects.includes(project)) setProject(null);
+	}, [state.boot, project]);
+
+	const [resuming, setResuming] = useState<string | null>(null);
 	const activeId = state.activeId;
 	const session = state.sessions.find(item => item.id === activeId) ?? null;
 	const projects = state.boot?.projects ?? [];
 
-	// Selecting a conversation loads it: a dormant session resumes omp, a live one
-	// replays what happened before this tab connected.
+	const aliveNow = session?.alive ?? false;
+
+	// Selecting a conversation loads it, and so does finding it dormant — after a
+	// restart or a crash the process is gone while the transcript stays, so the
+	// open conversation wakes itself instead of waiting for a manual resume.
 	useEffect(() => {
 		if (!activeId) return;
 		const target = state.sessions.find(item => item.id === activeId);
 		if (!target) return;
+		const dormant = !target.alive;
+		if (dormant) setResuming(activeId);
 		void guard(async () => {
-			if (!target.alive) await api.resumeSession(activeId);
+			if (dormant) await api.resumeSession(activeId);
 			const [{ messages }, { state: sessionState }, { policies }] = await Promise.all([
 				api.messages(activeId),
 				api.state(activeId),
@@ -119,8 +141,8 @@ export default function App() {
 			dispatch({ type: "ui", event: { t: "messages", sessionId: activeId, messages } });
 			dispatch({ type: "ui", event: { t: "state", sessionId: activeId, state: sessionState } });
 			dispatch({ type: "set_policies", sessionId: activeId, policies });
-		});
-	}, [activeId, guard]);
+		}).finally(() => setResuming(current => (current === activeId ? null : current)));
+	}, [activeId, guard, aliveNow]);
 
 	useEffect(() => {
 		if (!info) return;
@@ -195,27 +217,15 @@ export default function App() {
 			if (project === cwd) setProject(null);
 		});
 
-	/** Fallback when the Windows dialog cannot open: add a typed path. */
-	const addProjectPath = async (cwd: string) => {
-		try {
-			const result = await api.addProject(cwd);
-			dispatch({ type: "set_projects", projects: result.projects });
-			setProject(cwd);
-			dispatch({ type: "select", id: null });
-			setView("home");
-		} catch (cause) {
-			setError((cause as Error).message);
-			throw cause;
-		}
-	};
-
 	/** First message: creates the conversation in the chosen folder and sends it. */
 	const sendFromHome = async (text: string) => {
-		if (!project) throw new Error("先选一个项目文件夹");
+		if (!project) throw new Error(t("先选一个项目文件夹"));
 		setSending(true);
 		try {
 			const { session: created } = await api.createSession({
 				cwd: project,
+				// The sidebar shows what the user asked, not the folder name.
+				name: sessionTitle(text),
 				extensions: false,
 				initialPrompt: text,
 			});
@@ -231,7 +241,7 @@ export default function App() {
 		guard(async () => {
 			if (!session) return;
 			await api.setPhase(session.id, "build");
-			await api.prompt(session.id, "按上面的计划开始执行。");
+			await api.prompt(session.id, t("按上面的计划开始执行。"));
 		});
 
 	const revisePlan = () => {
@@ -336,11 +346,12 @@ export default function App() {
 				projects={projects}
 				automations={state.automations}
 				boot={state.boot}
+				session={session}
+				state={session ? state.states[session.id] : undefined}
 				onNew={startNew}
 				onSearch={() => setPaletteOpen(true)}
 				onSelectProject={selectProject}
 				onAddProject={addProject}
-				onAddProjectPath={addProjectPath}
 				onRemoveProject={removeProject}
 				onSelectSession={openSession}
 				onDeleteSession={id =>
@@ -350,22 +361,21 @@ export default function App() {
 				}
 				onOpenAutomations={openAutomations}
 				onCollapse={() => setLeftPanel(false)}
+				onModel={(provider, id) =>
+					guard(async () => {
+						if (session) await api.setModel(session.id, provider, id);
+					})
+				}
 			/>
 
 			<main className="chat">
 				<Topbar
 					session={session}
-					state={session ? state.states[session.id] : undefined}
 					rightOpen={showRail}
 					onToggleRight={() => setRightPanel(!rightOpen)}
 					onToggleSidebar={() => setSidebarOpen(open => !open)}
 					leftCollapsed={sidebarCollapsed}
 					onExpandLeft={() => setLeftPanel(true)}
-					onModel={(provider, id) =>
-						guard(async () => {
-							if (session) await api.setModel(session.id, provider, id);
-						})
-					}
 					onResume={() =>
 						guard(async () => {
 							if (session) await api.resumeSession(session.id);
@@ -375,7 +385,7 @@ export default function App() {
 						guard(async () => {
 							if (!session) return;
 							const { path } = await api.exportHtml(session.id);
-							setInfo(`已导出：${path}`);
+							setInfo(t("已导出：{s}", { s: path }));
 						})
 					}
 					onRefresh={() =>
@@ -407,13 +417,19 @@ export default function App() {
 							phase={session.phase}
 							state={state.states[session.id]}
 							disabled={!session.alive}
+							resuming={resuming === session.id}
+							onResume={() =>
+								guard(async () => {
+									await api.resumeSession(session.id);
+								})
+							}
 							textAreaRef={composerRef}
 							onPhase={phase => void setPhaseOnly(phase)}
 							onSend={text =>
 								guard(async () => {
 									const result = await api.prompt(session.id, text);
 									dispatch({ type: "local_user", sessionId: session.id, text });
-									if (result.queued) setInfo("这一轮还在跑，已排队，等它结束再发送。");
+									if (result.queued) setInfo(t("这一轮还在跑，已排队，等它结束再发送。"));
 								})
 							}
 							onAbort={() =>
@@ -473,6 +489,7 @@ export default function App() {
 			{showRail && session ? (
 				<RightRail
 					cwd={session.cwd}
+					platform={state.boot?.platform ?? ""}
 					phase={session.phase}
 					todos={state.states[session.id]?.todos ?? []}
 					segment={planText}

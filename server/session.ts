@@ -438,7 +438,12 @@ export class PcbSession {
 			};
 			if (typeof data.sessionFile === "string") this.record.sessionFile = data.sessionFile;
 			if (typeof data.sessionId === "string") this.record.ompSessionId = data.sessionId;
-			if (data.sessionName && data.sessionName !== this.record.name) this.record.name = data.sessionName;
+			if (data.sessionName && data.sessionName !== this.record.name) {
+				// omp picked a better title: the sidebar has to hear about it, or the
+				// list keeps showing the first sentence (or the folder name) for good.
+				this.record.name = data.sessionName;
+				this.#broadcastSession();
+			}
 			this.#deps.hub.broadcast({ t: "state", sessionId: this.record.id, state: this.#state });
 		} catch (error) {
 			this.#deps.onLog?.(`[${this.record.id}] get_state: ${(error as Error).message}`);

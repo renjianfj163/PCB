@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import type { ModelsInfo, SessionState, SessionSummary } from "../../../shared/protocol.ts";
+import type { SessionSummary } from "../../../shared/protocol.ts";
+import { t } from "../i18n.ts";
 
 function IconMenu() {
 	return (
@@ -48,109 +48,46 @@ function IconRestore() {
 
 export function Topbar({
 	session,
-	state,
 	rightOpen,
 	onToggleRight,
 	onToggleSidebar,
 	leftCollapsed,
 	onExpandLeft,
-	onModel,
 	onResume,
 	onExport,
 	onRefresh,
 }: {
 	session: SessionSummary | null;
-	state: SessionState | undefined;
 	rightOpen: boolean;
 	onToggleRight: () => void;
 	onToggleSidebar: () => void;
 	leftCollapsed: boolean;
 	onExpandLeft: () => void;
-	onModel: (provider: string, id: string) => Promise<void>;
 	onResume: () => Promise<void>;
 	onExport: () => Promise<void>;
 	onRefresh: () => Promise<void>;
 }) {
-	const [models, setModels] = useState<ModelsInfo | null>(null);
-
-	useEffect(() => {
-		if (!session) return;
-		let cancelled = false;
-		let attempt = 0;
-		let timer: number | undefined;
-
-		const load = async () => {
-			try {
-				const response = await fetch(`/api/sessions/${session.id}/models`);
-				if (!response.ok) return;
-				const data = (await response.json()) as ModelsInfo;
-				if (cancelled) return;
-				setModels(data);
-				// Provider catalog discovery runs in the background on the server.
-				if (data.models.length === 0 && attempt < 8) {
-					attempt++;
-					timer = window.setTimeout(() => void load(), 1500);
-				}
-			} catch {
-				// keep the previous list
-			}
-		};
-
-		void load();
-		return () => {
-			cancelled = true;
-			if (timer !== undefined) window.clearTimeout(timer);
-		};
-	}, [session?.id, session?.status, session?.updatedAt]);
-
-	const current = state?.model ?? session?.model ?? null;
-	const value = current ? `${current.provider}/${current.id}` : "";
-	const options = models?.models ?? [];
-
 	return (
 		<header className="topbar">
 			{leftCollapsed ? (
-				<button type="button" className="icon-btn icon-left" title="展开侧栏" onClick={onExpandLeft}>
+				<button type="button" className="icon-btn icon-left" title={t("展开侧栏")} onClick={onExpandLeft}>
 					<IconPanel />
 				</button>
 			) : null}
-			<button type="button" className="icon-btn icon-menu" title="会话列表" onClick={onToggleSidebar}>
+			<button type="button" className="icon-btn icon-menu" title={t("会话列表")} onClick={onToggleSidebar}>
 				<IconMenu />
 			</button>
 
 			<div className="topbar-title">
-				<h1>{session?.name ?? "新对话"}</h1>
+				<h1>{session?.name ?? t("新对话")}</h1>
 				{session ? <span title={session.cwd}>{session.cwd}</span> : null}
 			</div>
 
 			<div className="topbar-actions">
-				{session ? (
-					<select
-						className="model-select"
-						value={value}
-						disabled={!session.alive}
-						title="模型"
-						onChange={event => {
-							const [provider, id] = event.target.value.split("/");
-							if (provider && id) void onModel(provider, id);
-						}}
-					>
-						{value ? null : <option value="">模型</option>}
-						{options.map(model => (
-							<option key={`${model.provider}/${model.id}`} value={`${model.provider}/${model.id}`}>
-								{model.id}
-							</option>
-						))}
-						{value && !options.some(model => `${model.provider}/${model.id}` === value) ? (
-							<option value={value}>{current?.id}</option>
-						) : null}
-					</select>
-				) : null}
-
 				<button
 					type="button"
 					className={`icon-btn${rightOpen ? " on" : ""}`}
-					title={rightOpen ? "收起右栏" : "展开右栏"}
+					title={rightOpen ? t("收起右栏") : t("展开右栏")}
 					onClick={onToggleRight}
 				>
 					<IconPanel />
@@ -159,14 +96,14 @@ export function Topbar({
 				{session ? (
 					<>
 						{session.alive ? null : (
-							<button type="button" className="icon-btn" title="恢复会话" onClick={() => void onResume()}>
+							<button type="button" className="icon-btn" title={t("恢复会话")} onClick={() => void onResume()}>
 								<IconRestore />
 							</button>
 						)}
-						<button type="button" className="icon-btn" title="导出 HTML" onClick={() => void onExport()}>
+						<button type="button" className="icon-btn" title={t("导出 HTML")} onClick={() => void onExport()}>
 							<IconExport />
 						</button>
-						<button type="button" className="icon-btn" title="重新拉取会话内容" onClick={() => void onRefresh()}>
+						<button type="button" className="icon-btn" title={t("重新拉取会话内容")} onClick={() => void onRefresh()}>
 							<IconRefresh />
 						</button>
 					</>

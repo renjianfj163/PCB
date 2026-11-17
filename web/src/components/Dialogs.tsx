@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { DialogAnswer, DialogRequest } from "../../../shared/protocol.ts";
-import { approvalChoiceLabel, isDenyOption, splitApprovalTitle, TOOL_LABELS } from "../labels.ts";
+import { approvalChoiceLabel, isDenyOption, splitApprovalTitle, toolLabel } from "../labels.ts";
+import { t } from "../i18n.ts";
 
 function AskCard({ request, onAnswer }: { request: Extract<DialogRequest, { kind: "ask" }>; onAnswer: (answer: DialogAnswer) => void }) {
 	const [selected, setSelected] = useState<Record<string, string[]>>({});
@@ -20,7 +21,7 @@ function AskCard({ request, onAnswer }: { request: Extract<DialogRequest, { kind
 	return (
 		<div className="dialog-card">
 			<header>
-				<h2>助手需要你的选择</h2>
+				<h2>{t("助手需要你的选择")}</h2>
 			</header>
 			{request.questions.map(question => {
 				const current = selected[question.id] ?? [];
@@ -46,7 +47,7 @@ function AskCard({ request, onAnswer }: { request: Extract<DialogRequest, { kind
 						</div>
 						<input
 							className="ask-custom"
-							placeholder="或者直接写你的答案"
+							placeholder={t("或者直接写你的答案")}
 							value={custom[question.id] ?? ""}
 							onChange={event => setCustom({ ...custom, [question.id]: event.target.value })}
 						/>
@@ -67,10 +68,10 @@ function AskCard({ request, onAnswer }: { request: Extract<DialogRequest, { kind
 						})
 					}
 				>
-					提交
+					{t("提交")}
 				</button>
 				<button type="button" className="ghost" onClick={() => onAnswer({ cancelled: true })}>
-					跳过
+					{t("跳过")}
 				</button>
 			</footer>
 		</div>
@@ -88,7 +89,7 @@ function ApprovalCard({
 	return (
 		<div className="dialog-card approval">
 			<header>
-				<h2>需要你确认：{TOOL_LABELS[tool] ?? tool}</h2>
+				<h2>{t("需要你确认：{s}", { s: toolLabel(tool) })}</h2>
 			</header>
 			<pre className="dialog-body">{detail || request.title}</pre>
 			<footer>
@@ -114,15 +115,15 @@ function SimpleCard({ request, onAnswer }: { request: DialogRequest; onAnswer: (
 		return (
 			<div className="dialog-card">
 				<header>
-					<h2>{request.title || "确认"}</h2>
+					<h2>{request.title || t("确认")}</h2>
 				</header>
 				<p className="dialog-body-text">{request.message}</p>
 				<footer>
 					<button type="button" className="primary" onClick={() => onAnswer({ confirmed: true })}>
-						同意
+						{t("同意")}
 					</button>
 					<button type="button" className="ghost" onClick={() => onAnswer({ confirmed: false })}>
-						不同意
+						{t("不同意")}
 					</button>
 				</footer>
 			</div>
@@ -132,7 +133,7 @@ function SimpleCard({ request, onAnswer }: { request: DialogRequest; onAnswer: (
 		return (
 			<div className="dialog-card">
 				<header>
-					<h2>{request.title || "请输入"}</h2>
+					<h2>{request.title || t("请输入")}</h2>
 				</header>
 				<input
 					className="dialog-input"
@@ -143,10 +144,10 @@ function SimpleCard({ request, onAnswer }: { request: DialogRequest; onAnswer: (
 				/>
 				<footer>
 					<button type="button" className="primary" onClick={() => onAnswer({ value: text })}>
-						确定
+						{t("确定")}
 					</button>
 					<button type="button" className="ghost" onClick={() => onAnswer({ cancelled: true })}>
-						取消
+						{t("取消")}
 					</button>
 				</footer>
 			</div>
@@ -188,7 +189,7 @@ function QuestionCard({
 				{otherLabel !== undefined || options.length === 0 ? (
 					<input
 						className="ask-custom"
-						placeholder={otherLabel ?? "自己写一个答案"}
+						placeholder={otherLabel ?? t("自己写一个答案")}
 						value={custom}
 						onChange={event => setCustom(event.target.value)}
 					/>
@@ -204,10 +205,10 @@ function QuestionCard({
 						else if (choice) onAnswer({ value: choice });
 					}}
 				>
-					提交
+					{t("提交")}
 				</button>
 				<button type="button" className="ghost" onClick={() => onAnswer({ cancelled: true })}>
-					跳过
+					{t("跳过")}
 				</button>
 			</footer>
 		</div>
@@ -237,7 +238,7 @@ export function DialogLayer({
 			) : (
 				<SimpleCard request={request} onAnswer={answer} />
 			)}
-			{requests.length > 1 ? <div className="dialog-queue">还有 {requests.length - 1} 个待处理</div> : null}
+			{requests.length > 1 ? <div className="dialog-queue">{t("还有 {n} 个待处理", { n: requests.length - 1 })}</div> : null}
 		</div>
 	);
 }

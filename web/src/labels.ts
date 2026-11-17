@@ -1,5 +1,7 @@
 /** Plain-language names for tools and approval choices. */
 
+import { t } from "./i18n.ts";
+
 export const TOOL_LABELS: Record<string, string> = {
 	bash: "运行命令",
 	shell: "运行命令",
@@ -22,12 +24,18 @@ export const TOOL_LABELS: Record<string, string> = {
 	mcp: "外部工具",
 };
 
+export function toolLabel(tool: string): string {
+	const source = TOOL_LABELS[tool];
+	return source ? t(source) : tool;
+}
+
 export function approvalChoiceLabel(option: string): string {
-	if (option === "Approve" || option === "Approve Once") return "允许这次";
-	if (option === "Deny") return "拒绝";
-	if (option.startsWith("Always Approve")) return `以后都允许（${option.replace("Always Approve", "").trim()}）`;
+	if (option === "Approve" || option === "Approve Once") return t("允许这次");
+	if (option === "Deny") return t("拒绝");
+	if (option.startsWith("Always Approve"))
+		return t("以后都允许（{s}）", { s: option.replace("Always Approve", "").trim() });
 	const sessionMatch = /^Approve (.+) for this session$/.exec(option);
-	if (sessionMatch) return `本轮会话都允许（${sessionMatch[1]})`.replace(")", "）");
+	if (sessionMatch) return t("本轮会话都允许（{s}）", { s: sessionMatch[1] ?? "" });
 	return option;
 }
 

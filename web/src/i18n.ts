@@ -1,0 +1,368 @@
+import { useSyncExternalStore } from "react";
+
+/**
+ * The shell speaks two languages. Chinese is the source language, so a string
+ * that has no English entry falls back to itself — nothing can render blank.
+ *
+ * `t("…")` reads the locale from a module-level store rather than a context so
+ * helpers outside components (tool labels, approval wording) can use it too.
+ */
+export type Locale = "zh" | "en";
+
+const KEY = "pcb.locale";
+
+/** Typed loosely on purpose: this module is also type-checked without the DOM lib. */
+interface StorageLike {
+	getItem(key: string): string | null;
+	setItem(key: string, value: string): void;
+}
+
+interface DocumentLike {
+	documentElement: { lang: string };
+}
+
+function storage(): StorageLike | undefined {
+	return (globalThis as { localStorage?: StorageLike }).localStorage;
+}
+
+function applyLang(locale: Locale): void {
+	const doc = (globalThis as { document?: DocumentLike }).document;
+	if (doc) doc.documentElement.lang = locale === "en" ? "en" : "zh-CN";
+}
+
+function readLocale(): Locale {
+	try {
+		return storage()?.getItem(KEY) === "en" ? "en" : "zh";
+	} catch {
+		return "zh";
+	}
+}
+
+let current: Locale = readLocale();
+const listeners = new Set<() => void>();
+
+export function getLocale(): Locale {
+	return current;
+}
+
+export function setLocale(next: Locale): void {
+	if (next === current) return;
+	current = next;
+	try {
+		storage()?.setItem(KEY, next);
+	} catch {
+		// private mode: the choice just lasts for this tab
+	}
+	applyLang(next);
+	for (const listener of listeners) listener();
+}
+
+function subscribe(listener: () => void): () => void {
+	listeners.add(listener);
+	return () => listeners.delete(listener);
+}
+
+/** App calls this once: any locale change re-renders the whole shell. */
+export function useLocale(): Locale {
+	return useSyncExternalStore(subscribe, getLocale, getLocale);
+}
+
+applyLang(current);
+
+function fill(text: string, vars: Record<string, string | number>): string {
+	return text.replace(/\{(\w+)\}/g, (whole, name: string) => (name in vars ? String(vars[name]) : whole));
+}
+
+export function t(text: string, vars?: Record<string, string | number>): string {
+	const done = current === "en" ? (EN[text] ?? text) : text;
+	return vars ? fill(done, vars) : done;
+}
+
+/**
+ * English wording, keyed by the Chinese source string. Dynamic parts use braces:
+ * `t("{n} 条命令", { n: 4 })`.
+ */
+const EN: Record<string, string> = {
+	// ---- tools and approvals (labels.ts, Transcript) ----
+	"运行命令": "Run command",
+	"运行代码": "Run code",
+	"写入文件": "Write file",
+	"修改文件": "Edit file",
+	"批量修改文件": "Edit files in bulk",
+	"读取文件": "Read file",
+	"搜索内容": "Search contents",
+	"查找文件": "Find files",
+	"列出目录": "List folder",
+	"分派子任务": "Delegate subtask",
+	"操作浏览器": "Drive browser",
+	"更新计划": "Update plan",
+	"向你提问": "Ask you",
+	"联网搜索": "Web search",
+	"分析代码": "Analyse code",
+	"调试程序": "Debug program",
+	"外部工具": "External tool",
+	"允许这次": "Allow once",
+	"拒绝": "Deny",
+	"以后都允许（{s}）": "Always allow ({s})",
+	"本轮会话都允许（{s}）": "Allow for this session ({s})",
+
+	// ---- shell chrome ----
+	"收起侧栏": "Collapse sidebar",
+	"展开侧栏": "Expand sidebar",
+	"会话列表": "Conversations",
+	"新对话": "New conversation",
+	"收起右栏": "Collapse panel",
+	"展开右栏": "Expand panel",
+	"恢复会话": "Resume session",
+	"导出 HTML": "Export HTML",
+	"重新拉取会话内容": "Reload conversation",
+	"删除这个会话记录（不删项目文件）": "Delete this conversation record (files stay)",
+	"未选择": "None",
+	"等待选择…": "Waiting…",
+	"添加项目": "Add project",
+	"从清单移除（不删磁盘文件）": "Remove from list (files stay on disk)",
+	"还没有项目文件夹，点右上角的 + 添加。": "No project folders yet — use + to add one.",
+	"这个项目还没有对话。": "No conversations here yet.",
+	"配置": "Settings",
+	"模型": "Model",
+	"语言": "Language",
+
+	// ---- home ----
+	"想做什么？": "What do you want to do?",
+	"说说你想让电脑帮你做什么…": "Tell the computer what you want…",
+	"先在左侧选一个项目，或点「添加项目」": "Pick a project on the left, or add one",
+	"启动中…": "Starting…",
+	"发送": "Send",
+	"Enter 发送，Shift+Enter 换行。助手会先给计划，你同意后才动文件；跑命令仍会问你。":
+		"Enter to send, Shift+Enter for a new line. The assistant plans first and only touches files once you agree; commands still ask you.",
+	"先选一个项目文件夹": "Pick a project folder first",
+	"已导出：{s}": "Exported: {s}",
+	"这一轮还在跑，已排队，等它结束再发送。": "Still running — queued, it will be sent when this turn ends.",
+	"按上面的计划开始执行。": "Start following that plan.",
+
+	// ---- composer ----
+	"会话已结束，先恢复": "Session ended — resume first",
+	"正在恢复这个对话…": "Waking this conversation up…",
+	"这个对话的后台进程已经退出，恢复后才能继续。":
+		"The process behind this conversation has exited. Resume it to carry on.",
+	"恢复中…": "Resuming…",
+	"说你想做什么…": "What should it do?",
+	"上下文 {n}%": "Context {n}%",
+	"已花费 {s}": "Spent {s}",
+	"下一条消息使用的阶段": "Phase for the next message",
+	"规划": "Plan",
+	"执行": "Execute",
+	"聊天": "Chat",
+	"停止": "Stop",
+	"先开始一次对话": "Start a conversation first",
+
+	// ---- palette ----
+	"搜索项目、对话、自动化…": "Search projects, conversations, automations…",
+	"没有匹配项": "No matches",
+	"项目": "Projects",
+	"会话": "Conversations",
+	"自动化": "Automations",
+
+	// ---- right rail: tabs ----
+	"文件": "Files",
+	"计划": "Plan",
+	"终端": "Terminal",
+	"浏览器": "Browser",
+	"右栏视图": "Panel views",
+
+	// ---- transcript ----
+	"助手": "Assistant",
+	"你": "You",
+	"思考过程": "Thinking",
+	"工具输出": "Tool output",
+	"收起": "Hide",
+	"输出": "Output",
+	"正在载入这段对话…": "Loading this conversation…",
+	"说一句话开始": "Say something to start",
+	"这个会话已经结束": "This session has ended",
+	"omp 正在回放历史，稍等一下。": "omp is replaying the history, one moment.",
+	"计划列在右侧。批准之前，助手只会读，不会改。": "The plan is on the right. Until you approve it, the assistant only reads.",
+	"先描述你想做的事，助手会先给出计划，你同意之后它才动手。":
+		"Describe what you want. The assistant writes a plan first and only acts once you agree.",
+	"点下面的「恢复会话」接着聊。": "Use Resume below to continue.",
+
+	// ---- rail: files ----
+	"这次改过": "Changed",
+	"{n} 处改动": "{n} changed",
+	"刷新目录": "Refresh folder",
+	"正在读取目录…": "Reading folder…",
+	"这个文件夹太大，只列出了前 400 项。": "Large folder — showing the first 400 entries.",
+	"这个文件夹是空的。": "This folder is empty.",
+	"已复制": "Copied",
+	"复制完整路径": "Copy full path",
+	"关闭预览": "Close preview",
+	"正在读取…": "Reading…",
+	"二进制文件，{s}，不预览。": "Binary file, {s} — not previewed.",
+	"文件太大（{s}），超过 256 KB，不预览。": "Too large ({s}) — over 256 KB, not previewed.",
+
+	// ---- rail: plan ----
+	"待办 {a}/{b}": "{a}/{b} todos",
+	"还没有待办": "No todos yet",
+	"还没有规划内容。在下方输入框把阶段切到「规划」再提问。":
+		"Nothing planned yet. Switch the phase to Plan below and ask.",
+	"切到执行阶段，按这份计划动手": "Switch to Execute and follow this plan",
+	"等助手写出计划后才能批准": "Approve once the assistant has written the plan",
+	"按这个做": "Do this",
+	"再改一改": "Revise it",
+	"改成别的": "Change it",
+	"已经在执行阶段。切回「规划」只影响下一条消息。":
+		"Already executing. Switching back to Plan only affects the next message.",
+	"聊天阶段只回答问题，不改文件、不跑命令；需要动手时切到「执行」。":
+		"Chat only answers questions — no files, no commands. Switch to Execute to act.",
+	"「按这个做」会切到执行阶段；写文件自动进行，跑命令仍会问你。":
+		"“Do this” switches to Execute: writes go ahead, commands still ask you.",
+	"等助手写出计划后才能批准。": "Approve once the assistant has written the plan.",
+
+	// ---- rail: terminal ----
+	"自动放行": "Auto-allowed",
+	"等待审批": "Awaiting approval",
+	"已批准": "Approved",
+	"已拒绝": "Rejected",
+	"被拒绝": "Denied",
+	"（退出码 {s}）": "(exit code {s})",
+	"（60 秒没跑完，已中止）": "(stopped after 60 s)",
+	"…（输出太长，只留了前 64 KB）": "… (output truncated to the first 64 KB)",
+	"失败 {a}/{b}": "Failed {a}/{b}",
+	"{n} 条命令": "{n} commands",
+	"运行中 {n}": "Running {n}",
+	"只看失败的命令": "Show failed commands only",
+	"全部": "All",
+	"失败 {n}": "Failed {n}",
+	"全部成功": "All succeeded",
+	"这次对话还没跑过命令。下面可以直接敲；助手要跑命令时会先问你。":
+		"No commands yet. Type one below; the assistant asks before running anything.",
+	"▾ 收起输出": "▾ Hide output",
+	"▸ 输出": "▸ Output",
+	"你运行的": "You ran",
+	"运行中…": "Running…",
+	"在此输入命令": "Type a command here",
+	"在 {s} 里运行": "Runs in {s}",
+	"在这里运行命令": "Run a command here",
+	"运行": "Run",
+	"没有命令": "No commands",
+
+	// ---- rail: browser ----
+	"站点不允许被内嵌": "The site does not allow embedding",
+	"{n} 次截图": "{n} screenshots",
+	"最新": "Latest",
+	"回到最新": "Back to latest",
+	"输入地址，例如 example.com": "Enter an address, e.g. example.com",
+	"在右栏打开的地址": "Address to open in the panel",
+	"检查…": "Checking…",
+	"打开": "Open",
+	"打不开：{s}": "Cannot open {s}",
+	"{s}。这一栏没法把它放进来。": "{s}. This panel cannot host it.",
+	"用系统浏览器打开": "Open in your browser",
+	"还是试着内嵌": "Try embedding anyway",
+	"新标签": "New tab",
+	"浏览器预览": "Browser preview",
+	"空白说明这个站点不允许被内嵌，用上面的「新标签」打开。":
+		"Blank means the site refuses embedding — use “New tab” above.",
+	"这里可以直接看网页：输入地址后按「打开」。助手用浏览器时，它看到的截图也会出现在下面。":
+		"Browse here: enter an address and press Open. When the assistant uses a browser, its screenshot shows below.",
+	"（没有记录地址）": "(no URL recorded)",
+	"（无地址）": "(no URL)",
+	"放大看": "Enlarge",
+	"浏览器截图": "Browser screenshot",
+	"这次浏览器操作没有截图。": "This browser action had no screenshot.",
+	"更早": "Earlier",
+	"点任意处或按 Esc 关闭": "Click anywhere or press Esc to close",
+	"截图看看": "Take a snapshot",
+	"正在截…": "Shooting…",
+	"正在用本机的浏览器截图，最多半分钟…": "The local browser is rendering the page — up to half a minute…",
+	"截图也失败了": "The snapshot failed too",
+	"截图失败": "Snapshot failed",
+	"再试一次": "Try again",
+	"重新截一张": "Shoot again",
+	"网页截图": "Page snapshot",
+	"这是本机浏览器拍的一整页，能看不能点；要操作就用系统浏览器打开。":
+		"A full page photographed by the local browser: readable, not clickable. Use your browser to interact.",
+	"域名解析到 {s}": "The name resolves to {s}",
+	"本机的请求没拿到回应。浏览器有时能走另一条网络路径（比如加密 DNS），值得先截一张图看看。":
+		"This machine's request got no reply. A browser sometimes takes a different path (encrypted DNS, for one) — worth a snapshot.",
+	"助手 {a} 条 · 你 {b} 条": "assistant {a} · you {b}",
+	"在 {s} 里用 {sh} 运行": "Runs in {s} with {sh}",
+	"用哪个 shell 运行": "Which shell to run in",
+	"cmd.exe": "cmd.exe",
+	"站点声明 X-Frame-Options: DENY，任何网站都不能内嵌它":
+		"The site sends X-Frame-Options: DENY — nothing may frame it",
+	"站点声明 X-Frame-Options: SAMEORIGIN，只允许它自己的页面内嵌":
+		"The site sends X-Frame-Options: SAMEORIGIN — only its own pages may frame it",
+	"站点用 CSP 的 frame-ancestors 限制了谁能内嵌它": "The site's CSP frame-ancestors limits who may frame it",
+	"6 秒内没有回应，可能是网络或站点慢": "No reply within 6 seconds — the network or the site is slow",
+	"跳转到了非网页地址": "It redirected to something that is not a web page",
+	"这台机器上没找到 Chrome 或 Edge，截不了图": "No Chrome or Edge on this machine, so there is nothing to take the picture with.",
+	"浏览器也打不开它（域名或网络不通）": "The browser could not open it either (name or connection failed).",
+	"浏览器没能打开这个地址": "The browser could not open this address",
+	"PowerShell": "PowerShell",
+
+	// ---- dialogs ----
+	"助手需要你的选择": "The assistant needs your choice",
+	"或者直接写你的答案": "Or type your answer",
+	"提交": "Submit",
+	"跳过": "Skip",
+	"需要你确认：{s}": "Confirm: {s}",
+	"确认": "Confirm",
+	"同意": "Allow",
+	"不同意": "Refuse",
+	"请输入": "Input needed",
+	"确定": "OK",
+	"取消": "Cancel",
+	"自己写一个答案": "Write your own answer",
+	"还有 {n} 个待处理": "{n} more waiting",
+
+	// ---- automations ----
+	"还没跑过": "Never ran",
+	"自动化和定时任务": "Automations and schedules",
+	"点「现在运行」会立刻开一条新对话；每天定时只在 PCB 开着时生效，错过不补。":
+		"“Run now” starts a conversation immediately. Daily timers only fire while PCB is open; missed runs are skipped.",
+	"＋ 新建": "＋ New",
+	"名称": "Name",
+	"例如：每天整理下载文件夹": "e.g. tidy my downloads folder",
+	"项目文件夹": "Project folder",
+	"（先添加一个项目）": "(add a project first)",
+	"阶段": "Phase",
+	"规划（只读，先给计划）": "Plan (read-only, plans first)",
+	"执行（直接动手）": "Execute (acts right away)",
+	"要它做什么": "What should it do",
+	"例如：把下载文件夹里的图片按月份归档": "e.g. file images in Downloads by month",
+	"每天几点（可空）": "Daily time (optional)",
+	"启用": "Enabled",
+	"保存中…": "Saving…",
+	"保存": "Save",
+	"启用或停用": "Enable or disable",
+	"已启用": "Enabled",
+	"已停用": "Disabled",
+	"项目：{s}": "Project: {s}",
+	"每天 {s}": "Daily at {s}",
+	"仅手动运行": "Manual only",
+	"上次运行：{s}": "Last run: {s}",
+	"上次失败：{s}": "Last failure: {s}",
+	"正在新开对话…": "Starting a conversation…",
+	"现在运行": "Run now",
+	"删除": "Delete",
+	"还没有自动化。点右上「新建」，让它每天替你跑同一件事。":
+		"No automations yet. Use New to run the same job on a schedule.",
+
+	// ---- server messages the UI passes straight through ----
+	"只能在自己的项目目录里运行": "Only your own project folders can run commands",
+	"缺少请求标记": "Missing request marker",
+	"命令是空的": "The command is empty",
+	"命令太长，分几次跑": "Command too long — split it up",
+	"本机和内网地址不会被预览": "Local and LAN addresses are never previewed",
+	"这个域名指向本机或内网，不预览": "This host points at your machine or LAN — not previewed",
+	"只预览 http / https 地址": "Only http / https addresses can be previewed",
+	"这个地址看不懂": "That address cannot be parsed",
+	"没有地址": "No address given",
+	"请求来源不被信任": "Untrusted request origin",
+	"只接受本机访问": "Local requests only",
+	"会话不存在": "Session not found",
+	"会话不在内存中，请先恢复": "Session is not loaded — resume it first",
+	"消息为空": "The message is empty",
+	"这张图不在本机缓存里": "That image is not in the local cache",
+};

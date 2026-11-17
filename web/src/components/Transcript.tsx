@@ -1,24 +1,9 @@
 import { useState } from "react";
 import type { AgentMessage, SessionState } from "../../../shared/protocol.ts";
+import { t } from "../i18n.ts";
+import { toolLabel } from "../labels.ts";
 import { Markdown } from "../markdown.tsx";
 import type { ToolActivity } from "../state.ts";
-
-const TOOL_LABELS: Record<string, string> = {
-	bash: "运行命令",
-	eval: "运行代码",
-	write: "写入文件",
-	edit: "修改文件",
-	ast_edit: "批量修改文件",
-	read: "读取文件",
-	grep: "搜索内容",
-	glob: "查找文件",
-	find: "查找文件",
-	task: "分派子任务",
-	browser: "操作浏览器",
-	todo: "更新计划",
-	web_search: "联网搜索",
-	lsp: "分析代码",
-};
 
 const PHASE_MARKER = /^「阶段：(规划|执行)」\n?/;
 
@@ -69,9 +54,9 @@ export function ToolCard({ tool }: { tool: ToolActivity }) {
 				<span className="tool-state" aria-hidden>
 					{tool.status === "running" ? "◌" : tool.status === "error" ? "✕" : "✓"}
 				</span>
-				<span className="tool-label">{TOOL_LABELS[tool.name] ?? tool.name}</span>
+				<span className="tool-label">{toolLabel(tool.name)}</span>
 				{summary ? <code className="tool-arg">{summary.length > 120 ? `${summary.slice(0, 120)}…` : summary}</code> : null}
-				{output ? <span className="tool-more">{open ? "收起" : "输出"}</span> : null}
+				{output ? <span className="tool-more">{open ? t("收起") : t("输出")}</span> : null}
 			</button>
 			{open && output ? <pre className="tool-output">{output.length > 6000 ? `${output.slice(0, 6000)}\n…` : output}</pre> : null}
 		</div>
@@ -102,10 +87,10 @@ function AssistantMessage({
 
 	return (
 		<div className={`message assistant${streaming ? " streaming" : ""}`}>
-			<div className="message-role">助手</div>
+			<div className="message-role">{t("助手")}</div>
 			{thinking.length > 0 ? (
 				<details className="thinking">
-					<summary>思考过程</summary>
+					<summary>{t("思考过程")}</summary>
 					<pre>{thinking.join("\n\n")}</pre>
 				</details>
 			) : null}
@@ -173,8 +158,8 @@ export function Transcript({
 					return (
 						<div className="message user" key={index}>
 							<div className="message-role">
-								你
-								{marker ? <span className="phase-chip">{marker[1]}</span> : null}
+								{t("你")}
+								{marker ? <span className="phase-chip">{t(marker[1] ?? "")}</span> : null}
 							</div>
 							<div className="user-text">{body}</div>
 						</div>
@@ -190,7 +175,7 @@ export function Transcript({
 					if (!text.trim()) return null;
 					return (
 						<div className="message tool-result" key={index}>
-							<div className="message-role">工具输出</div>
+							<div className="message-role">{t("工具输出")}</div>
 							<pre>{text.length > 4000 ? `${text.slice(0, 4000)}\n…` : text}</pre>
 						</div>
 					);
@@ -200,7 +185,7 @@ export function Transcript({
 
 			{pending.map((text, index) => (
 				<div className="message user" key={`pending-${index}`}>
-					<div className="message-role">你</div>
+					<div className="message-role">{t("你")}</div>
 					<div className="user-text">{text}</div>
 				</div>
 			))}
@@ -212,18 +197,18 @@ export function Transcript({
 					<h2>
 						{sessionAlive
 							? hasHistory || (state && state.messageCount > 0)
-								? "正在载入这段对话…"
-								: "说一句话开始"
-							: "这个会话已经结束"}
+								? t("正在载入这段对话…")
+								: t("说一句话开始")
+							: t("这个会话已经结束")}
 					</h2>
 					<p>
 						{sessionAlive
 							? hasHistory || (state && state.messageCount > 0)
-								? "omp 正在回放历史，稍等一下。"
+								? t("omp 正在回放历史，稍等一下。")
 								: state?.todos.length
-									? "计划列在右侧。批准之前，助手只会读，不会改。"
-									: "先描述你想做的事，助手会先给出计划，你同意之后它才动手。"
-							: "点右上角「恢复会话」接着聊。"}
+									? t("计划列在右侧。批准之前，助手只会读，不会改。")
+									: t("先描述你想做的事，助手会先给出计划，你同意之后它才动手。")
+							: t("点下面的「恢复会话」接着聊。")}
 					</p>
 				</div>
 			) : null}

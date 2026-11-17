@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { t } from "../i18n.ts";
 
 export interface PaletteItem {
 	key: string;
@@ -37,7 +38,7 @@ export function Palette({
 		const needle = query.trim().toLowerCase();
 		if (!needle) return items;
 		return items.filter(item =>
-			`${item.title} ${item.subtitle ?? ""} ${item.group}`.toLowerCase().includes(needle),
+			`${item.title} ${item.subtitle ?? ""} ${t(item.group)}`.toLowerCase().includes(needle),
 		);
 	}, [items, query]);
 
@@ -59,7 +60,7 @@ export function Palette({
 				<input
 					ref={input}
 					value={query}
-					placeholder="搜索项目、对话、自动化…"
+					placeholder={t("搜索项目、对话、自动化…")}
 					onChange={event => setQuery(event.target.value)}
 					onKeyDown={event => {
 						if (event.key === "Escape") onClose();
@@ -92,7 +93,7 @@ export function Palette({
 							</button>
 						</li>
 					))}
-					{filtered.length === 0 ? <li className="palette-empty">没有匹配项</li> : null}
+					{filtered.length === 0 ? <li className="palette-empty">{t("没有匹配项")}</li> : null}
 				</ul>
 			</div>
 		</div>
