@@ -1,0 +1,23 @@
+{
+	"name": "pcb",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"description": "Local shell for omp: conversation, plans and actions over omp's own RPC",
+	"scripts": {
+		"dev": "node scripts/dev.mjs",
+		"dev:server": "node --watch server/main.ts",
+		"dev:web": "cd web && npm run dev",
+		"build": "cd web && npm run build",
+		"start": "node server/main.ts",
+		"setup": "cd web && npm install",
+		"check": "tsc -p tsconfig.json --noEmit && cd web && npm run check:types"
+	},
+	"devDependencies": {
+		"@types/node": "^24.3.0",
+		"typescript": "^5.9.2"
+	},
+	"engines": {
+		"node": ">=22.18"
+	}
+}

@@ -1,0 +1,500 @@
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import type { Automation, DialogAnswer, Phase, UiEvent } from "../../shared/protocol.ts";
+import { api } from "./api.ts";
+import { browserShots, changedFiles, planSegment, terminalEntries } from "./adapters.ts";
+import { Automations } from "./components/Automations.tsx";
+import { Composer } from "./components/Composer.tsx";
+import { DialogLayer } from "./components/Dialogs.tsx";
+import { Home } from "./components/Home.tsx";
+import { Palette, type PaletteItem } from "./components/Palette.tsx";
+import { RightRail, type RailTab } from "./components/RightRail.tsx";
+import { Sidebar } from "./components/Sidebar.tsx";
+import { Topbar } from "./components/Topbar.tsx";
+import { Transcript } from "./components/Transcript.tsx";
+import { initialState, reducer } from "./state.ts";
+
+const RIGHT_PANEL_KEY = "pcb.rightPanel";
+const LEFT_PANEL_KEY = "pcb.leftPanel";
+const RAIL_WIDTH_KEY = "pcb.railW";
+
+function clampRail(width: number): number {
+	const max = Math.max(320, Math.min(600, window.innerWidth - 256 - 420));
+	return Math.min(max, Math.max(320, Math.round(width)));
+}
+
+function initialRailWidth(): number {
+	const stored = Number(window.localStorage.getItem(RAIL_WIDTH_KEY));
+	return clampRail(Number.isFinite(stored) && stored > 0 ? stored : 400);
+}
+
+function initialSidebarCollapsed(): boolean {
+	return window.localStorage.getItem(LEFT_PANEL_KEY) === "closed";
+}
+
+function initialRightOpen(): boolean {
+	const stored = window.localStorage.getItem(RIGHT_PANEL_KEY);
+	if (stored === "open") return true;
+	if (stored === "closed") return false;
+	return window.innerWidth >= 1024;
+}
+
+export default function App() {
+	const [state, dispatch] = useReducer(reducer, initialState);
+	const [error, setError] = useState<string | null>(null);
+	const [info, setInfo] = useState<string | null>(null);
+	const [view, setView] = useState<"home" | "automations">("home");
+	const [project, setProject] = useState<string | null>(null);
+	const [paletteOpen, setPaletteOpen] = useState(false);
+	const [sending, setSending] = useState(false);
+	const [rightOpen, setRightOpen] = useState(initialRightOpen);
+	const [rightTab, setRightTab] = useState<RailTab>("files");
+	const [sidebarOpen, setSidebarOpen] = useState(false);
+	const [sidebarCollapsed, setSidebarCollapsed] = useState(initialSidebarCollapsed);
+	const [railWidth, setRailWidth] = useState(initialRailWidth);
+	const railWidthRef = useRef(railWidth);
+	railWidthRef.current = railWidth;
+	const composerRef = useRef<HTMLTextAreaElement | null>(null);
+
+	const guard = useCallback(async (run: () => Promise<void>) => {
+		try {
+			await run();
+			setError(null);
+		} catch (cause) {
+			setError((cause as Error).message);
+		}
+	}, []);
+
+	useEffect(() => {
+		void guard(async () => {
+			const boot = await api.boot();
+			dispatch({ type: "boot", boot });
+		});
+	}, [guard]);
+
+	useEffect(() => {
+		const source = new EventSource("/api/events");
+		source.onmessage = event => {
+			try {
+				const payload = JSON.parse(event.data) as UiEvent;
+				dispatch({ type: "ui", event: payload });
+			} catch {
+				// ignore malformed frames
+			}
+		};
+		return () => source.close();
+	}, []);
+
+	useEffect(() => {
+		const onKey = (event: KeyboardEvent) => {
+			if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+				event.preventDefault();
+				setPaletteOpen(open => !open);
+			}
+			if (event.key === "Escape") {
+				setPaletteOpen(false);
+				setSidebarOpen(false);
+			}
+		};
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, []);
+
+	const activeId = state.activeId;
+	const session = state.sessions.find(item => item.id === activeId) ?? null;
+	const projects = state.boot?.projects ?? [];
+
+	// Selecting a conversation loads it: a dormant session resumes omp, a live one
+	// replays what happened before this tab connected.
+	useEffect(() => {
+		if (!activeId) return;
+		const target = state.sessions.find(item => item.id === activeId);
+		if (!target) return;
+		void guard(async () => {
+			if (!target.alive) await api.resumeSession(activeId);
+			const [{ messages }, { state: sessionState }, { policies }] = await Promise.all([
+				api.messages(activeId),
+				api.state(activeId),
+				api.policies(activeId),
+			]);
+			dispatch({ type: "ui", event: { t: "messages", sessionId: activeId, messages } });
+			dispatch({ type: "ui", event: { t: "state", sessionId: activeId, state: sessionState } });
+			dispatch({ type: "set_policies", sessionId: activeId, policies });
+		});
+	}, [activeId, guard]);
+
+	useEffect(() => {
+		if (!info) return;
+		const timer = setTimeout(() => setInfo(null), 6000);
+		return () => clearTimeout(timer);
+	}, [info]);
+
+	const setRightPanel = (open: boolean) => {
+		setRightOpen(open);
+		window.localStorage.setItem(RIGHT_PANEL_KEY, open ? "open" : "closed");
+	};
+
+	const setLeftPanel = (open: boolean) => {
+		setSidebarCollapsed(!open);
+		window.localStorage.setItem(LEFT_PANEL_KEY, open ? "open" : "closed");
+	};
+
+	/** Drag between the conversation column and the rail to rebalance them. */
+	const startRailResize = (event: React.PointerEvent<HTMLDivElement>) => {
+		event.preventDefault();
+		const startX = event.clientX;
+		const startWidth = railWidthRef.current;
+		const move = (moveEvent: PointerEvent) => {
+			setRailWidth(clampRail(startWidth - (moveEvent.clientX - startX)));
+		};
+		const up = () => {
+			window.removeEventListener("pointermove", move);
+			window.removeEventListener("pointerup", up);
+			document.body.classList.remove("resizing");
+			window.localStorage.setItem(RAIL_WIDTH_KEY, String(railWidthRef.current));
+		};
+		document.body.classList.add("resizing");
+		window.addEventListener("pointermove", move);
+		window.addEventListener("pointerup", up);
+	};
+
+	const openSession = (id: string) => {
+		const target = state.sessions.find(item => item.id === id);
+		if (target) setProject(target.cwd);
+		dispatch({ type: "select", id });
+		setView("home");
+		setSidebarOpen(false);
+	};
+
+	const startNew = () => {
+		dispatch({ type: "select", id: null });
+		setView("home");
+		setSidebarOpen(false);
+	};
+
+	const selectProject = (cwd: string) => {
+		setProject(cwd);
+		dispatch({ type: "select", id: null });
+		setView("home");
+		setSidebarOpen(false);
+	};
+
+	const addProject = () =>
+		guard(async () => {
+			const result = await api.pickProject();
+			if (result.cancelled || !result.cwd) return;
+			dispatch({ type: "set_projects", projects: result.projects });
+			setProject(result.cwd);
+			dispatch({ type: "select", id: null });
+			setView("home");
+		});
+
+	const removeProject = (cwd: string) =>
+		guard(async () => {
+			const result = await api.removeProject(cwd);
+			dispatch({ type: "set_projects", projects: result.projects });
+			if (project === cwd) setProject(null);
+		});
+
+	/** Fallback when the Windows dialog cannot open: add a typed path. */
+	const addProjectPath = async (cwd: string) => {
+		try {
+			const result = await api.addProject(cwd);
+			dispatch({ type: "set_projects", projects: result.projects });
+			setProject(cwd);
+			dispatch({ type: "select", id: null });
+			setView("home");
+		} catch (cause) {
+			setError((cause as Error).message);
+			throw cause;
+		}
+	};
+
+	/** First message: creates the conversation in the chosen folder and sends it. */
+	const sendFromHome = async (text: string) => {
+		if (!project) throw new Error("先选一个项目文件夹");
+		setSending(true);
+		try {
+			const { session: created } = await api.createSession({
+				cwd: project,
+				extensions: false,
+				initialPrompt: text,
+			});
+			dispatch({ type: "ui", event: { t: "session", session: created } });
+			dispatch({ type: "select", id: created.id });
+			dispatch({ type: "local_user", sessionId: created.id, text });
+		} finally {
+			setSending(false);
+		}
+	};
+
+	const approvePlan = () =>
+		guard(async () => {
+			if (!session) return;
+			await api.setPhase(session.id, "build");
+			await api.prompt(session.id, "按上面的计划开始执行。");
+		});
+
+	const revisePlan = () => {
+		composerRef.current?.focus();
+	};
+
+	/** The composer's phase switch: changes only what the next message carries. */
+	const setPhaseOnly = (phase: Phase) =>
+		guard(async () => {
+			if (!session) return;
+			await api.setPhase(session.id, phase);
+		});
+
+	const paletteItems: PaletteItem[] = useMemo(
+		() => [
+			...projects.map(cwd => ({
+				key: `project:${cwd}`,
+				group: "项目" as const,
+				title: cwd.split(/[\\/]/).filter(Boolean).at(-1) ?? cwd,
+				subtitle: cwd,
+			})),
+			...state.sessions.map(item => ({
+				key: `session:${item.id}`,
+				group: "会话" as const,
+				title: item.name,
+				subtitle: item.cwd,
+			})),
+			...state.automations.map(item => ({
+				key: `automation:${item.id}`,
+				group: "自动化" as const,
+				title: item.name,
+				subtitle: item.cwd,
+			})),
+		],
+		[projects, state.sessions, state.automations],
+	);
+
+	const onPalettePick = (item: PaletteItem) => {
+		const [kind, value] = item.key.split(/:(.*)/s) as [string, string];
+		if (kind === "project") selectProject(value);
+		else if (kind === "session") openSession(value);
+		else if (kind === "automation") openAutomations();
+	};
+
+	const openAutomations = () => {
+		dispatch({ type: "select", id: null });
+		setView("automations");
+		setRightOpen(false);
+		setSidebarOpen(false);
+	};
+
+	const automationHandlers = {
+		onCreate: (input: {
+			name: string;
+			cwd: string;
+			phase: Phase;
+			prompt: string;
+			dailyAt: string | null;
+			enabled: boolean;
+		}) =>
+			guard(async () => {
+				await api.createAutomation(input);
+			}),
+		onRun: (id: string) =>
+			guard(async () => {
+				const { session: created } = await api.runAutomation(id);
+				dispatch({ type: "ui", event: { t: "session", session: created } });
+				setProject(created.cwd);
+				dispatch({ type: "select", id: created.id });
+				setView("home");
+			}),
+		onToggle: (automation: Automation, enabled: boolean) =>
+			guard(async () => {
+				await api.updateAutomation(automation.id, { enabled });
+			}),
+		onDelete: (id: string) =>
+			guard(async () => {
+				await api.deleteAutomation(id);
+			}),
+	};
+
+	const messages = session ? (state.messages[session.id] ?? []) : [];
+	const turn = session ? (state.turn[session.id] ?? []) : [];
+	const planText = planSegment([...messages, ...turn]);
+	const browser = session ? browserShots([...messages, ...turn]) : [];
+	const terminal = session
+		? terminalEntries([...messages, ...turn], state.tools[session.id] ?? {}, state.policies[session.id] ?? [])
+		: [];
+	const sessionChangedFiles = session ? changedFiles([...messages, ...turn], state.tools[session.id] ?? {}) : [];
+	const showRail = Boolean(session) && rightOpen;
+
+	return (
+		<div className="app" style={{ "--rail-w": `${railWidth}px` } as React.CSSProperties}>
+			{sidebarOpen ? <div className="scrim" onClick={() => setSidebarOpen(false)} /> : null}
+			<Sidebar
+				open={sidebarOpen}
+				collapsed={sidebarCollapsed}
+				activeView={session ? "home" : view}
+				sessions={state.sessions}
+				activeId={activeId}
+				project={project}
+				projects={projects}
+				automations={state.automations}
+				boot={state.boot}
+				onNew={startNew}
+				onSearch={() => setPaletteOpen(true)}
+				onSelectProject={selectProject}
+				onAddProject={addProject}
+				onAddProjectPath={addProjectPath}
+				onRemoveProject={removeProject}
+				onSelectSession={openSession}
+				onDeleteSession={id =>
+					guard(async () => {
+						await api.deleteSession(id);
+					})
+				}
+				onOpenAutomations={openAutomations}
+				onCollapse={() => setLeftPanel(false)}
+			/>
+
+			<main className="chat">
+				<Topbar
+					session={session}
+					state={session ? state.states[session.id] : undefined}
+					rightOpen={showRail}
+					onToggleRight={() => setRightPanel(!rightOpen)}
+					onToggleSidebar={() => setSidebarOpen(open => !open)}
+					leftCollapsed={sidebarCollapsed}
+					onExpandLeft={() => setLeftPanel(true)}
+					onModel={(provider, id) =>
+						guard(async () => {
+							if (session) await api.setModel(session.id, provider, id);
+						})
+					}
+					onResume={() =>
+						guard(async () => {
+							if (session) await api.resumeSession(session.id);
+						})
+					}
+					onExport={() =>
+						guard(async () => {
+							if (!session) return;
+							const { path } = await api.exportHtml(session.id);
+							setInfo(`已导出：${path}`);
+						})
+					}
+					onRefresh={() =>
+						guard(async () => {
+							if (!session) return;
+							const [{ messages: fresh }, { state: sessionState }] = await Promise.all([
+								api.messages(session.id),
+								api.state(session.id),
+							]);
+							dispatch({ type: "ui", event: { t: "messages", sessionId: session.id, messages: fresh } });
+							dispatch({ type: "ui", event: { t: "state", sessionId: session.id, state: sessionState } });
+						})
+					}
+				/>
+
+				{session ? (
+					<>
+						<Transcript
+							messages={messages}
+							turn={turn}
+							live={state.live[session.id] ?? null}
+							pending={state.pending[session.id] ?? []}
+							tools={state.tools[session.id] ?? {}}
+							state={state.states[session.id]}
+							sessionAlive={session.alive}
+							hasHistory={Boolean(session.sessionFile)}
+						/>
+						<Composer
+							phase={session.phase}
+							state={state.states[session.id]}
+							disabled={!session.alive}
+							textAreaRef={composerRef}
+							onPhase={phase => void setPhaseOnly(phase)}
+							onSend={text =>
+								guard(async () => {
+									const result = await api.prompt(session.id, text);
+									dispatch({ type: "local_user", sessionId: session.id, text });
+									if (result.queued) setInfo("这一轮还在跑，已排队，等它结束再发送。");
+								})
+							}
+							onAbort={() =>
+								guard(async () => {
+									await api.abort(session.id);
+								})
+							}
+						/>
+						<DialogLayer
+							requests={state.dialogs[session.id] ?? []}
+							onAnswer={(dialogId, answer: DialogAnswer) =>
+								guard(async () => {
+									await api.answerDialog(session.id, dialogId, answer);
+								})
+							}
+						/>
+					</>
+				) : view === "automations" ? (
+					<Automations automations={state.automations} projects={projects} {...automationHandlers} />
+				) : (
+					<Home
+						project={project}
+						projects={projects}
+						busy={sending}
+						onSend={text => guard(() => sendFromHome(text))}
+						onPickProject={addProject}
+					/>
+				)}
+
+				<div className="toasts">
+					{error ? (
+						<div className="toast error" onClick={() => setError(null)}>
+							{error}
+						</div>
+					) : null}
+					{info ? (
+						<div className="toast info" onClick={() => setInfo(null)}>
+							{info}
+						</div>
+					) : null}
+					{state.notices.slice(-3).map(notice => (
+						<div
+							key={notice.key}
+							className={`toast ${notice.level}`}
+							onClick={() => dispatch({ type: "dismiss", key: notice.key })}
+						>
+							{notice.text}
+						</div>
+					))}
+				</div>
+			</main>
+
+			{showRail && session ? (
+				<div className="splitter" role="separator" onPointerDown={startRailResize} />
+			) : null}
+
+			{showRail && session ? (
+				<RightRail
+					cwd={session.cwd}
+					phase={session.phase}
+					todos={state.states[session.id]?.todos ?? []}
+					segment={planText}
+					terminal={terminal}
+					browser={browser}
+					changedFiles={sessionChangedFiles}
+					canApprove={session.alive && session.phase === "plan" && planText.some(m => m.role === "assistant")}
+					tab={rightTab}
+					onTab={setRightTab}
+					onApprove={() => void approvePlan()}
+					onRevise={revisePlan}
+					onClose={() => setRightPanel(false)}
+				/>
+			) : null}
+
+			<Palette
+				open={paletteOpen}
+				items={paletteItems}
+				onClose={() => setPaletteOpen(false)}
+				onPick={onPalettePick}
+			/>
+
+		</div>
+	);
+}
