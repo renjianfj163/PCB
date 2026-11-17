@@ -15,6 +15,11 @@ npm run build        # 构建界面到 web/dist
 npm start            # 打开 http://127.0.0.1:7777
 ```
 
+```bash
+npm run check    # 服务端与 web 两个 tsconfig
+npm run test     # 策略矩阵、阶段切段、终端审批配对、路径归一
+npm run verify   # 两件一起
+```
 开发模式（服务端热重启 + Vite HMR）：
 
 ```bash
@@ -108,23 +113,41 @@ omp 的 plan mode 在 RPC 下不可驱动（`/plan` 只有 TUI handler，会被�
 - 「现在运行」用该 cwd 新建一条会话并立刻 prompt，阶段用卡片上的 phase；不碰 omp 的 `/loop`。
 - 每天定时只在 PCB 服务开着时生效：每分钟检查一次，本地时间 `HH:mm` 相等且今天没跑过就跑；服务没开就跳过，不补跑。
 - 运行失败时卡片上显示一句中文原因（`lastError`）。
+聊天只回答问题，不写文件、不跑命令；要动手就切到「执行」。
+
+批准只有一处：右栏「计划」页的「按这个做」——切到执行阶段并补一句「按上面的计划开始执行。」
+「再改一改」只把焦点放回输入框，不发消息。
+
+## 自动化
+
+存在 `~/.pcb/state.json` 的 `automations` 里：`id / name / cwd / phase / prompt / enabled / dailyAt / lastRunAt / lastError`。
+
+- 「现在运行」用该 cwd 新建一条会话并立刻 prompt，阶段用卡片上的 phase；不碰 omp 的 `/loop`。
+- 每天定时只在 PCB 服务开着时生效：每分钟检查一次，本地时间 `HH:mm` 相等且今天没跑过就跑；服务没开就跳过，不补跑。
+- 运行失败时卡片上显示一句中文原因（`lastError`）。
 
 ## 目录
 
 ```
 server/
-  main.ts        入口、端口、优雅关闭、启动定时器
-  app.ts         REST + SSE + 静态资源 + 项目目录选择 + 自动化与定时
-  session.ts     一会话一进程：生命周期、审批策略、状态/transcript 镜像、首条消息
-  policy.ts      工具分级与阶段裁决（唯一决定「能不能动手」的地方）
-  hub.ts         SSE 广播
-  store.ts       ~/.pcb/state.json（项目 / 会话索引 / 自动化，不存对话本体）
-  rpc/client.ts  JSONL 客户端：分帧、v2 chunk 重组、id 关联
+  main.ts         入口、端口、优雅关闭、启动定时器
+  app.ts          REST + SSE + 静态资源 + 项目目录选择 + 自动化与定时 + 本机请求校验
+  session.ts      一会话一进程：生命周期、审批策略、状态/transcript 镜像、首条消息
+  policy.ts       工具分级与阶段裁决（唯一决定「能不能动手」的地方）
+  policies.ts     ~/.pcb/policies/<id>.jsonl：审批结论，重启后仍能对上终端记录
+  project-files.ts  只读的目录列举与文件预览（路径锁死在项目根内）
+  blobs.ts        ~/.omp/agent/blobs 下截图的只读出口
+  hub.ts          SSE 广播
+  store.ts        ~/.pcb/state.json（项目 / 会话索引 / 自动化，不存对话本体）
+  rpc/client.ts   JSONL 客户端：分帧、v2 chunk 重组、id 关联
 shared/protocol.ts  服务端↔浏览器契约
+test/               node --test：策略矩阵、阶段切段、终端配对、路径归一
 web/
-  src/App.tsx           视图切换（空首页 / 工作台 / 自动化页）+ 命令面板 + Ctrl+K
-  src/changes.ts        从消息里派生「最近一条助手正文」和「这次改过的文件」
-  src/components/       Home、Sidebar、Palette、Automations、Topbar、Transcript、PlanPanel、Dialogs、Composer
+  src/App.tsx      三栏布局 + 视图切换 + 命令面板 + 阶段下拉
+  src/adapters.ts  omp 事件 → 界面数据（改过的文件、计划切段、终端记录、截图）
+  src/state.ts     SSE 事件的状态归约
+  src/components/  Sidebar、Topbar、Home、Transcript、Composer、RightRail、
+                   FilePage、PlanPage、TerminalPage、BrowserPage、Automations、Dialogs、Palette
 ```
 
 对话本体由 omp 写在 `~/.omp/agent/sessions/<encoded-cwd>/`；PCB 只记索引，恢复时用
@@ -155,9 +178,10 @@ web/
 ## 验证过的路径
 
 1. 空首页：没选项目时发送不可用；选了项目、写下第一句后进入工作台，omp 收到带 `「阶段：规划」` 的消息。
-2. 规划阶段：右栏显示助手正文与待办；「再改一改」只聚焦输入框；点「按这个做」后阶段变执行并自动发出执行指令。
-3. 执行阶段：写文件静默通过并在右栏列出路径；`bash` 仍弹审批卡片，点「允许这次」才执行。
-4. 规划阶段的 `bash` / 写文件仍被拒绝（`server/policy.ts` 逐项核对：plan 全 deny，build 仅 write 类放行）。
-5. Ctrl+K 能搜到刚加的项目、会话和自动化；选中项目回空首页，选中会话打开工作台，选中自动化进自动化页。
-6. 自动化「现在运行」新建对应项目的会话并立刻带阶段前缀发送；卡片显示上次运行时间。
-7. 定时：本地时间等于 `dailyAt` 且当天没跑过时，服务开着就自动开一条会话。
+2. 规划：右栏「计划」页显示用户原话、助手正文、压成一行的工具调用与待办；「再改一改」只聚焦输入框。
+3. 点「按这个做」→ 阶段变执行并自动发出执行指令；写文件静默通过，`bash` 弹卡片。
+4. 规划 / 聊天阶段尝试 `bash` 或写文件仍被拒绝（`npm test` 逐项覆盖 plan/chat/build × read/write/exec）。
+5. 右栏四页：文件树懒加载 + 预览 + 改过的文件；计划切段；终端命令与审批结论（重启后仍在）；example.com 的真实截图。
+6. Ctrl+K 能搜到项目、会话、自动化；选中项目回空首页，选中会话打开工作台，选中自动化进自动化页。
+7. 自动化「现在运行」新建对应项目的会话并立刻带阶段前缀发送；卡片显示上次运行时间；定时到点自动开一条会话。
+8. 恢复会话：历史约十几秒回放完成后自动填入；期间显示「正在载入这段对话…」。回合进行中再发消息会排队而不是报错。
