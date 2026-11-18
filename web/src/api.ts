@@ -86,6 +86,13 @@ export const api = {
 
 	exportHtml: (id: string) => json<{ path: string }>(`/api/sessions/${id}/export`, { method: "POST" }),
 
+	/** Start (once) the machine's VS Code web server for this folder and open it. */
+	openIde: (cwd: string) =>
+		json<{ ok: boolean; url?: string; reason?: string }>("/api/vscode/open", {
+			method: "POST",
+			body: JSON.stringify({ cwd }),
+		}),
+
 	/** Opens the Windows folder dialog on the server. */
 	pickProject: () =>
 		json<{ cwd?: string; cancelled?: boolean; projects: string[] }>("/api/projects/pick", { method: "POST" }),

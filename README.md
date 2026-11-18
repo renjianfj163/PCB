@@ -49,13 +49,25 @@ npm run dev          # 服务端 :7777，界面 :5173（/api 代理到 7777）
 | 区域 | 内容 |
 | --- | --- |
 | 左栏 256px | PCB 与 omp 版本、New、Search（Ctrl K）、Projects（可展开、当前项高亮）、添加项目、Automations、当前项目的对话列表。右上角图标可整栏收起（记在 `localStorage["pcb.leftPanel"]`），收起后中间列占满，顶栏左侧出现展开按钮；宽度 < 768px 时变成抽屉，顶栏左侧按钮打开。 |
-| 中间列 | 顶栏 48px（会话名 + 模型下拉 + 右栏开关/恢复/导出/刷新图标按钮），下面是对话区；底部是浮在列内的白色输入卡片（`min(720px, 列宽-48px)`，距底 24px），卡片左下角一行小字显示上下文与花费，右下角是「规划 / 执行 / 聊天」下拉和发送/停止。 |
+| 中间列 | 顶栏 48px（会话名 + 模型下拉 + 右栏开关/恢复/IDE/刷新图标按钮），下面是对话区；底部是浮在列内的白色输入卡片（`min(720px, 列宽-48px)`，距底 24px），卡片左下角一行小字显示上下文与花费，右下角是「规划 / 执行 / 聊天」下拉和发送/停止。 |
 | 右栏 默认 400px | 顶部胶囊分段「文件 / 计划 / 终端 / 浏览器」+ 收起按钮。折叠状态记在 `localStorage["pcb.rightPanel"]`，宽度 < 1024px 默认收起。与中间列之间有一条 6px 拖拽条，可左右拉动改两栏比例（存 `localStorage["pcb.railW"]`，范围 320–600px）。 |
 
 阶段只在下拉里切换，切换只影响下一条消息，不会自动发送；批准仍然只有右栏的「按这个做」。
 
 底部状态行显示 `上下文 N%` 与 `已花费 $x.xxxx`：金额取自 omp 的 `get_session_stats`，
 不是界面估算；单位是美元原值。
+
+顶栏的「IDE」按钮（`POST /api/vscode/open`，见 `server/vscode-web.ts`）给这台机器开一个 **VS Code 网页**：
+只绑 `127.0.0.1`，工作区设为当前会话的目录，用系统浏览器打开——编辑器在窗口里，不在三栏里。
+可执行文件按 `PCB_VSCODE_WEB` → `openvscode-server` → 能响应 `serve-web` 的 `code`（PATH，再退到
+`%LOCALAPPDATA%\Programs\Microsoft VS Code\bin\code.cmd`）查找；启动参数固定带 `--host 127.0.0.1`、
+`--port 0`（让服务自己挑端口）和 `--accept-server-license-terms`。
+`openvscode-server` 用 `--default-folder` 指工作区；没有这个参数的构建（如 `code serve-web`）就把文件夹
+拼进它打印出来的本机地址（`&folder=…`）。omp-ckpt 的 vsix（`PCB_CKPT_VSIX`，默认
+`D:\Developer\zed_omp\omp-ckpt-0.1.0.vsix`）在一个 PCB 进程里只装一次；同一个服务也只起一次，再次点击只是
+重开那个地址。三个候选都没有时只回一行「本机没有 VS Code 网页服务」，不下载、不安装、也不去开桌面版。
+服务要用网络下载自己的网页端，所以启动时会把本机代理写进 `HTTPS_PROXY`（Node 不读 WinINET）。
+`/api/sessions/:id/export` 仍在，只是顶栏不再调用它。
 
 左下角配置卡里还有一个调试开关「显示 omp 原文」（`localStorage["pcb.ompRaw"]`，缺省关）。开着时，
 中间列底部多一块 180px 的等宽记录，逐行显示**当前会话** omp 子进程的 stdout / stderr 原文：

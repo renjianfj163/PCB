@@ -382,11 +382,15 @@ export default function App() {
 							if (session) await api.resumeSession(session.id);
 						})
 					}
-					onExport={() =>
+					onIde={() =>
 						guard(async () => {
 							if (!session) return;
-							const { path } = await api.exportHtml(session.id);
-							setInfo(t("已导出：{s}", { s: path }));
+							const opened = await api.openIde(session.cwd);
+							if (!opened.ok) {
+								setError(t(opened.reason ?? "本机没有 VS Code 网页服务"));
+								return;
+							}
+							setInfo(t("已在浏览器打开 {s}", { s: opened.url ?? "" }));
 						})
 					}
 					onRefresh={() =>

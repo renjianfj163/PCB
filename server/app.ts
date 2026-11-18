@@ -10,6 +10,7 @@ import { readBlob } from "./blobs.ts";
 import { runCommand } from "./exec-box.ts";
 import { clearRaw, rawLines, watchRaw } from "./raw.ts";
 import { openInSystemBrowser } from "./external.ts";
+import { NO_SERVER, openIde } from "./vscode-web.ts";
 import { frameCheck } from "./frame-check.ts";
 import { pageShot } from "./screenshot.ts";
 import { PathRefused, listDirectory, readPreview } from "./project-files.ts";
@@ -313,6 +314,20 @@ export class App {
 					response.write(`data: ${JSON.stringify(event)}\n\n`);
 				}
 			}
+			return;
+		}
+
+		if (head === "vscode" && id === "open" && method === "POST") {
+			const body = (await this.#readJson(request)) as { cwd?: string };
+			const cwd = typeof body.cwd === "string" ? resolve(body.cwd) : "";
+			// The page is served by this machine and opened by this machine — nothing leaves it.
+			const result = await openIde(cwd);
+			if (!result.ok || !result.url) {
+				this.#json(response, 200, { ok: false, reason: result.reason ?? NO_SERVER });
+				return;
+			}
+			await openInSystemBrowser(result.url);
+			this.#json(response, 200, { ok: true, url: result.url });
 			return;
 		}
 

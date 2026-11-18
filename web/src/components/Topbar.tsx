@@ -18,12 +18,12 @@ function IconPanel() {
 	);
 }
 
-function IconExport() {
+function IconIde() {
 	return (
 		<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
-			<path d="M8 2.5v7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-			<path d="M5.2 6.6 8 9.4l2.8-2.8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-			<path d="M3 11.5v1.2h10v-1.2" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+			<path d="M5.4 4.6 2.4 8l3 3.4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+			<path d="m10.6 4.6 3 3.4-3 3.4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+			<path d="m9 3.2-2 9.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
 		</svg>
 	);
 }
@@ -54,7 +54,7 @@ export function Topbar({
 	leftCollapsed,
 	onExpandLeft,
 	onResume,
-	onExport,
+	onIde,
 	onRefresh,
 }: {
 	session: SessionSummary | null;
@@ -64,7 +64,7 @@ export function Topbar({
 	leftCollapsed: boolean;
 	onExpandLeft: () => void;
 	onResume: () => Promise<void>;
-	onExport: () => Promise<void>;
+	onIde: () => Promise<void>;
 	onRefresh: () => Promise<void>;
 }) {
 	return (
@@ -100,8 +100,8 @@ export function Topbar({
 								<IconRestore />
 							</button>
 						)}
-						<button type="button" className="icon-btn" title={t("导出 HTML")} onClick={() => void onExport()}>
-							<IconExport />
+						<button type="button" className="icon-btn" title={t("在 VS Code 中打开")} onClick={() => void onIde()}>
+							<IconIde />
 						</button>
 						<button type="button" className="icon-btn" title={t("重新拉取会话内容")} onClick={() => void onRefresh()}>
 							<IconRefresh />
