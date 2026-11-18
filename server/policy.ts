@@ -10,6 +10,7 @@
  *  - plan phase: refuse anything that would mutate the workspace or run code
  *  - build phase: approve file writes silently (the user's chosen `write` mode)
  *  - always: show a card for code execution, because that is where damage happens
+ *  - except the browser: one yes covers the rest of the same user message
  */
 
 import type { Phase } from "../shared/protocol.ts";
@@ -47,7 +48,7 @@ export type ApprovalDecision =
 	| { action: "deny"; reason: string }
 	| { action: "ask" };
 
-export function decideApproval(tool: string, phase: Phase): ApprovalDecision {
+export function decideApproval(tool: string, phase: Phase, browserAllowed = false): ApprovalDecision {
 	const tier = toolTier(tool);
 	if (tier === "read") return { action: "approve" };
 	// Only the build phase may touch files or run code; plan and chat are read-only.
@@ -59,6 +60,9 @@ export function decideApproval(tool: string, phase: Phase): ApprovalDecision {
 		};
 	}
 	if (tier === "write") return { action: "approve" };
+	// The browser is told once per user message: after that yes, the rest of the same turn is covered.
+	// Every other exec tool still asks every time.
+	if (tool === "browser" && browserAllowed) return { action: "approve" };
 	return { action: "ask" };
 }
 

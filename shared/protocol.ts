@@ -226,6 +226,12 @@ export interface FrameCheck {
 	reason?: string;
 	/** What the name resolved to — the difference between "slow" and "hijacked DNS". */
 	addresses?: string[];
+	/** Which network path answered: the system proxy this machine uses, or a direct connection. */
+	via?: "proxy" | "direct";
+	/** The proxy that was used, e.g. "http://127.0.0.1:10808". */
+	proxy?: string;
+	/** A request was actually sent and nothing answered — unlike a resolver or policy refusal. */
+	unreachable?: boolean;
 }
 
 /**

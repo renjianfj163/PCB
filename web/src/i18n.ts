@@ -172,6 +172,7 @@ const EN: Record<string, string> = {
 
 	// ---- transcript ----
 	"助手": "Assistant",
+	"输入中": "Typing",
 	"你": "You",
 	"思考过程": "Thinking",
 	"工具输出": "Tool output",
@@ -283,8 +284,15 @@ const EN: Record<string, string> = {
 	"这是本机浏览器拍的一整页，能看不能点；要操作就用系统浏览器打开。":
 		"A full page photographed by the local browser: readable, not clickable. Use your browser to interact.",
 	"域名解析到 {s}": "The name resolves to {s}",
-	"本机的请求没拿到回应。浏览器有时能走另一条网络路径（比如加密 DNS），值得先截一张图看看。":
-		"This machine's request got no reply. A browser sometimes takes a different path (encrypted DNS, for one) — worth a snapshot.",
+	"经系统代理 {p} 检查": "Checked through the system proxy {p}",
+	"经系统代理和直连都没通，可以先截图看看。":
+		"Neither the proxy nor a direct connection answered — a snapshot is the quickest look.",
+	"本机没有检测到系统代理，直连到这个地址不通。":
+		"No system proxy on this machine, and a direct connection does not answer.",
+	"{s} 不允许内嵌，已在系统浏览器打开。":
+		"{s} cannot be framed, so it was opened in your system browser.",
+	"这个站不允许内嵌，系统浏览器也没能打开它。按下面的链接再试一次。":
+		"The site refuses to be framed, and the system browser could not be launched — use the link below.",
 	"助手 {a} 条 · 你 {b} 条": "assistant {a} · you {b}",
 	"在 {s} 里用 {sh} 运行": "Runs in {s} with {sh}",
 	"用哪个 shell 运行": "Which shell to run in",

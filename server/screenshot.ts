@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { PageShot } from "../shared/protocol.ts";
 import { parseTarget, resolveHost } from "./frame-check.ts";
+import { chromeProxy } from "./proxy.ts";
 
 const TIMEOUT_MS = 30_000;
 /** Tall enough for a landing page, narrow enough to read at rail width. */
@@ -38,6 +39,10 @@ function findBrowser(): string | null {
 }
 
 function once(browser: string, url: string, dir: string, out: string): Promise<{ code: number | null; stderr: string }> {
+	// Chrome reads the system proxy itself; only a forced PCB_PROXY has to be spelled out.
+	const forced = process.env.PCB_PROXY;
+	const proxy = chromeProxy();
+	const proxyArgs = proxy ? [`--proxy-server=${proxy}`] : forced === undefined ? [] : ["--no-proxy-server"];
 	// A throwaway profile per shot: no bookmarks, no extensions, no shared cookies.
 	const args = [
 		"--headless=new",
@@ -48,6 +53,7 @@ function once(browser: string, url: string, dir: string, out: string): Promise<{
 		"--disable-extensions",
 		"--disable-background-networking",
 		"--disable-sync",
+		...proxyArgs,
 		`--user-data-dir=${join(dir, "profile")}`,
 		`--virtual-time-budget=${SETTLE_MS}`,
 		`--window-size=${WINDOW}`,

@@ -114,6 +114,8 @@ export class PcbSession {
 	#refreshTimer: NodeJS.Timeout | undefined;
 	#closed = false;
 	#queuedPrompt: string | undefined;
+	/** Set once the user allows the browser in this message; cleared by the next prompt or phase change. */
+	#browserAllowed = false;
 	#started = false;
 	#failure: string | null = null;
 	#ready = Promise.withResolvers<void>();
@@ -499,7 +501,7 @@ export class PcbSession {
 			const options = Array.isArray(frame.options) ? frame.options.map(String) : [];
 			const tool = approvalTool(title);
 			if (tool) {
-				const decision = decideApproval(tool, this.record.phase);
+				const decision = decideApproval(tool, this.record.phase, this.#browserAllowed);
 				if (decision.action === "approve") {
 					this.#client?.respondToDialog(id, { value: approvalAnswer(options, "approve") });
 					this.#emitPolicy(tool, "auto_allow");
@@ -588,7 +590,10 @@ export class PcbSession {
 		if (request?.kind === "approval") {
 			// Anything that is not an approve label (deny, cancel, timeout) means the call did not run.
 			const value = "value" in answer && typeof answer.value === "string" ? answer.value : "";
-			this.#emitPolicy(request.tool, /approve/i.test(value) ? "approved" : "rejected");
+			const approved = /approve/i.test(value);
+			// One yes for the browser covers the rest of this user message; bash and friends never benefit.
+			if (approved && request.tool === "browser" && this.record.phase === "build") this.#browserAllowed = true;
+			this.#emitPolicy(request.tool, approved ? "approved" : "rejected");
 		}
 		return true;
 	}
@@ -607,6 +612,8 @@ export class PcbSession {
 	}
 
 	async #sendPrompt(text: string): Promise<{ agentInvoked: boolean; queued?: boolean }> {
+		// A new user message (or a queued follow-up) starts the browser over: the first call asks again.
+		this.#browserAllowed = false;
 		const client = this.#requireClient();
 		const marker =
 			this.record.phase === "build" ? "「阶段：执行」" : this.record.phase === "chat" ? "「阶段：聊天」" : "「阶段：规划」";
@@ -634,6 +641,8 @@ export class PcbSession {
 
 	async setPhase(phase: Phase): Promise<void> {
 		this.record.phase = phase;
+		// A marker from another phase never carries over.
+		this.#browserAllowed = false;
 		this.#broadcastSession();
 		const text =
 			phase === "plan"

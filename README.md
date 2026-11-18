@@ -31,7 +31,8 @@ npm run dev          # 服务端 :7777，界面 :5173（/api 代理到 7777）
 
 前置条件：`omp` 在 PATH 里且已登录（`omp login`）。`omp --version` 应输出 `omp/18.22.0` 或更新。
 
-环境变量：`PCB_PORT`（默认 7777）、`PCB_HOST`（默认 127.0.0.1）、`PCB_OMP`（默认 `omp`）。
+环境变量：`PCB_PORT`（默认 7777）、`PCB_HOST`（默认 127.0.0.1）、`PCB_OMP`（默认 `omp`）、
+`PCB_PROXY`（覆盖系统代理检测，`off` / `none` / 空表示不用代理）、`PCB_CHROME`（指定截图用的浏览器路径）。
 
 ## 打开就能说
 
@@ -65,6 +66,12 @@ npm run dev          # 服务端 :7777，界面 :5173（/api 代理到 7777）
 | 终端 | 会话里的 `bash` 工具调用与输出 + 服务端 `tool_policy` 事件 | 时间、命令、输出、成功/失败/运行中、自动放行/等待审批/已批准/已拒绝；只读，不能再跑 |
 | 浏览器 | 任何工具结果里的 image 块（omp 既可能走 `browser` 工具，也可能在 `eval` 里调 browser API） | 最近一次截图 + 地址 + 时间 + 产出它的工具；下面列更早的。实测 `get_messages` 会把截图还原成 base64，直接内联渲染；若某条消息只留下 `blob:sha256:` 引用，则由 `GET /api/blob` 读本机缓存 |
 
+浏览器页顶部的地址栏是先查后放：`GET /api/frame/check` 让 curl 走这台机器自己的代理
+（win32 读 `HKCU\...\Internet Settings` 的 `ProxyEnable` / `ProxyServer`，`PCB_PROXY` 可覆盖）取一次响应头，
+只有站点头允许才进 iframe。站点头拒绝内嵌（`X-Frame-Options` / CSP `frame-ancestors`）但网络能通的，
+直接交给系统默认浏览器打开（`POST /api/frame/open`），栏里只留一行「… 不允许内嵌，已在系统浏览器打开。」，
+不再给按钮——那是一次顶层加载，内嵌规则管不到；连不上的才给诊断和 `截图看看`（本机 Chrome/Edge，走同一套代理设置）。
+
 审批结果由服务端新事件 `{t:"tool_policy", tool, decision}` 推送（`auto_allow` / `approval_required` / `approved` / `rejected` / `denied`），
 终端页按「同一工具的下一条命令」把它们对上；重启服务后旧决策不再重放，只显示命令本身。
 
@@ -92,11 +99,15 @@ omp 的 plan mode 在 RPC 下不可驱动（`/plan` 只有 TUI handler，会被�
 由壳自己保证，靠的是审批策略而不是提示词。omp 始终以 `--approval-mode always-ask` 启动，凡是
 非读操作都会回到壳里：
 
-| 阶段 | 读 | write / edit / ast_edit / apply_patch / notebook_edit / mcp__* | bash / eval / 浏览器 / task / 未知工具 |
-| --- | --- | --- | --- |
-| 规划 plan | 自动允许 | 拒绝 | 拒绝 |
-| 执行 build | 自动允许 | 自动允许 | 弹卡片问人 |
-| 聊天 chat | 自动允许 | 拒绝 | 拒绝 |
+| 阶段 | 读 | write / edit / ast_edit / apply_patch / notebook_edit / mcp__* | 浏览器 | bash / eval / task / 未知工具 |
+| --- | --- | --- | --- | --- |
+| 规划 plan | 自动允许 | 拒绝 | 拒绝 | 拒绝 |
+| 执行 build | 自动允许 | 自动允许 | 同一条用户消息里第一次弹卡片，允许后这条消息内的后续 browser 自动放行 | 弹卡片问人 |
+| 聊天 chat | 自动允许 | 拒绝 | 拒绝 | 拒绝 |
+
+执行阶段的浏览器只记一条「这条消息已经允许过」的进程内记号：不写会话记录、不广播、不进 `state.json`。
+用户再发一条消息（含排队的 follow_up）或切阶段就清掉，下一次 browser 重新问；用户点拒绝不记记号；
+规划 / 聊天阶段即使记号还在也照旧拒绝。`bash`、`eval`、`task`、未知工具执行阶段仍然每次都问。
 
 聊天只回答问题，不写文件、不跑命令；要动手就切到「执行」。
 

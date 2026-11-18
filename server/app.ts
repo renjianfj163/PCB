@@ -8,6 +8,7 @@ import { extname, join, normalize, resolve } from "node:path";
 import type { Hub } from "./hub.ts";
 import { readBlob } from "./blobs.ts";
 import { runCommand } from "./exec-box.ts";
+import { openInSystemBrowser } from "./external.ts";
 import { frameCheck } from "./frame-check.ts";
 import { pageShot } from "./screenshot.ts";
 import { PathRefused, listDirectory, readPreview } from "./project-files.ts";
@@ -332,6 +333,12 @@ export class App {
 		if (head === "frame" && id === "check" && method === "GET") {
 			const check = await frameCheck(url.searchParams.get("url") ?? "");
 			this.#json(response, 200, check);
+			return;
+		}
+
+		if (head === "frame" && id === "open" && method === "POST") {
+			const body = (await this.#readJson(request)) as { url?: string };
+			this.#json(response, 200, await openInSystemBrowser(typeof body.url === "string" ? body.url : ""));
 			return;
 		}
 

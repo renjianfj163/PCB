@@ -111,6 +111,13 @@ export const api = {
 	/** A picture of a page, for the sites that refuse to be framed. Slow on purpose: a browser has to start. */
 	pageShot: (target: string) => json<PageShot>(`/api/frame/shot?url=${encodeURIComponent(target)}`),
 
+	/** A site this rail may not frame: let the machine's own browser load it as a top-level page. */
+	openExternal: (target: string) =>
+		json<{ ok: boolean; reason?: string }>("/api/frame/open", {
+			method: "POST",
+			body: JSON.stringify({ url: target }),
+		}),
+
 	/** The user's own command, run in their project folder. */
 	exec: (cwd: string, command: string, shell: ShellKind) =>
 		json<ExecResult>("/api/exec", { method: "POST", body: JSON.stringify({ cwd, command, shell }) }),

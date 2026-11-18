@@ -23,6 +23,15 @@ function asUrl(text: string): string | null {
 	}
 }
 
+/** "https://www.google.com/search?q=1" → "www.google.com". */
+function host(url: string): string {
+	try {
+		return new URL(url).host || url;
+	} catch {
+		return url;
+	}
+}
+
 /** A page the frame cannot hold, and why — including whether the machine can reach it at all. */
 interface Blocked {
 	url: string;
@@ -30,6 +39,11 @@ interface Blocked {
 	/** Set when the request never got a reply: no framing trick fixes that. */
 	unreachable: boolean;
 	addresses: string[];
+	/** Which path answered the preflight, so the card can say what was tried. */
+	via?: "proxy" | "direct";
+	proxy?: string;
+	/** Reachable, but not frameable: the machine's own browser was asked to show it. */
+	external?: "opened" | "failed";
 }
 
 /**
@@ -85,11 +99,25 @@ export function BrowserPage({ shots }: { shots: BrowserShot[] }) {
 				setLive(check.url ?? url);
 			} else {
 				setLive(null);
+				const target = check.url ?? url;
+				// Reachable but unframeable: the machine's own browser is the cheap way in, since a
+				// top-level page is not framing anything.
+				let external: "opened" | "failed" | undefined;
+				if (check.ok) {
+					try {
+						external = (await api.openExternal(target)).ok ? "opened" : "failed";
+					} catch {
+						external = "failed";
+					}
+				}
 				setBlocked({
-					url: check.url ?? url,
+					url: target,
 					reason: check.reason ?? t("站点不允许被内嵌"),
-					unreachable: !check.ok,
+					unreachable: check.unreachable === true,
 					addresses: check.addresses ?? [],
+					via: check.via,
+					proxy: check.proxy,
+					external,
 				});
 			}
 		} catch {
@@ -152,34 +180,50 @@ export function BrowserPage({ shots }: { shots: BrowserShot[] }) {
 				</form>
 
 				{blocked ? (
-					<div className="shot-blocked">
-						<p className="shot-blocked-title">{t("打不开：{s}", { s: blocked.url.replace(/^https?:\/\//, "").split("/")[0] ?? blocked.url })}</p>
-						<p className="shot-blocked-reason">{t("{s}。这一栏没法把它放进来。", { s: t(blocked.reason) })}</p>
-						{blocked.addresses.length > 0 ? (
-							<p className="shot-blocked-addr">{t("域名解析到 {s}", { s: blocked.addresses.join(", ") })}</p>
-						) : null}
-						{blocked.unreachable ? (
-							<p className="shot-blocked-addr">
-								{t("本机的请求没拿到回应。浏览器有时能走另一条网络路径（比如加密 DNS），值得先截一张图看看。")}
-							</p>
-						) : null}
-						<div className="shot-blocked-actions">
-							<button
-								type="button"
-								className="shot-go primary"
-								disabled={shooting}
-								onClick={() => void takeShot(blocked.url)}
-							>
-								{shooting ? t("正在截…") : t("截图看看")}
-							</button>
-							<a className="shot-go" href={blocked.url} target="_blank" rel="noreferrer">
-								{t("用系统浏览器打开")}
-							</a>
-							<button type="button" className="shot-go ghost" onClick={() => { setLive(blocked.url); setBlocked(null); }}>
-								{t("还是试着内嵌")}
-							</button>
+					blocked.external === "opened" ? (
+						// Already in the system browser: nothing left to decide, so no buttons and no warning box.
+						<p className="shot-opened">{t("{s} 不允许内嵌，已在系统浏览器打开。", { s: host(blocked.url) })}</p>
+					) : (
+						<div className="shot-blocked">
+							<p className="shot-blocked-title">{t("打不开：{s}", { s: host(blocked.url) })}</p>
+								<p className="shot-blocked-reason">{t("{s}。这一栏没法把它放进来。", { s: t(blocked.reason) })}</p>
+								{blocked.external === "failed" ? (
+									<p className="shot-blocked-addr">
+										{t("这个站不允许内嵌，系统浏览器也没能打开它。按下面的链接再试一次。")}
+									</p>
+								) : null}
+								{blocked.via === "proxy" && blocked.proxy ? (
+									<p className="shot-blocked-addr">{t("经系统代理 {p} 检查", { p: blocked.proxy })}</p>
+								) : blocked.addresses.length > 0 ? (
+									<p className="shot-blocked-addr">{t("域名解析到 {s}", { s: blocked.addresses.join(", ") })}</p>
+								) : null}
+								{blocked.unreachable ? (
+									<p className="shot-blocked-addr">
+										{t(
+											blocked.proxy
+												? "经系统代理和直连都没通，可以先截图看看。"
+												: "本机没有检测到系统代理，直连到这个地址不通。",
+										)}
+									</p>
+								) : null}
+								<div className="shot-blocked-actions">
+									<button
+										type="button"
+										className="shot-go primary"
+										disabled={shooting}
+										onClick={() => void takeShot(blocked.url)}
+									>
+										{shooting ? t("正在截…") : t("截图看看")}
+									</button>
+									<a className="shot-go" href={blocked.url} target="_blank" rel="noreferrer">
+										{t("用系统浏览器打开")}
+									</a>
+									<button type="button" className="shot-go ghost" onClick={() => { setLive(blocked.url); setBlocked(null); }}>
+										{t("还是试着内嵌")}
+									</button>
+								</div>
 						</div>
-					</div>
+					)
 				) : null}
 
 				{shooting ? (

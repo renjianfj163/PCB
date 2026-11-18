@@ -11,10 +11,26 @@ test("write-tier tools are exactly the ones the build phase may touch", () => {
 	assert.equal(decideApproval("mcp__filesystem_read", "build").action, "approve");
 });
 
-test("exec-tier tools always come back to the user in the build phase", () => {
-	for (const tool of ["bash", "eval", "browser", "task", "some_new_tool"]) {
+test("exec-tier tools other than the browser always come back to the user in the build phase", () => {
+	for (const tool of ["bash", "eval", "task", "some_new_tool"]) {
 		assert.equal(toolTier(tool), "exec");
 		assert.equal(decideApproval(tool, "build").action, "ask");
+		assert.equal(decideApproval(tool, "build", true).action, "ask", `${tool} with an allowed browser`);
+	}
+});
+
+test("the browser asks once per message, then rides on the user's yes", () => {
+	assert.equal(toolTier("browser"), "exec");
+	assert.equal(decideApproval("browser", "build").action, "ask");
+	assert.equal(decideApproval("browser", "build", false).action, "ask");
+	assert.equal(decideApproval("browser", "build", true).action, "approve");
+});
+
+test("an allowed browser never loosens plan or chat", () => {
+	for (const phase of ["plan", "chat"] as const) {
+		const decision = decideApproval("browser", phase, true);
+		assert.equal(decision.action, "deny", phase);
+		if (decision.action === "deny") assert.match(decision.reason, phase === "chat" ? /聊天阶段/ : /规划阶段/);
 	}
 });
 

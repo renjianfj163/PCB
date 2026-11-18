@@ -713,9 +713,53 @@ pre {
 	white-space: pre-wrap;
 }
 
-.message.assistant.streaming .message-role::after {
-	content: " · 输入中";
+/* A reply in progress: the role line says so, and three dots lift in turn. */
+.typing-label {
 	color: var(--accent);
+}
+
+.typing-dots {
+	display: inline-flex;
+	gap: 3px;
+	margin-left: 6px;
+	vertical-align: 1px;
+}
+
+.typing-dots i {
+	width: 4px;
+	height: 4px;
+	border-radius: 50%;
+	background: var(--accent);
+	animation: typing-dot 1.1s ease-in-out infinite;
+}
+
+.typing-dots i:nth-child(2) {
+	animation-delay: 0.15s;
+}
+
+.typing-dots i:nth-child(3) {
+	animation-delay: 0.3s;
+}
+
+@keyframes typing-dot {
+	0%,
+	60%,
+	100% {
+		opacity: 0.25;
+		transform: translateY(0);
+	}
+
+	30% {
+		opacity: 1;
+		transform: translateY(-2px);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.typing-dots i {
+		animation: none;
+		opacity: 0.35;
+	}
 }
 
 .message.tool-result pre {
@@ -2490,6 +2534,15 @@ body.resizing {
 	font-size: 10.5px;
 	color: var(--dim);
 	line-height: 1.5;
+}
+
+/* A page handed to the system browser: a status line, not a problem to solve. */
+.shot-opened {
+	margin: 0;
+	padding: 8px 11px;
+	font-size: 11px;
+	color: var(--muted);
+	line-height: 1.6;
 }
 
 /* Why a page refused to be framed, with the way out. */

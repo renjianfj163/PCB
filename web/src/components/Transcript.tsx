@@ -87,7 +87,19 @@ function AssistantMessage({
 
 	return (
 		<div className={`message assistant${streaming ? " streaming" : ""}`}>
-			<div className="message-role">{t("助手")}</div>
+			<div className="message-role">
+				{t("助手")}
+				{streaming ? (
+					<>
+						<span className="typing-label">{` · ${t("输入中")}`}</span>
+						<span className="typing-dots" aria-hidden="true">
+							<i />
+							<i />
+							<i />
+						</span>
+					</>
+				) : null}
+			</div>
 			{thinking.length > 0 ? (
 				<details className="thinking">
 					<summary>{t("思考过程")}</summary>
