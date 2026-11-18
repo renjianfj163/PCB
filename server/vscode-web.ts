@@ -8,6 +8,7 @@
 
 import { spawn, spawnSync, type ChildProcess, type StdioOptions } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
+import { connect } from "node:net";
 import { basename, delimiter, join } from "node:path";
 import { systemProxy } from "./proxy.ts";
 
@@ -44,18 +45,106 @@ interface Server {
 }
 
 /**
+ * Which protocol answers on this port. 10808 here is a SOCKS5 port, not an HTTP
+ * proxy: an HTTPS_PROXY pointing at it makes the editor's downloader hang with a
+ * connected socket and no reply.
+ */
+type ProxyKind = "socks" | "http" | "unknown";
+
+const PROBE_TIMEOUT_MS = 800;
+
+function proxyAddress(proxy: string): { host: string; port: number; scheme: string } | null {
+	try {
+		const url = new URL(proxy.includes("://") ? proxy : `http://${proxy}`);
+		const fallback = url.protocol === "https:" ? 443 : url.protocol === "socks5:" || url.protocol === "socks:" ? 1080 : 80;
+		const port = Number(url.port || fallback);
+		if (!url.hostname || !Number.isInteger(port) || port <= 0) return null;
+		return { host: url.hostname, port, scheme: url.protocol.replace(":", "") };
+	} catch {
+		return null;
+	}
+}
+
+/** Ask the port what it speaks: SOCKS5 answers 05 to `05 01 00`, an HTTP proxy a status line. */
+function probeProxy(host: string, port: number): Promise<ProxyKind> {
+	return new Promise(resolve => {
+		let settled = false;
+		const socket = connect({ host, port });
+		const done = (kind: ProxyKind) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timer);
+			socket.destroy();
+			resolve(kind);
+		};
+		const timer = setTimeout(() => done("unknown"), PROBE_TIMEOUT_MS);
+		const isHttp = (data: Buffer) => /^HTTP\//i.test(data.toString("latin1", 0, Math.min(data.length, 5)));
+		socket.once("error", () => done("unknown"));
+		socket.once("connect", () => {
+			socket.write(Buffer.from([0x05, 0x01, 0x00]));
+			socket.once("data", (first: Buffer) => {
+				if (first[0] === 0x05) return done("socks");
+				if (isHttp(first)) return done("http");
+				// Not a SOCKS answer and not a status line: one plain HTTP request settles it.
+				socket.write("GET http://127.0.0.1:9/ HTTP/1.1\r\nHost: 127.0.0.1:9\r\nConnection: close\r\n\r\n");
+				socket.once("data", (second: Buffer) => done(isHttp(second) ? "http" : "unknown"));
+			});
+		});
+	});
+}
+
+/** Probe once, remember it, and never guess: unknown means no proxy for the child. */
+async function detectKind(proxy: string, cache: { kind: ProxyKind | null }): Promise<ProxyKind> {
+	if (cache.kind) return cache.kind;
+	const target = proxyAddress(proxy);
+	if (!target) return (cache.kind = "unknown");
+	const scheme = target.scheme.toLowerCase();
+	const kind: ProxyKind =
+		scheme === "socks" || scheme === "socks5"
+			? "socks"
+			: await probeProxy(target.host, target.port);
+	cache.kind = kind;
+	return kind;
+}
+
+/**
  * The server fetches its web client from the internet, and this class of machine
  * only reaches the internet through its proxy — Node ignores the WinINET setting,
- * so the environment has to carry it. The page itself stays off the proxy.
+ * so the environment has to carry it, in the flavour the port actually speaks.
  */
-function serverEnv(env: NodeJS.ProcessEnv, proxy: string | null): NodeJS.ProcessEnv {
+function proxyEnv(env: NodeJS.ProcessEnv, proxy: string | null, kind: ProxyKind): NodeJS.ProcessEnv {
 	if (!proxy) return env;
-	return {
-		...env,
-		HTTPS_PROXY: env.HTTPS_PROXY ?? proxy,
-		HTTP_PROXY: env.HTTP_PROXY ?? proxy,
-		NO_PROXY: env.NO_PROXY ?? "127.0.0.1,localhost",
-	};
+	const target = proxyAddress(proxy);
+	const address = target ? `${target.host}:${target.port}`.toLowerCase() : "";
+	const next = { ...env };
+	/** Proxy variables that already name this very address are ours to correct. */
+	const pointsHere = (value: string | undefined) =>
+		address.length > 0 && typeof value === "string" && value.toLowerCase().includes(address);
+
+	next.NO_PROXY = env.NO_PROXY ?? "127.0.0.1,localhost";
+
+	if (kind === "socks" && target) {
+		const socks = `socks5://${address}`;
+		next.ALL_PROXY = socks;
+		next.all_proxy = socks;
+		for (const key of ["HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"] as const) {
+			if (pointsHere(next[key])) delete next[key];
+		}
+		return next;
+	}
+
+	if (kind === "http") {
+		next.HTTP_PROXY = env.HTTP_PROXY ?? proxy;
+		next.HTTPS_PROXY = env.HTTPS_PROXY ?? proxy;
+		return next;
+	}
+
+	// Unknown protocol: straight out, with nothing of ours claiming otherwise.
+	for (const key of ["HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy", "ALL_PROXY", "all_proxy"] as const) {
+		if (pointsHere(next[key])) delete next[key];
+	}
+	delete next.NO_PROXY;
+	return next;
 }
 
 /** `code.cmd` / `.bat` go through the shell (as cmd itself would); everything else spawns directly. */
@@ -175,6 +264,7 @@ export function createIdeManager(options: { env?: NodeJS.ProcessEnv; proxy?: str
 	const env = options.env ?? process.env;
 	/** undefined = ask the machine; null = deliberately none (tests). */
 	const proxy = options.proxy === undefined ? systemProxy() : options.proxy;
+	const detected: { kind: ProxyKind | null } = { kind: null };
 	const vsix = env.PCB_CKPT_VSIX?.trim() || DEFAULT_VSIX;
 	let server: Server | null = null;
 	let starting: Promise<IdeResult> | null = null;
@@ -196,6 +286,7 @@ export function createIdeManager(options: { env?: NodeJS.ProcessEnv; proxy?: str
 	/** One launch attempt; resolves with the page or a sentence for the user. */
 	async function start(candidate: Candidate, cwd: string): Promise<IdeResult> {
 		installExtension(candidate);
+		const kind: ProxyKind = proxy ? await detectKind(proxy, detected) : "unknown";
 		const withFolder = candidate.flavor === "openvscode";
 		const base = candidate.flavor === "code" ? ["serve-web"] : [];
 		const args = [
@@ -208,7 +299,7 @@ export function createIdeManager(options: { env?: NodeJS.ProcessEnv; proxy?: str
 			LICENSE,
 			...(withFolder ? ["--default-folder", cwd] : []),
 		];
-		const child = spawnProgram(candidate.file, args, { cwd, stdio: "pipe", env: serverEnv(env, proxy) });
+		const child = spawnProgram(candidate.file, args, { cwd, stdio: "pipe", env: proxyEnv(env, proxy, kind) });
 		const chunks: string[] = [];
 		let url: string | null = null;
 

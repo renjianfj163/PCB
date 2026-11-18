@@ -66,7 +66,11 @@ npm run dev          # 服务端 :7777，界面 :5173（/api 代理到 7777）
 拼进它打印出来的本机地址（`&folder=…`）。omp-ckpt 的 vsix（`PCB_CKPT_VSIX`，默认
 `D:\Developer\zed_omp\omp-ckpt-0.1.0.vsix`）在一个 PCB 进程里只装一次；同一个服务也只起一次，再次点击只是
 重开那个地址。三个候选都没有时只回一行「本机没有 VS Code 网页服务」，不下载、不安装、也不去开桌面版。
-服务要用网络下载自己的网页端，所以启动时会把本机代理写进 `HTTPS_PROXY`（Node 不读 WinINET）。
+服务要用网络下载自己的网页端，而 Node 不读 WinINET，所以启动前对系统代理的 `host:port` 打一次短探测
+（SOCKS5 问候 `05 01 00`，回 `05` 的是 SOCKS，回状态行的是 HTTP，800 ms 无回应就算不知道）：
+SOCKS 给子进程 `ALL_PROXY`/`all_proxy=socks5://…`，并把指向同一地址的 `http://` 变量摘掉；
+HTTP 仍是 `HTTP_PROXY`/`HTTPS_PROXY`；探测不出来就不给这个进程带代理，绝不猜成 `http://`。
+`server/proxy.ts` 的返回值不变，截图与网页预检照旧用那个字符串。
 `/api/sessions/:id/export` 仍在，只是顶栏不再调用它。
 
 左下角配置卡里还有一个调试开关「显示 omp 原文」（`localStorage["pcb.ompRaw"]`，缺省关）。开着时，

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createServer, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
@@ -7,18 +8,28 @@ import { NO_SERVER, createIdeManager } from "../server/vscode-web.ts";
 
 const roots: string[] = [];
 const managers: Array<{ stop(): void }> = [];
+const proxies: Array<{ close(): void }> = [];
 
 after(() => {
 	for (const manager of managers) manager.stop();
+	for (const proxy of proxies) proxy.close();
 	for (const root of roots) rmSync(root, { recursive: true, force: true, maxRetries: 3 });
 });
 
 /** A stand-in web server: records its argv, prints a loopback URL, stays alive. */
-function fakeServer(name: string): { bin: string; log: string; envLog: string; vsix: string; cwd: string; env: NodeJS.ProcessEnv } {
+function fakeServer(name: string): {
+	bin: string;
+	log: string;
+	proxyLog: string;
+	vsix: string;
+	cwd: string;
+	env: NodeJS.ProcessEnv;
+} {
 	const dir = mkdtempSync(join(tmpdir(), "pcb-ide-"));
 	roots.push(dir);
 	const log = join(dir, "spawns.jsonl");
 	const envLog = join(dir, "env.txt");
+	const proxyLog = join(dir, "proxy.jsonl");
 	const script = join(dir, "fake-server.mjs");
 	writeFileSync(
 		script,
@@ -27,6 +38,13 @@ function fakeServer(name: string): { bin: string; log: string; envLog: string; v
 			`const args = process.argv.slice(2);`,
 			`appendFileSync(${JSON.stringify(log)}, JSON.stringify(args) + "\\n");`,
 			`appendFileSync(${JSON.stringify(envLog)}, "HTTPS_PROXY=" + String(process.env.HTTPS_PROXY ?? "none") + "\\n");`,
+			`appendFileSync(${JSON.stringify(proxyLog)}, JSON.stringify({`,
+			`  httpsProxy: process.env.HTTPS_PROXY ?? null,`,
+			`  httpProxy: process.env.HTTP_PROXY ?? null,`,
+			`  allProxy: process.env.ALL_PROXY ?? null,`,
+			`  allProxyLower: process.env.all_proxy ?? null,`,
+			`  noProxy: process.env.NO_PROXY ?? null,`,
+			`}) + "\\n");`,
 			`if (args.includes("--install-extension")) process.exit(0);`,
 			`console.log("Web UI available at http://127.0.0.1:54321?tkn=fake");`,
 			// A real subprocess has to outlive the spawn: the launcher only resolves once the
@@ -47,7 +65,7 @@ function fakeServer(name: string): { bin: string; log: string; envLog: string; v
 	const cwd = join(dir, "workspace");
 	// An empty folder is enough for the launcher; make one.
 	mkdirSync(cwd, { recursive: true });
-	return { bin, log, envLog, vsix, cwd, env: { ...process.env, PCB_VSCODE_WEB: bin, PCB_CKPT_VSIX: vsix } };
+	return { bin, log, proxyLog, vsix, cwd, env: { ...process.env, PCB_VSCODE_WEB: bin, PCB_CKPT_VSIX: vsix } };
 }
 
 function invocations(log: string): string[][] {
@@ -122,21 +140,128 @@ test("a build without --default-folder gets the folder as a URL parameter", asyn
 	assert.equal(page.searchParams.get("tkn"), "fake", "the connection token survives");
 });
 
-test("the machine's proxy rides along, because the server downloads its web client", async () => {
+/** A local port that answers `05 00` — a SOCKS5 server's greeting reply. */
+async function fakeSocks(): Promise<{ port: number; close(): void }> {
+	const sockets = new Set<Socket>();
+	const server = createServer(socket => {
+		sockets.add(socket);
+		socket.on("close", () => sockets.delete(socket));
+		socket.on("error", () => undefined);
+		socket.once("data", () => socket.write(Buffer.from([0x05, 0x00])));
+	});
+	await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+	const port = (server.address() as { port: number }).port;
+	return {
+		port,
+		close() {
+			for (const socket of sockets) socket.destroy();
+			server.close();
+		},
+	};
+}
+
+/** A local port that accepts and never answers — the timeout branch. */
+async function fakeSilent(): Promise<{ port: number; close(): void }> {
+	const sockets = new Set<Socket>();
+	const server = createServer(socket => {
+		sockets.add(socket);
+		socket.on("close", () => sockets.delete(socket));
+		socket.on("error", () => undefined);
+	});
+	await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+	const port = (server.address() as { port: number }).port;
+	return {
+		port,
+		close() {
+			for (const socket of sockets) socket.destroy();
+			server.close();
+		},
+	};
+}
+
+/** A local port that answers with a status line — an HTTP proxy. */
+async function fakeHttp(): Promise<{ port: number; close(): void }> {
+	const sockets = new Set<Socket>();
+	const server = createServer(socket => {
+		sockets.add(socket);
+		socket.on("close", () => sockets.delete(socket));
+		socket.on("error", () => undefined);
+		socket.once("data", () => socket.write("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n"));
+	});
+	await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+	const port = (server.address() as { port: number }).port;
+	return {
+		port,
+		close() {
+			for (const socket of sockets) socket.destroy();
+			server.close();
+		},
+	};
+}
+
+function lastProxyEnv(fake: { proxyLog: string }): {
+	httpsProxy: string | null;
+	httpProxy: string | null;
+	allProxy: string | null;
+	allProxyLower: string | null;
+	noProxy: string | null;
+} {
+	const lines = readFileSync(fake.proxyLog, "utf8").trim().split("\n").filter(Boolean);
+	return JSON.parse(lines.at(-1) ?? "{}");
+}
+
+test("a SOCKS5 port becomes ALL_PROXY, and the http:// variables for it go away", async () => {
+	const socks = await fakeSocks();
+	proxies.push(socks);
 	const fake = fakeServer("openvscode-server");
-	const manager = createIdeManager({ env: fake.env, proxy: "http://127.0.0.1:10808" });
+	const address = `127.0.0.1:${socks.port}`;
+	// A stale http:// entry for the same address must not survive into the child.
+	const manager = createIdeManager({
+		env: { ...fake.env, HTTPS_PROXY: `http://${address}` },
+		proxy: `http://${address}`,
+	});
+	managers.push(manager);
+
+	const result = await manager.open(fake.cwd);
+	assert.equal(result.ok, true, result.reason);
+	const env = lastProxyEnv(fake);
+	assert.equal(env.allProxy, `socks5://${address}`);
+	assert.equal(env.allProxyLower, `socks5://${address}`, "lowercase spelling too");
+	assert.equal(env.httpsProxy, null, "no http:// claim on a SOCKS port");
+	assert.equal(env.httpProxy, null);
+	assert.match(env.noProxy ?? "", /127\.0\.0\.1/);
+});
+
+test("an HTTP proxy keeps HTTPS_PROXY and never sets ALL_PROXY", async () => {
+	const http = await fakeHttp();
+	proxies.push(http);
+	const fake = fakeServer("openvscode-server");
+	const address = `127.0.0.1:${http.port}`;
+	const manager = createIdeManager({ env: fake.env, proxy: `http://${address}` });
 	managers.push(manager);
 
 	await manager.open(fake.cwd);
-	const seen = readFileSync(fake.envLog, "utf8").trim().split("\n").filter(Boolean);
-	assert.equal(seen.at(-1), "HTTPS_PROXY=http://127.0.0.1:10808");
+	const env = lastProxyEnv(fake);
+	assert.equal(env.httpsProxy, `http://${address}`);
+	assert.equal(env.httpProxy, `http://${address}`);
+	assert.equal(env.allProxy, null);
+	assert.equal(env.allProxyLower, null);
+});
 
-	const cold = fakeServer("openvscode-server");
-	const plain = createIdeManager({ env: cold.env, proxy: null });
-	managers.push(plain);
-	await plain.open(cold.cwd);
-	const coldSeen = readFileSync(cold.envLog, "utf8").trim().split("\n").filter(Boolean);
-	assert.equal(coldSeen.at(-1), "HTTPS_PROXY=none");
+test("a port that answers nothing is neither flavour: the child gets no proxy", async () => {
+	const silent = await fakeSilent();
+	proxies.push(silent);
+	const fake = fakeServer("openvscode-server");
+	const address = `127.0.0.1:${silent.port}`;
+	const manager = createIdeManager({ env: fake.env, proxy: `http://${address}` });
+	managers.push(manager);
+
+	const result = await manager.open(fake.cwd);
+	assert.equal(result.ok, true, result.reason);
+	const env = lastProxyEnv(fake);
+	assert.equal(env.httpsProxy, null, "guessing http:// is what broke the download");
+	assert.equal(env.allProxy, null);
+	assert.equal(env.noProxy, null, "no proxy at all, so no bypass list either");
 });
 
 test("no candidate on this machine: one line, and nothing is spawned", async () => {
