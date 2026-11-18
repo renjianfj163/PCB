@@ -11,6 +11,7 @@ import { randomUUID } from "node:crypto";
 import { basename } from "node:path";
 import type { Hub } from "./hub.ts";
 import { approvalAnswer, approvalTool, decideApproval } from "./policy.ts";
+import { ckptHost, launchArgs } from "./omp-args.ts";
 import { appendPolicy, loadPolicies, type StoredPolicy } from "./policies.ts";
 import { appendRaw } from "./raw.ts";
 import { RpcClient, type RpcFrame } from "./rpc/client.ts";
@@ -229,20 +230,16 @@ export class PcbSession {
 		this.#status = "starting";
 		this.#broadcastSession();
 
-		const args = [
-			"--mode",
-			"rpc-ui",
-			"--cwd",
-			this.record.cwd,
-			// Every write/exec call comes back to PCB as a dialog, so the shell can
-			// apply its own plan/build policy instead of trusting a static mode.
-			"--approval-mode",
-			"always-ask",
-			"--append-system-prompt",
+		const args = launchArgs(
+			{
+				cwd: this.record.cwd,
+				extensions: this.record.extensions,
+				sessionFile: this.record.sessionFile,
+				phase: this.record.phase,
+			},
+			ckptHost(),
 			PROTOCOL_PROMPT,
-		];
-		if (!this.record.extensions) args.push("--no-extensions");
-		if (this.record.sessionFile) args.push("--resume", this.record.sessionFile);
+		);
 
 		const client = new RpcClient({
 			bin: this.#deps.bin,

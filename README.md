@@ -32,7 +32,8 @@ npm run dev          # 服务端 :7777，界面 :5173（/api 代理到 7777）
 前置条件：`omp` 在 PATH 里且已登录（`omp login`）。`omp --version` 应输出 `omp/18.22.0` 或更新。
 
 环境变量：`PCB_PORT`（默认 7777）、`PCB_HOST`（默认 127.0.0.1）、`PCB_OMP`（默认 `omp`）、
-`PCB_PROXY`（覆盖系统代理检测，`off` / `none` / 空表示不用代理）、`PCB_CHROME`（指定截图用的浏览器路径）。
+`PCB_PROXY`（覆盖系统代理检测，`off` / `none` / 空表示不用代理）、`PCB_CHROME`（指定截图用的浏览器路径）、
+`PCB_OMP_CKPT_HOST`（替换默认的 omp-ckpt 宿主扩展路径，见下）。
 
 ## 打开就能说
 
@@ -99,6 +100,11 @@ npm run dev          # 服务端 :7777，界面 :5173（/api 代理到 7777）
 | 添加项目 | 服务弹 Windows 文件夹对话框（PowerShell STA + FolderBrowserDialog，脚本用 `-EncodedCommand` 传，避免 5.1 按 ANSI 读中文）。取消则什么都不做；对话框打不开时左下角「手动输入路径」可直接粘贴路径。 |
 | Automations | 自动化页（不塞进对话流）。 |
 | 对话 | 当前项目下的会话；删除只清 PCB 索引并关掉进程，不删项目文件。 |
+
+启动 omp 时比「模式 + cwd + 审批 + 系统提示」只多带一个扩展：`-e <omp-host.ts>`（默认
+`D:\Developer\zed_omp\host\omp-host.ts`，`PCB_OMP_CKPT_HOST` 可换）。`--no-extensions` 关的是扩展**发现**，
+不挡这条显式路径，所以用户装的其它 omp 扩展照旧不加载。那个宿主的 checkpoint 与 review 服务跑在 omp 进程里，
+VS Code 的 omp-ckpt 扩展只是连上来，不另外拉 omp；宿主文件不存在时就不带这个 `-e`，会话照常启动。
 
 ## 三个阶段（由壳实现）
 
