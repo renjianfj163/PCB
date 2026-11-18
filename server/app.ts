@@ -8,6 +8,7 @@ import { extname, join, normalize, resolve } from "node:path";
 import type { Hub } from "./hub.ts";
 import { readBlob } from "./blobs.ts";
 import { runCommand } from "./exec-box.ts";
+import { clearRaw, rawLines, watchRaw } from "./raw.ts";
 import { openInSystemBrowser } from "./external.ts";
 import { frameCheck } from "./frame-check.ts";
 import { pageShot } from "./screenshot.ts";
@@ -312,6 +313,35 @@ export class App {
 					response.write(`data: ${JSON.stringify(event)}\n\n`);
 				}
 			}
+			return;
+		}
+
+		if (head === "raw" && method === "GET") {
+			// The switch's own stream. Its first and last connection are the recording window.
+			response.writeHead(200, {
+				"content-type": "text/event-stream; charset=utf-8",
+				"cache-control": "no-cache, no-transform",
+				connection: "keep-alive",
+				"x-accel-buffering": "no",
+			});
+			const stop = watchRaw(event => response.write(`data: ${JSON.stringify(event)}\n\n`));
+			// Lines recorded since this connection's predecessor opened — nothing from before the switch.
+			const sessionId = url.searchParams.get("session") ?? "";
+			for (const entry of rawLines(sessionId)) {
+				response.write(`data: ${JSON.stringify({ t: "raw", sessionId, ...entry })}\n\n`);
+			}
+			response.on("close", stop);
+			return;
+		}
+
+		if (head === "raw" && id === "clear" && method === "POST") {
+			const body = (await this.#readJson(request)) as { sessionId?: string };
+			if (typeof body.sessionId !== "string" || !body.sessionId) {
+				this.#json(response, 400, { error: "缺少 sessionId" });
+				return;
+			}
+			clearRaw(body.sessionId);
+			this.#json(response, 200, { ok: true });
 			return;
 		}
 

@@ -29,6 +29,8 @@ export interface RpcClientOptions {
 	env?: NodeJS.ProcessEnv;
 	onFrame: (frame: RpcFrame) => void;
 	onExit: (info: { code: number | null; signal: string | null; stderr: string }) => void;
+	/** Every complete line the child wrote, before any parsing. Not called unless someone listens. */
+	onRaw?: (stream: "stdout" | "stderr", line: string) => void;
 	onLog?: (message: string) => void;
 }
 
@@ -68,6 +70,7 @@ export class RpcClient {
 	#pending = new Map<string, Pending>();
 	#stdout = "";
 	#stderr = "";
+	#stderrLine = "";
 	#chunks = new Map<string, ChunkAssembly>();
 	#requestSeq = 0;
 	#exited = false;
@@ -119,7 +122,16 @@ export class RpcClient {
 		child.stdout.on("data", (chunk: string) => this.#onStdout(chunk));
 		child.stderr.setEncoding("utf8");
 		child.stderr.on("data", (chunk: string) => {
+			// The tail is for the exit report; the raw view wants whole lines.
 			this.#stderr = (this.#stderr + chunk).slice(-STDERR_KEEP);
+			if (!this.#options.onRaw) return;
+			// A line that never ends must not grow without bound.
+			this.#stderrLine = (this.#stderrLine + chunk).slice(-STDERR_KEEP);
+			let newline: number;
+			while ((newline = this.#stderrLine.indexOf("\n")) >= 0) {
+				this.#options.onRaw("stderr", this.#stderrLine.slice(0, newline));
+				this.#stderrLine = this.#stderrLine.slice(newline + 1);
+			}
 		});
 
 		const timer = setTimeout(
@@ -148,6 +160,8 @@ export class RpcClient {
 		while ((newline = this.#stdout.indexOf("\n")) >= 0) {
 			const line = this.#stdout.slice(0, newline);
 			this.#stdout = this.#stdout.slice(newline + 1);
+			// The raw view sees the line as it arrived; the parser below is unchanged.
+			this.#options.onRaw?.("stdout", line);
 			if (line.trim()) this.#handleLine(line);
 		}
 	}

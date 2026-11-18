@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Automation, BootInfo, SessionState, SessionSummary } from "../../../shared/protocol.ts";
 import { baseName, shortPath } from "../paths.ts";
 import { setLocale, t, useLocale } from "../i18n.ts";
+import { setOmpRaw, useOmpRaw } from "../raw.ts";
 import { ModelPicker } from "./ModelPicker.tsx";
 
 function IconPlus() {
@@ -114,6 +115,7 @@ export function Sidebar({
 	const [configOpen, setConfigOpen] = useState(false);
 	const [picking, setPicking] = useState(false);
 	const locale = useLocale();
+	const ompRaw = useOmpRaw();
 
 	const conversations = project ? sessions.filter(item => item.cwd === project) : [];
 
@@ -287,6 +289,16 @@ export function Sidebar({
 								English
 							</button>
 						</div>
+						<div className="config-title">{t("调试")}</div>
+						<button
+							type="button"
+							className={`config-switch${ompRaw ? " active" : ""}`}
+							aria-pressed={ompRaw}
+							onClick={() => setOmpRaw(!ompRaw)}
+						>
+							<span>{t("显示 omp 原文")}</span>
+							<span className="config-switch-dot" aria-hidden />
+						</button>
 					</div>
 				) : null}
 				<div className="user-row">

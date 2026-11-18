@@ -7,6 +7,7 @@ import { Composer } from "./components/Composer.tsx";
 import { DialogLayer } from "./components/Dialogs.tsx";
 import { Home } from "./components/Home.tsx";
 import { Palette, type PaletteItem } from "./components/Palette.tsx";
+import { RawLog } from "./components/RawLog.tsx";
 import { RightRail, type RailTab } from "./components/RightRail.tsx";
 import { Sidebar } from "./components/Sidebar.tsx";
 import { Topbar } from "./components/Topbar.tsx";
@@ -438,6 +439,7 @@ export default function App() {
 								})
 							}
 						/>
+						<RawLog sessionId={session.id} />
 						<DialogLayer
 							requests={state.dialogs[session.id] ?? []}
 							onAnswer={(dialogId, answer: DialogAnswer) =>

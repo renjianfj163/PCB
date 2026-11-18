@@ -118,6 +118,10 @@ export const api = {
 			body: JSON.stringify({ url: target }),
 		}),
 
+	/** Drop one session's raw-output buffer; the other sessions keep theirs. */
+	clearRaw: (sessionId: string) =>
+		json<{ ok: true }>("/api/raw/clear", { method: "POST", body: JSON.stringify({ sessionId }) }),
+
 	/** The user's own command, run in their project folder. */
 	exec: (cwd: string, command: string, shell: ShellKind) =>
 		json<ExecResult>("/api/exec", { method: "POST", body: JSON.stringify({ cwd, command, shell }) }),

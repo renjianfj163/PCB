@@ -161,6 +161,21 @@ export type UiEvent =
 	| { t: "tool_policy"; sessionId: string; tool: string; decision: PolicyDecision }
 	| { t: "automations"; automations: Automation[] };
 
+/** Which pipe of the omp child a raw line came from. */
+export type RawStream = "stdout" | "stderr";
+
+/**
+ * One line of the child's own output, verbatim. These never travel on the main
+ * event stream: they have their own SSE connection, which also owns their life.
+ */
+export interface RawEvent {
+	t: "raw";
+	sessionId: string;
+	stream: RawStream;
+	line: string;
+	at: number;
+}
+
 export interface BootInfo {
 	sessions: SessionSummary[];
 	projects: string[];

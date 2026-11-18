@@ -12,6 +12,7 @@ import { basename } from "node:path";
 import type { Hub } from "./hub.ts";
 import { approvalAnswer, approvalTool, decideApproval } from "./policy.ts";
 import { appendPolicy, loadPolicies, type StoredPolicy } from "./policies.ts";
+import { appendRaw } from "./raw.ts";
 import { RpcClient, type RpcFrame } from "./rpc/client.ts";
 import type { Store, SessionRecord } from "./store.ts";
 import type {
@@ -249,6 +250,8 @@ export class PcbSession {
 			cwd: this.record.cwd,
 			onFrame: frame => this.#onFrame(frame),
 			onExit: info => this.#onExit(info),
+			// Cheap enough to always tap: appendRaw returns immediately unless a window is watching.
+			onRaw: (stream, line) => appendRaw(this.record.id, stream, line),
 			onLog: message => this.#deps.onLog?.(`[${this.record.id}] ${message}`),
 		});
 		this.#client = client;

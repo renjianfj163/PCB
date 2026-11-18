@@ -124,8 +124,12 @@ const EN: Record<string, string> = {
 	"还没有项目文件夹，点右上角的 + 添加。": "No project folders yet — use + to add one.",
 	"这个项目还没有对话。": "No conversations here yet.",
 	"配置": "Settings",
+	"调试": "Debug",
 	"模型": "Model",
 	"语言": "Language",
+	"显示 omp 原文": "Show omp raw output",
+	"原文": "Raw output",
+	"清空": "Clear",
 
 	// ---- home ----
 	"想做什么？": "What do you want to do?",
