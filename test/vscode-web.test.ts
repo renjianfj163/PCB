@@ -28,7 +28,6 @@ function fakeServer(name: string): {
 	const dir = mkdtempSync(join(tmpdir(), "pcb-ide-"));
 	roots.push(dir);
 	const log = join(dir, "spawns.jsonl");
-	const envLog = join(dir, "env.txt");
 	const proxyLog = join(dir, "proxy.jsonl");
 	const script = join(dir, "fake-server.mjs");
 	writeFileSync(
@@ -37,7 +36,6 @@ function fakeServer(name: string): {
 			`import { appendFileSync } from "node:fs";`,
 			`const args = process.argv.slice(2);`,
 			`appendFileSync(${JSON.stringify(log)}, JSON.stringify(args) + "\\n");`,
-			`appendFileSync(${JSON.stringify(envLog)}, "HTTPS_PROXY=" + String(process.env.HTTPS_PROXY ?? "none") + "\\n");`,
 			`appendFileSync(${JSON.stringify(proxyLog)}, JSON.stringify({`,
 			`  httpsProxy: process.env.HTTPS_PROXY ?? null,`,
 			`  httpProxy: process.env.HTTP_PROXY ?? null,`,
