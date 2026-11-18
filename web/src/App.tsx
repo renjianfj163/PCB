@@ -44,7 +44,7 @@ function initialRightOpen(): boolean {
 
 export default function App() {
 	// Any language change re-renders the whole shell.
-	useLocale();
+	const locale = useLocale();
 	const [state, dispatch] = useReducer(reducer, initialState);
 	const [error, setError] = useState<string | null>(null);
 	const [info, setInfo] = useState<string | null>(null);
@@ -385,7 +385,7 @@ export default function App() {
 					onIde={() =>
 						guard(async () => {
 							if (!session) return;
-							const opened = await api.openIde(session.cwd);
+							const opened = await api.openIde(session.cwd, locale);
 							if (!opened.ok) {
 								setError(t(opened.reason ?? "本机没有 VS Code 网页服务"));
 								return;

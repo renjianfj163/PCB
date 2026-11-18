@@ -87,10 +87,10 @@ export const api = {
 	exportHtml: (id: string) => json<{ path: string }>(`/api/sessions/${id}/export`, { method: "POST" }),
 
 	/** Start (once) the machine's VS Code web server for this folder and open it. */
-	openIde: (cwd: string) =>
+	openIde: (cwd: string, lang: "zh" | "en" = "zh") =>
 		json<{ ok: boolean; url?: string; reason?: string }>("/api/vscode/open", {
 			method: "POST",
-			body: JSON.stringify({ cwd }),
+			body: JSON.stringify({ cwd, lang }),
 		}),
 
 	/** Opens the Windows folder dialog on the server. */

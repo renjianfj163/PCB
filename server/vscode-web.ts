@@ -251,6 +251,8 @@ function killTree(child: ChildProcess) {
 export interface IdeManager {
 	/** Start (once) and hand back the local page for this folder. */
 	open(cwd: string): Promise<IdeResult>;
+	/** The page of the running server, or null. */
+	current(): string | null;
 	/** Test/teardown hook: kill the server this manager started, if any. */
 	stop(): void;
 }
@@ -363,6 +365,7 @@ export function createIdeManager(options: { env?: NodeJS.ProcessEnv; proxy?: str
 
 	return {
 		open,
+		current: () => (alive() && server ? server.url : null),
 		stop() {
 			if (!server) return;
 			killTree(server.child);
@@ -376,4 +379,9 @@ const shared = createIdeManager();
 /** Start (once) the machine's VS Code web server for this folder. */
 export function openIde(cwd: string): Promise<IdeResult> {
 	return shared.open(cwd);
+}
+
+/** The page of a server that is already running, or null — used to skip the waiting screen. */
+export function peekIde(): string | null {
+	return shared.current();
 }

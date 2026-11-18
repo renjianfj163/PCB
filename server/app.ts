@@ -10,7 +10,8 @@ import { readBlob } from "./blobs.ts";
 import { runCommand } from "./exec-box.ts";
 import { clearRaw, rawLines, watchRaw } from "./raw.ts";
 import { openInSystemBrowser } from "./external.ts";
-import { NO_SERVER, openIde } from "./vscode-web.ts";
+import { NO_SERVER, ideCandidates, openIde, peekIde } from "./vscode-web.ts";
+import { ideJobStatus, ideReady, startIdeJob, waitPage } from "./ide-wait.ts";
 import { frameCheck } from "./frame-check.ts";
 import { pageShot } from "./screenshot.ts";
 import { PathRefused, listDirectory, readPreview } from "./project-files.ts";
@@ -138,6 +139,7 @@ export interface AppDeps {
 	hub: Hub;
 	store: Store;
 	bin: string;
+	port: number;
 	webRoot: string;
 	onLog?: (message: string) => void;
 }
@@ -230,6 +232,13 @@ export class App {
 		const segments = url.pathname.split("/").filter(Boolean);
 
 		if (segments[0] !== "api") {
+			if (segments[0] === "ide" && segments[1] === "wait" && (request.method ?? "GET") === "GET") {
+				// Owned by PCB, not VS Code: the editor's own 202 page cannot show a bar we control.
+				const page = waitPage(url.searchParams.get("job") ?? "", url.searchParams.get("lang") === "en" ? "en" : "zh");
+				response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+				response.end(page);
+				return;
+			}
 			this.#serveStatic(url.pathname, response);
 			return;
 		}
@@ -317,17 +326,33 @@ export class App {
 			return;
 		}
 
+		if (head === "vscode" && id === "status" && method === "GET") {
+			this.#json(response, 200, await ideJobStatus(url.searchParams.get("job") ?? ""));
+			return;
+		}
+
 		if (head === "vscode" && id === "open" && method === "POST") {
-			const body = (await this.#readJson(request)) as { cwd?: string };
+			const body = (await this.#readJson(request)) as { cwd?: string; lang?: string };
 			const cwd = typeof body.cwd === "string" ? resolve(body.cwd) : "";
-			// The page is served by this machine and opened by this machine — nothing leaves it.
-			const result = await openIde(cwd);
-			if (!result.ok || !result.url) {
-				this.#json(response, 200, { ok: false, reason: result.reason ?? NO_SERVER });
+			const lang = body.lang === "en" ? "en" : "zh";
+			// Nothing installed: say so in the shell instead of opening a tab that can only fail.
+			if (ideCandidates().length === 0) {
+				this.#json(response, 200, { ok: false, reason: NO_SERVER });
 				return;
 			}
-			await openInSystemBrowser(result.url);
-			this.#json(response, 200, { ok: true, url: result.url });
+			// A server that is already serving needs no waiting room.
+			const running = peekIde();
+			const already = running && (await ideReady(running)) ? running : null;
+			if (already) {
+				await openInSystemBrowser(already);
+				this.#json(response, 200, { ok: true, url: already });
+				return;
+			}
+			// Otherwise open the progress page now; it navigates once the server answers.
+			const job = startIdeJob(openIde, cwd);
+			const page = `http://127.0.0.1:${this.#deps.port}/ide/wait?job=${encodeURIComponent(job)}&lang=${lang}`;
+			await openInSystemBrowser(page);
+			this.#json(response, 200, { ok: true, url: page });
 			return;
 		}
 
