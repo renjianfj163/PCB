@@ -11,6 +11,8 @@ import { existsSync, statSync } from "node:fs";
 import { connect } from "node:net";
 import { basename, delimiter, join } from "node:path";
 import { systemProxy } from "./proxy.ts";
+import { startSocksBridge, type SocksBridge } from "./socks-bridge.ts";
+import { hasLocalPackage, stageServer } from "./vscode-stage.ts";
 
 const LOOPBACK = "127.0.0.1";
 /** Without this the first launch stops at an interactive license prompt. */
@@ -110,9 +112,18 @@ async function detectKind(proxy: string, cache: { kind: ProxyKind | null }): Pro
 /**
  * The server fetches its web client from the internet, and this class of machine
  * only reaches the internet through its proxy — Node ignores the WinINET setting,
- * so the environment has to carry it, in the flavour the port actually speaks.
+ * so the environment has to carry it, in the flavour the child actually speaks.
+ *
+ * `code-tunnel` knows `HTTP_PROXY` but has no `socks5` string in it at all: hand
+ * it the SOCKS port and it connects, then sits silent. So a SOCKS port is bridged
+ * to a loopback HTTP proxy for this process and the child is pointed at that.
  */
-function proxyEnv(env: NodeJS.ProcessEnv, proxy: string | null, kind: ProxyKind): NodeJS.ProcessEnv {
+async function proxyEnv(
+	env: NodeJS.ProcessEnv,
+	proxy: string | null,
+	kind: ProxyKind,
+	bridge: { address: string | null; handle: SocksBridge | null },
+): Promise<NodeJS.ProcessEnv> {
 	if (!proxy) return env;
 	const target = proxyAddress(proxy);
 	const address = target ? `${target.host}:${target.port}`.toLowerCase() : "";
@@ -121,17 +132,26 @@ function proxyEnv(env: NodeJS.ProcessEnv, proxy: string | null, kind: ProxyKind)
 	const pointsHere = (value: string | undefined) =>
 		address.length > 0 && typeof value === "string" && value.toLowerCase().includes(address);
 
-	next.NO_PROXY = env.NO_PROXY ?? "127.0.0.1,localhost";
-
 	if (kind === "socks" && target) {
-		const socks = `socks5://${address}`;
-		next.ALL_PROXY = socks;
-		next.all_proxy = socks;
+		// One bridge per process: every later launch reuses the same loopback port.
+		if (bridge.address !== address || !bridge.handle) {
+			bridge.handle?.close();
+			bridge.handle = await startSocksBridge(target.host, target.port);
+			bridge.address = address;
+		}
+		next.NO_PROXY = env.NO_PROXY ?? "127.0.0.1,localhost";
 		for (const key of ["HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"] as const) {
 			if (pointsHere(next[key])) delete next[key];
 		}
+		// ALL_PROXY is what the CLI cannot use; the bridge is what it can.
+		delete next.ALL_PROXY;
+		delete next.all_proxy;
+		next.HTTP_PROXY = bridge.handle.url;
+		next.HTTPS_PROXY = bridge.handle.url;
 		return next;
 	}
+
+	next.NO_PROXY = env.NO_PROXY ?? "127.0.0.1,localhost";
 
 	if (kind === "http") {
 		next.HTTP_PROXY = env.HTTP_PROXY ?? proxy;
@@ -267,10 +287,14 @@ export function createIdeManager(options: { env?: NodeJS.ProcessEnv; proxy?: str
 	/** undefined = ask the machine; null = deliberately none (tests). */
 	const proxy = options.proxy === undefined ? systemProxy() : options.proxy;
 	const detected: { kind: ProxyKind | null } = { kind: null };
+	/** The loopback HTTP proxy the SOCKS port is bridged to, started at most once. */
+	const bridge: { address: string | null; handle: SocksBridge | null } = { address: null, handle: null };
 	const vsix = env.PCB_CKPT_VSIX?.trim() || DEFAULT_VSIX;
 	let server: Server | null = null;
 	let starting: Promise<IdeResult> | null = null;
 	let installed = false;
+	/** Set once a staged package has replaced a stuck server; never restart twice. */
+	let restaged = false;
 
 	const alive = () => server !== null && server.child.exitCode === null && !server.child.killed;
 
@@ -289,6 +313,8 @@ export function createIdeManager(options: { env?: NodeJS.ProcessEnv; proxy?: str
 	async function start(candidate: Candidate, cwd: string): Promise<IdeResult> {
 		installExtension(candidate);
 		const kind: ProxyKind = proxy ? await detectKind(proxy, detected) : "unknown";
+		// A package the customer already has on disk beats any download attempt.
+		if (candidate.flavor === "code") await stageServer({ env, cli: candidate.file });
 		const withFolder = candidate.flavor === "openvscode";
 		const base = candidate.flavor === "code" ? ["serve-web"] : [];
 		const args = [
@@ -301,7 +327,7 @@ export function createIdeManager(options: { env?: NodeJS.ProcessEnv; proxy?: str
 			LICENSE,
 			...(withFolder ? ["--default-folder", cwd] : []),
 		];
-		const child = spawnProgram(candidate.file, args, { cwd, stdio: "pipe", env: proxyEnv(env, proxy, kind) });
+		const child = spawnProgram(candidate.file, args, { cwd, stdio: "pipe", env: await proxyEnv(env, proxy, kind, bridge) });
 		const chunks: string[] = [];
 		let url: string | null = null;
 
@@ -343,12 +369,25 @@ export function createIdeManager(options: { env?: NodeJS.ProcessEnv; proxy?: str
 
 	async function open(cwd: string): Promise<IdeResult> {
 		if (!cwd || !existsSync(cwd) || !statSync(cwd).isDirectory()) return { ok: false, reason: "这个目录不存在" };
-		// One server per PCB process: a second click only reopens the page.
-		if (alive() && server) return { ok: true, url: server.url };
 		if (starting) return starting;
 
 		const list = candidates(env);
 		if (list.length === 0) return { ok: false, reason: NO_SERVER };
+
+		// A package the customer supplied only helps a *fresh* start: the server now
+		// running may be the one stuck on the download, so replace it once.
+		if (alive() && server && !restaged && hasLocalPackage(env)) {
+			const code = list.find(candidate => candidate.flavor === "code");
+			const staged = code ? await stageServer({ env, cli: code.file }) : { staged: false };
+			if (staged.staged) {
+				restaged = true;
+				killTree(server.child);
+				server = null;
+			}
+		}
+
+		// One server per PCB process: a second click only reopens the page.
+		if (alive() && server) return { ok: true, url: server.url };
 
 		starting = (async () => {
 			let last: IdeResult = { ok: false, reason: NO_SERVER };
@@ -367,9 +406,13 @@ export function createIdeManager(options: { env?: NodeJS.ProcessEnv; proxy?: str
 		open,
 		current: () => (alive() && server ? server.url : null),
 		stop() {
-			if (!server) return;
-			killTree(server.child);
-			server = null;
+			if (server) {
+				killTree(server.child);
+				server = null;
+			}
+			bridge.handle?.close();
+			bridge.handle = null;
+			bridge.address = null;
 		},
 	};
 }

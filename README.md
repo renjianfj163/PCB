@@ -33,7 +33,8 @@ npm run dev          # 服务端 :7777，界面 :5173（/api 代理到 7777）
 
 环境变量：`PCB_PORT`（默认 7777）、`PCB_HOST`（默认 127.0.0.1）、`PCB_OMP`（默认 `omp`）、
 `PCB_PROXY`（覆盖系统代理检测，`off` / `none` / 空表示不用代理）、`PCB_CHROME`（指定截图用的浏览器路径）、
-`PCB_OMP_CKPT_HOST`（替换默认的 omp-ckpt 宿主扩展路径，见下）。
+`PCB_OMP_CKPT_HOST`（替换默认的 omp-ckpt 宿主扩展路径，见下）、`PCB_VSCODE_SERVER_FILE` /
+`PCB_VSCODE_SERVER_URL`（VS Code 网页端压缩包的自备来源，见下）。
 
 ## 打开就能说
 
@@ -67,9 +68,29 @@ npm run dev          # 服务端 :7777，界面 :5173（/api 代理到 7777）
 `D:\Developer\zed_omp\omp-ckpt-0.1.0.vsix`）在一个 PCB 进程里只装一次；同一个服务也只起一次，再次点击只是
 重开那个地址。三个候选都没有时只回一行「本机没有 VS Code 网页服务」，不下载、不安装、也不去开桌面版。
 服务要用网络下载自己的网页端，而 Node 不读 WinINET，所以启动前对系统代理的 `host:port` 打一次短探测
-（SOCKS5 问候 `05 01 00`，回 `05` 的是 SOCKS，回状态行的是 HTTP，800 ms 无回应就算不知道）：
-SOCKS 给子进程 `ALL_PROXY`/`all_proxy=socks5://…`，并把指向同一地址的 `http://` 变量摘掉；
-HTTP 仍是 `HTTP_PROXY`/`HTTPS_PROXY`；探测不出来就不给这个进程带代理，绝不猜成 `http://`。
+（SOCKS5 问候 `05 01 00`，回 `05` 的是 SOCKS，回状态行的是 HTTP，800 ms 无回应就算不知道）。
+`code-tunnel` 只认 `HTTP_PROXY`/`HTTPS_PROXY`，二进制里没有 `socks5` 字样，把 SOCKS 地址冒充成
+`http://` 它就会连上然后一声不响——所以**探测到 SOCKS 时不再把 SOCKS 地址交给子进程**：PCB 在
+`127.0.0.1` 上起一个只给这次用的 HTTP `CONNECT` 代理（`server/socks-bridge.ts`），由它转上游 SOCKS5，
+子进程拿到的是 `HTTP_PROXY`/`HTTPS_PROXY=http://127.0.0.1:<这个端口>`，`ALL_PROXY`/`all_proxy` 一律不带，
+`NO_PROXY` 仍是 `127.0.0.1,localhost`。确认是 HTTP 代理时仍是 `HTTP_PROXY`/`HTTPS_PROXY=http://…`，不起桥；
+探测不出来就不给这个进程带代理，绝不猜成 `http://`。
+
+那个包约 90 MB，第一次点「IDE」要下它，下载页面是 PCB 自己给的（`/ide/wait`，带进度条和已等待秒数，
+并轮询 `/api/vscode/status`），好了一律自动跳进编辑器。**下不下来时不要再等**：把它放到本机，
+让 PCB 直接解到 `%USERPROFILE%\.vscode\cli\serve-web\<commit>\`（就是 CLI 自己要填的那个目录），
+它就不下载了：
+
+| 变量 | 含义 |
+|---|---|
+| `PCB_VSCODE_SERVER_FILE` | 已经下好的 Server 压缩包（`.zip`）路径，不做网络访问 |
+| `PCB_VSCODE_SERVER_URL` | 这台机器能访问到的压缩包地址（自有镜像），经系统代理用 curl 取 |
+| `PCB_VSCODE_CLI_DIR` | 覆盖 `~/.vscode/cli`（CLI 数据目录不在默认位置时用） |
+
+`<commit>` 不猜：它取自 CLI 自己留下的 `serve-web/<commit>.staging`（`code --version` 给的是客户端提交，
+不是「最新 Server」的提交）。所以顺序是——先点一次让它建出 `.staging`、把包放好、设上面两个变量之一、
+再点一次。压缩包按 CLI 自己的方式原样解进 `<commit>/`，不拍平目录。等过 12 分钟还没好，
+等待页会把这一行原因写出来，而不是一直停在 downloading。
 `server/proxy.ts` 的返回值不变，截图与网页预检照旧用那个字符串。
 `/api/sessions/:id/export` 仍在，只是顶栏不再调用它。
 

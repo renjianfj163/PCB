@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { createServer, type Socket } from "node:net";
+import { execFileSync } from "node:child_process";
+import { connect, createServer, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
@@ -138,14 +139,45 @@ test("a build without --default-folder gets the folder as a URL parameter", asyn
 	assert.equal(page.searchParams.get("tkn"), "fake", "the connection token survives");
 });
 
-/** A local port that answers `05 00` — a SOCKS5 server's greeting reply. */
+/**
+ * A SOCKS5 proxy that completes the handshake and then echoes: enough to prove the
+ * bridge actually tunnels bytes onward instead of merely rewriting the environment.
+ */
 async function fakeSocks(): Promise<{ port: number; close(): void }> {
 	const sockets = new Set<Socket>();
 	const server = createServer(socket => {
 		sockets.add(socket);
 		socket.on("close", () => sockets.delete(socket));
 		socket.on("error", () => undefined);
-		socket.once("data", () => socket.write(Buffer.from([0x05, 0x00])));
+		let pending = Buffer.alloc(0);
+		const waiters: Array<{ size: number; resolve: (bytes: Buffer) => void }> = [];
+		const pump = () => {
+			while (waiters.length > 0 && pending.length >= (waiters[0] as { size: number }).size) {
+				const waiter = waiters.shift() as { size: number; resolve: (bytes: Buffer) => void };
+				const slice = pending.subarray(0, waiter.size);
+				pending = pending.subarray(waiter.size);
+				waiter.resolve(slice);
+			}
+		};
+		socket.on("data", (chunk: Buffer) => {
+			pending = Buffer.concat([pending, chunk]);
+			pump();
+		});
+		/** Resolve once `size` bytes are buffered — including bytes that already are. */
+		const take = (size: number) =>
+			new Promise<Buffer>(resolve => {
+				waiters.push({ size, resolve });
+				pump();
+			});
+		void (async () => {
+			await take(3); // 05 01 00 — one method offered
+			socket.write(Buffer.from([0x05, 0x00])); // no auth
+			const head = await take(4); // ver cmd rsv atyp
+			const nameLength = head[3] === 0x01 ? 4 : head[3] === 0x04 ? 16 : (await take(1))[0] ?? 0;
+			await take(nameLength + 2); // address + port
+			socket.write(Buffer.from([0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0]));
+			socket.on("data", (chunk: Buffer) => socket.write(chunk));
+		})();
 	});
 	await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
 	const port = (server.address() as { port: number }).port;
@@ -208,7 +240,7 @@ function lastProxyEnv(fake: { proxyLog: string }): {
 	return JSON.parse(lines.at(-1) ?? "{}");
 }
 
-test("a SOCKS5 port becomes ALL_PROXY, and the http:// variables for it go away", async () => {
+test("a SOCKS5 port becomes a local HTTP bridge, and no socks5:// reaches the child", async () => {
 	const socks = await fakeSocks();
 	proxies.push(socks);
 	const fake = fakeServer("openvscode-server");
@@ -223,11 +255,18 @@ test("a SOCKS5 port becomes ALL_PROXY, and the http:// variables for it go away"
 	const result = await manager.open(fake.cwd);
 	assert.equal(result.ok, true, result.reason);
 	const env = lastProxyEnv(fake);
-	assert.equal(env.allProxy, `socks5://${address}`);
-	assert.equal(env.allProxyLower, `socks5://${address}`, "lowercase spelling too");
-	assert.equal(env.httpsProxy, null, "no http:// claim on a SOCKS port");
-	assert.equal(env.httpProxy, null);
-	assert.match(env.noProxy ?? "", /127\.0\.0\.1/);
+
+	// The CLI only knows HTTP_PROXY, so that is all it is told — at our own port.
+	assert.match(env.httpsProxy ?? "", /^http:\/\/127\.0\.0\.1:\d+$/, "an http:// proxy the CLI understands");
+	assert.notEqual(env.httpsProxy, `http://${address}`, "never the SOCKS port itself");
+	assert.equal(env.httpProxy, env.httpsProxy, "both names point at the bridge");
+	assert.equal(env.allProxy, null, "the CLI cannot use ALL_PROXY");
+	assert.equal(env.allProxyLower, null);
+	assert.match(env.noProxy ?? "", /127\.0\.0\.1/, "loopback stays direct");
+
+	// And the bridge really tunnels: CONNECT through it, echo a byte, read it back.
+	const echoed = await throughBridge(env.httpsProxy ?? "", "update.code.visualstudio.com", 443);
+	assert.equal(echoed, "ping", "bytes travelled client → bridge → SOCKS → back");
 });
 
 test("an HTTP proxy keeps HTTPS_PROXY and never sets ALL_PROXY", async () => {
@@ -275,4 +314,83 @@ test("no candidate on this machine: one line, and nothing is spawned", async () 
 	assert.equal(result.ok, false);
 	assert.equal(result.reason, NO_SERVER);
 	assert.equal(existsSync(missing), false);
+});
+
+/** Speak CONNECT to the bridge, then send one word through the tunnel and return the echo. */
+async function throughBridge(proxy: string, host: string, port: number): Promise<string> {
+	const url = new URL(proxy);
+	const socket = connect({ host: url.hostname, port: Number(url.port) });
+	await new Promise<void>((resolve, reject) => {
+		socket.once("connect", resolve);
+		socket.once("error", reject);
+	});
+	const head = await new Promise<string>((resolve, reject) => {
+		let text = "";
+		const onData = (chunk: Buffer) => {
+			text += chunk.toString("latin1");
+			if (text.includes("\r\n\r\n")) {
+				socket.off("data", onData);
+				resolve(text);
+			}
+		};
+		socket.on("data", onData);
+		socket.once("error", reject);
+		socket.write(`CONNECT ${host}:${port} HTTP/1.1\r\nHost: ${host}:${port}\r\n\r\n`);
+	});
+	if (!/^HTTP\/1\.1 200/.test(head)) throw new Error(`bridge refused: ${head.split("\r\n")[0]}`);
+	const reply = await new Promise<string>(resolve => {
+		socket.once("data", (chunk: Buffer) => resolve(chunk.toString("latin1")));
+		socket.write("ping");
+	});
+	socket.destroy();
+	return reply;
+}
+
+/** A zip shaped like the CLI's own download: one top folder, one file inside. */
+function serverZip(work: string): string {
+	const zip = join(work, "server.zip");
+	const inner = join(work, "vscode-server-win32-x64-web", "bin");
+	mkdirSync(inner, { recursive: true });
+	writeFileSync(join(inner, "code-server.exe"), "stub");
+	execFileSync("tar", ["-a", "-c", "-f", zip, "-C", work, "vscode-server-win32-x64-web"], { stdio: "ignore" });
+	return zip;
+}
+
+/** The stub `code --version` names no commit, so the folder the CLI left is the source. */
+const COMMIT = "8a14f0cc1b08d531eb83255ea3764ae22aa932b5";
+
+test("a package the customer already has is unpacked where the CLI looks for it", async () => {
+	const dir = mkdtempSync(join(tmpdir(), "pcb-ide-stage-"));
+	roots.push(dir);
+	const cliRoot = join(dir, "cli");
+	mkdirSync(join(cliRoot, "serve-web", `${COMMIT}.staging`), { recursive: true });
+	const zip = serverZip(dir);
+	const fake = fakeServer("code");
+	const manager = createIdeManager({
+		env: { ...fake.env, PCB_VSCODE_CLI_DIR: cliRoot, PCB_VSCODE_SERVER_FILE: zip },
+		proxy: null,
+	});
+	managers.push(manager);
+
+	const result = await manager.open(fake.cwd);
+	assert.equal(result.ok, true, result.reason);
+	const unpacked = join(cliRoot, "serve-web", COMMIT, "vscode-server-win32-x64-web", "bin", "code-server.exe");
+	assert.equal(existsSync(unpacked), true, "unpacked into <commit>/, layout untouched");
+});
+
+test("the commit is never guessed: without a folder on disk, nothing is unpacked", async () => {
+	const dir = mkdtempSync(join(tmpdir(), "pcb-ide-stage-none-"));
+	roots.push(dir);
+	const cliRoot = join(dir, "cli");
+	const zip = serverZip(dir);
+	const fake = fakeServer("code");
+	const manager = createIdeManager({
+		env: { ...fake.env, PCB_VSCODE_CLI_DIR: cliRoot, PCB_VSCODE_SERVER_FILE: zip },
+		proxy: null,
+	});
+	managers.push(manager);
+
+	const result = await manager.open(fake.cwd);
+	assert.equal(result.ok, true, "the launcher still runs; staging is a shortcut, not a gate");
+	assert.equal(existsSync(join(cliRoot, "serve-web")), false, "no invented commit directory");
 });

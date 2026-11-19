@@ -76,10 +76,27 @@ test("an unknown job id fails instead of hanging the page", async () => {
 test("the waiting page carries a bar, a poll and both languages", () => {
 	const zh = waitPage("abc123", "zh");
 	assert.match(zh, /class="track"/, "a real progress track");
-	assert.match(zh, /\/api\/vscode\/status\?job=/, "it asks PCB for the phase");
+	assert.match(zh, /\/api\/vscode\/status\?lang=zh/, "it asks PCB for the phase, in the page's language");
 	assert.match(zh, /location\.replace/, "and navigates by itself");
 	assert.match(zh, /abc123/, "the job id is baked in");
 	const en = waitPage("abc123", "en");
 	assert.match(en, /Starting the local VS Code web server/);
 	assert.doesNotMatch(en, /正在启动本机的/);
+});
+
+test("a download stuck past the deadline becomes a sentence with the way out", async () => {
+	const url = await fakeEditor({ status: 202 });
+	const job = startIdeJob(() => Promise.resolve({ ok: true, url }), "C:\\x", {
+		startedAt: Date.now() - 13 * 60_000,
+	});
+	await new Promise(resolve => setImmediate(resolve));
+
+	const zh = await ideJobStatus(job, "zh");
+	assert.equal(zh.phase, "failed", "not an endless bar");
+	assert.match(zh.reason ?? "", /PCB_VSCODE_SERVER_FILE/, "names the file route");
+	assert.match(zh.reason ?? "", /PCB_VSCODE_SERVER_URL/, "and the mirror route");
+
+	const en = await ideJobStatus(job, "en");
+	assert.match(en.reason ?? "", /PCB_VSCODE_SERVER_URL/);
+	assert.doesNotMatch(en.reason ?? "", /下不下来/);
 });

@@ -15,6 +15,24 @@ export type IdePhase = "starting" | "downloading" | "ready" | "failed";
 /** Old tabs keep polling; only the newest few are worth remembering. */
 const KEEP = 16;
 
+/**
+ * How long a download may stall before the page says so. The package is ~90 MB and
+ * a bridged download of it took minutes here, so this is generous on purpose.
+ */
+const DOWNLOAD_DEADLINE_MS = 12 * 60_000;
+
+/** Said once the bar has been stuck past the deadline: what to do instead of waiting. */
+const TAKEOVER = {
+	zh:
+		"VS Code 官网的包一直下不下来。把 Server 压缩包放到本机，" +
+		"用 PCB_VSCODE_SERVER_URL 指向你能访问的地址、或 PCB_VSCODE_SERVER_FILE 指向已下好的文件，" +
+		"点一次 IDE 让它接管（第一次会先探测到版本号）。",
+	en:
+		"The package from code.visualstudio.com never arrives. Put the Server zip on this machine and point " +
+		"PCB_VSCODE_SERVER_URL at an address you can reach, or PCB_VSCODE_SERVER_FILE at the file you already have; " +
+		"then click IDE once more and it is unpacked instead of downloaded.",
+};
+
 interface Job {
 	startedAt: number;
 	url: string | null;
@@ -33,9 +51,13 @@ export interface IdeStatus {
 }
 
 /** Kick off a launch and hand back the id the waiting page polls. */
-export function startIdeJob(launch: (cwd: string) => Promise<IdeResult>, cwd: string): string {
+export function startIdeJob(
+	launch: (cwd: string) => Promise<IdeResult>,
+	cwd: string,
+	options: { startedAt?: number } = {},
+): string {
 	const id = randomUUID().slice(0, 8);
-	const job: Job = { startedAt: Date.now(), url: null, reason: null };
+	const job: Job = { startedAt: options.startedAt ?? Date.now(), url: null, reason: null };
 	jobs.set(id, job);
 	while (jobs.size > KEEP) {
 		const oldest = jobs.keys().next().value;
@@ -66,13 +88,18 @@ export async function ideReady(url: string): Promise<boolean> {
 	}
 }
 
-export async function ideJobStatus(id: string): Promise<IdeStatus> {
+export async function ideJobStatus(id: string, lang: "zh" | "en" = "zh"): Promise<IdeStatus> {
 	const job = jobs.get(id);
 	if (!job) return { phase: "failed", reason: "这个进度已经过期，回 PCB 再点一次「IDE」。", elapsed: 0 };
 	const elapsed = Math.round((Date.now() - job.startedAt) / 1000);
 	if (job.reason) return { phase: "failed", reason: job.reason, elapsed };
 	if (!job.url) return { phase: "starting", elapsed };
 	const ready = await ideReady(job.url);
+	// A bar that never ends is worse than a sentence: past the deadline, say why it
+	// may never finish and what the customer can do about it instead.
+	if (!ready && Date.now() - job.startedAt > DOWNLOAD_DEADLINE_MS) {
+		return { phase: "failed", reason: TAKEOVER[lang], elapsed };
+	}
 	return { phase: ready ? "ready" : "downloading", target: job.url, elapsed };
 }
 
@@ -135,6 +162,7 @@ export function waitPage(jobId: string, lang: "zh" | "en"): string {
 </main>
 <script>
   const NAME = ${JSON.stringify(jobId)};
+  const LANG = ${JSON.stringify(`/api/vscode/status?lang=${lang}`)};
   const TEXT = ${JSON.stringify({ starting: text.starting, downloading: text.downloading, ready: text.ready, failed: text.failed, hint: text.hint, waited: text.waited })};
   const fill = document.getElementById("fill");
   const line = document.getElementById("line");
@@ -143,7 +171,7 @@ export function waitPage(jobId: string, lang: "zh" | "en"): string {
 
   async function poll() {
     try {
-      const response = await fetch("/api/vscode/status?job=" + encodeURIComponent(NAME), { cache: "no-store" });
+      const response = await fetch(LANG + "&job=" + encodeURIComponent(NAME), { cache: "no-store" });
       const status = await response.json();
       waited.textContent = TEXT.waited.replace("{s}", String(status.elapsed ?? 0));
       if (status.phase === "ready" && status.target) {

@@ -327,7 +327,8 @@ export class App {
 		}
 
 		if (head === "vscode" && id === "status" && method === "GET") {
-			this.#json(response, 200, await ideJobStatus(url.searchParams.get("job") ?? ""));
+			const lang = url.searchParams.get("lang") === "en" ? "en" : "zh";
+			this.#json(response, 200, await ideJobStatus(url.searchParams.get("job") ?? "", lang));
 			return;
 		}
 
