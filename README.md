@@ -77,7 +77,10 @@ npm run dev          # 服务端 :7777，界面 :5173（/api 代理到 7777）
 探测不出来就不给这个进程带代理，绝不猜成 `http://`。
 
 那个包约 250 MB（这台机器 ~260 KB/s，顺利时约 16 分钟），第一次点「IDE」要下它，下载页面是 PCB 自己给的（`/ide/wait`，带进度条和已等待秒数，
-并轮询 `/api/vscode/status`），好了一律自动跳进编辑器。**下不下来时不要再等**：把它放到本机，
+并轮询 `/api/vscode/status`），好了一律自动跳进编辑器。进度条有真实百分比：`code-tunnel` 整包缓存在内存里、
+目录到最后一刻都是 0 字节，所以在 Windows 上读它 `\Process(code-tunnel*)\IO Data Bytes/sec` 的速率并积分成字节数，
+除以 `update.code.visualstudio.com` 那个 zip 的 `content-length`（见 `server/download-progress.ts`，实测 244–261 KB/s）。
+量不出来（没有计数器、问不到大小）就退回不确定态的滚动条，不编造数字。**下不下来时不要再等**：把它放到本机，
 让 PCB 直接解到 `%USERPROFILE%\.vscode\cli\serve-web\<commit>\`（就是 CLI 自己要填的那个目录），
 它就不下载了：
 

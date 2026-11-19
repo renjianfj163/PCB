@@ -46,6 +46,11 @@ export function targetCommit(options: StageOptions): string | null {
 	return stagedCommits(options)[0] ?? null;
 }
 
+/** Same thing for the running process: what the CLI is fetching right now, if known. */
+export function currentServerCommit(env: NodeJS.ProcessEnv = process.env): string | null {
+	return targetCommit({ env, cli: "" });
+}
+
 /** `<commit>` directories and `<commit>.staging` leftovers, newest first. */
 function stagedCommits(options: StageOptions): string[] {
 	const root = serveWebRoot(options);

@@ -8,6 +8,8 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { percentOf, serverZipSize, serverZipUrl, startByteSampler, type ByteSampler } from "./download-progress.ts";
+import { currentServerCommit } from "./vscode-stage.ts";
 import type { IdeResult } from "./vscode-web.ts";
 
 export type IdePhase = "starting" | "downloading" | "ready" | "failed";
@@ -38,6 +40,11 @@ interface Job {
 	startedAt: number;
 	url: string | null;
 	reason: string | null;
+	/** Started on the first poll that sees a download; integrated into bytes. */
+	sampler: ByteSampler | null;
+	/** The archive's size, once the host has been asked. */
+	total: number | null;
+	asking: boolean;
 }
 
 const jobs = new Map<string, Job>();
@@ -49,6 +56,8 @@ export interface IdeStatus {
 	reason?: string;
 	/** Seconds since the click, so the bar can say something honest about waiting. */
 	elapsed: number;
+	/** 0–99 while the archive downloads; absent when it cannot be measured. */
+	percent?: number;
 }
 
 /** Kick off a launch and hand back the id the waiting page polls. */
@@ -58,7 +67,14 @@ export function startIdeJob(
 	options: { startedAt?: number } = {},
 ): string {
 	const id = randomUUID().slice(0, 8);
-	const job: Job = { startedAt: options.startedAt ?? Date.now(), url: null, reason: null };
+	const job: Job = {
+		startedAt: options.startedAt ?? Date.now(),
+		url: null,
+		reason: null,
+		sampler: null,
+		total: null,
+		asking: false,
+	};
 	jobs.set(id, job);
 	while (jobs.size > KEEP) {
 		const oldest = jobs.keys().next().value;
@@ -93,15 +109,45 @@ export async function ideJobStatus(id: string, lang: "zh" | "en" = "zh"): Promis
 	const job = jobs.get(id);
 	if (!job) return { phase: "failed", reason: "这个进度已经过期，回 PCB 再点一次「IDE」。", elapsed: 0 };
 	const elapsed = Math.round((Date.now() - job.startedAt) / 1000);
-	if (job.reason) return { phase: "failed", reason: job.reason, elapsed };
+	if (job.reason) {
+		finish(job);
+		return { phase: "failed", reason: job.reason, elapsed };
+	}
 	if (!job.url) return { phase: "starting", elapsed };
 	const ready = await ideReady(job.url);
+	if (ready) {
+		finish(job);
+		return { phase: "ready", target: job.url, elapsed };
+	}
 	// A bar that never ends is worse than a sentence: past the deadline, say why it
 	// may never finish and what the customer can do about it instead.
-	if (!ready && Date.now() - job.startedAt > DOWNLOAD_DEADLINE_MS) {
+	if (Date.now() - job.startedAt > DOWNLOAD_DEADLINE_MS) {
+		finish(job);
 		return { phase: "failed", reason: TAKEOVER[lang], elapsed };
 	}
-	return { phase: ready ? "ready" : "downloading", target: job.url, elapsed };
+	const percent = watch(job);
+	return { phase: "downloading", target: job.url, elapsed, ...(percent === null ? {} : { percent }) };
+}
+
+/** Keep one sampler and one size lookup per job, however often the page polls. */
+function watch(job: Job): number | null {
+	if (!job.sampler) {
+		job.sampler = startByteSampler();
+		const commit = currentServerCommit();
+		if (commit && !job.asking) {
+			job.asking = true;
+			void serverZipSize(serverZipUrl(commit)).then(size => {
+				job.total = size;
+			});
+		}
+	}
+	return percentOf(job.sampler.bytes(), job.total);
+}
+
+/** The download is over either way; stop paying for a PowerShell sampler. */
+function finish(job: Job): void {
+	job.sampler?.stop();
+	job.sampler = null;
 }
 
 const TEXT = {
@@ -113,6 +159,7 @@ const TEXT = {
 		failed: "没能打开",
 		hint: "这个标签页可以随手关掉；PCB 那边什么都没变。",
 		waited: "已等待 {s} 秒",
+		measured: "已下载 {p}% · 已等待 {s} 秒",
 	},
 	en: {
 		title: "VS Code web server",
@@ -122,6 +169,7 @@ const TEXT = {
 		failed: "Could not open it",
 		hint: "You can close this tab; nothing in PCB is affected.",
 		waited: "Waiting {s}s",
+		measured: "Downloading {p}% · {s}s elapsed",
 	},
 } as const;
 
@@ -164,7 +212,7 @@ export function waitPage(jobId: string, lang: "zh" | "en"): string {
 <script>
   const NAME = ${JSON.stringify(jobId)};
   const LANG = ${JSON.stringify(`/api/vscode/status?lang=${lang}`)};
-  const TEXT = ${JSON.stringify({ starting: text.starting, downloading: text.downloading, ready: text.ready, failed: text.failed, hint: text.hint, waited: text.waited })};
+  const TEXT = ${JSON.stringify({ starting: text.starting, downloading: text.downloading, ready: text.ready, failed: text.failed, hint: text.hint, waited: text.waited, measured: text.measured })};
   const fill = document.getElementById("fill");
   const line = document.getElementById("line");
   const waited = document.getElementById("waited");
@@ -190,7 +238,13 @@ export function waitPage(jobId: string, lang: "zh" | "en"): string {
         return;
       }
       if (status.phase === "downloading") {
-        set(38, true);
+        // A measured percentage moves the bar for real; without one it only crawls.
+        if (typeof status.percent === "number") {
+          set(Math.max(2, status.percent), false);
+          waited.textContent = TEXT.measured.replace("{p}", String(status.percent)).replace("{s}", String(status.elapsed ?? 0));
+        } else {
+          set(38, true);
+        }
         line.textContent = TEXT.downloading;
       } else {
         set(8, true);

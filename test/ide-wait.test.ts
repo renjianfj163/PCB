@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createServer, type Server, type ServerResponse } from "node:http";
 import { after, test } from "node:test";
+import { percentOf, serverZipUrl } from "../server/download-progress.ts";
 import { ideJobStatus, ideReady, startIdeJob, waitPage } from "../server/ide-wait.ts";
 
 const servers: Server[] = [];
@@ -99,4 +100,27 @@ test("a download stuck past the deadline becomes a sentence with the way out", a
 	const en = await ideJobStatus(job, "en");
 	assert.match(en.reason ?? "", /PCB_VSCODE_SERVER_URL/);
 	assert.doesNotMatch(en.reason ?? "", /下不下来/);
+});
+
+test("the percentage is a floor of bytes over the archive, never 100", () => {
+	assert.equal(percentOf(0, 249_458_900), null, "nothing measured yet");
+	assert.equal(percentOf(1000, null), null, "no size, no percentage");
+	assert.equal(percentOf(249_458_900 / 2, 249_458_900), 50);
+	assert.equal(percentOf(249_458_899, 249_458_900), 99, "the last byte is not 'done'");
+	assert.equal(percentOf(1_000_000_000, 249_458_900), 99, "extra bytes from other traffic are clamped");
+});
+
+test("the archive url names this platform and architecture", () => {
+	assert.equal(
+		serverZipUrl("8a14f0cc1b08d531eb83255ea3764ae22aa932b5", "win32", "x64"),
+		"https://update.code.visualstudio.com/commit:8a14f0cc1b08d531eb83255ea3764ae22aa932b5/server-win32-x64-web/stable",
+	);
+	assert.match(serverZipUrl("abc", "darwin", "arm64"), /server-darwin-arm64-web/);
+});
+
+test("the bar is only a crawl when nothing can be measured", () => {
+	// The page itself decides: with a number it fills to it, without one it crawls.
+	assert.match(waitPage("abc123", "zh"), /typeof status\.percent === "number"/);
+	assert.match(waitPage("abc123", "zh"), /已下载 \{p\}%/);
+	assert.match(waitPage("abc123", "en"), /Downloading \{p\}%/);
 });
