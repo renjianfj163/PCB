@@ -394,3 +394,37 @@ test("the commit is never guessed: without a folder on disk, nothing is unpacked
 	assert.equal(result.ok, true, "the launcher still runs; staging is a shortcut, not a gate");
 	assert.equal(existsSync(join(cliRoot, "serve-web")), false, "no invented commit directory");
 });
+
+test("a package supplied later replaces the server that was stuck downloading", async () => {
+	const dir = mkdtempSync(join(tmpdir(), "pcb-ide-restage-"));
+	roots.push(dir);
+	const cliRoot = join(dir, "cli");
+	const zip = serverZip(dir);
+	const fake = fakeServer("code");
+	// The manager keeps this object, so a customer can hand over the package later.
+	const env: NodeJS.ProcessEnv = { ...fake.env, PCB_VSCODE_CLI_DIR: cliRoot };
+	const manager = createIdeManager({ env, proxy: null });
+	managers.push(manager);
+
+	const first = await manager.open(fake.cwd);
+	assert.equal(first.ok, true, first.reason);
+
+	// Meanwhile the CLI has named the build it wants and the customer produced it.
+	mkdirSync(join(cliRoot, "serve-web", `${COMMIT}.staging`), { recursive: true });
+	env.PCB_VSCODE_SERVER_FILE = zip;
+
+	const second = await manager.open(fake.cwd);
+	assert.equal(second.ok, true, second.reason);
+	const servers = invocations(fake.log).filter(args => !args.includes("--install-extension"));
+	assert.equal(servers.length, 2, "the stuck server was replaced, not reused");
+	assert.equal(
+		existsSync(join(cliRoot, "serve-web", COMMIT, "vscode-server-win32-x64-web", "bin", "code-server.exe")),
+		true,
+		"and the replacement starts from the staged directory",
+	);
+
+	// A third click goes back to reusing that server: no restart loop.
+	const third = await manager.open(fake.cwd);
+	assert.equal(third.url, second.url);
+	assert.equal(invocations(fake.log).filter(args => !args.includes("--install-extension")).length, 2);
+});

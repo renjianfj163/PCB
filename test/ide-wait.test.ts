@@ -87,7 +87,7 @@ test("the waiting page carries a bar, a poll and both languages", () => {
 test("a download stuck past the deadline becomes a sentence with the way out", async () => {
 	const url = await fakeEditor({ status: 202 });
 	const job = startIdeJob(() => Promise.resolve({ ok: true, url }), "C:\\x", {
-		startedAt: Date.now() - 13 * 60_000,
+		startedAt: Date.now() - 31 * 60_000,
 	});
 	await new Promise(resolve => setImmediate(resolve));
 

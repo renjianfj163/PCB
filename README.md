@@ -76,7 +76,7 @@ npm run dev          # 服务端 :7777，界面 :5173（/api 代理到 7777）
 `NO_PROXY` 仍是 `127.0.0.1,localhost`。确认是 HTTP 代理时仍是 `HTTP_PROXY`/`HTTPS_PROXY=http://…`，不起桥；
 探测不出来就不给这个进程带代理，绝不猜成 `http://`。
 
-那个包约 90 MB，第一次点「IDE」要下它，下载页面是 PCB 自己给的（`/ide/wait`，带进度条和已等待秒数，
+那个包约 250 MB（这台机器 ~260 KB/s，顺利时约 16 分钟），第一次点「IDE」要下它，下载页面是 PCB 自己给的（`/ide/wait`，带进度条和已等待秒数，
 并轮询 `/api/vscode/status`），好了一律自动跳进编辑器。**下不下来时不要再等**：把它放到本机，
 让 PCB 直接解到 `%USERPROFILE%\.vscode\cli\serve-web\<commit>\`（就是 CLI 自己要填的那个目录），
 它就不下载了：
@@ -89,7 +89,7 @@ npm run dev          # 服务端 :7777，界面 :5173（/api 代理到 7777）
 
 `<commit>` 不猜：它取自 CLI 自己留下的 `serve-web/<commit>.staging`（`code --version` 给的是客户端提交，
 不是「最新 Server」的提交）。所以顺序是——先点一次让它建出 `.staging`、把包放好、设上面两个变量之一、
-再点一次。压缩包按 CLI 自己的方式原样解进 `<commit>/`，不拍平目录。等过 12 分钟还没好，
+再点一次。压缩包按 CLI 自己的方式原样解进 `<commit>/`，不拍平目录。等过 30 分钟还没好，
 等待页会把这一行原因写出来，而不是一直停在 downloading。
 `server/proxy.ts` 的返回值不变，截图与网页预检照旧用那个字符串。
 `/api/sessions/:id/export` 仍在，只是顶栏不再调用它。

@@ -16,10 +16,11 @@ export type IdePhase = "starting" | "downloading" | "ready" | "failed";
 const KEEP = 16;
 
 /**
- * How long a download may stall before the page says so. The package is ~90 MB and
- * a bridged download of it took minutes here, so this is generous on purpose.
+ * How long a download may stall before the page says so. The package is ~249 MB,
+ * and this machine's link moves it at ~260 KB/s — sixteen minutes when it works at
+ * all. Anything tighter would call a healthy download a failure.
  */
-const DOWNLOAD_DEADLINE_MS = 12 * 60_000;
+const DOWNLOAD_DEADLINE_MS = 30 * 60_000;
 
 /** Said once the bar has been stuck past the deadline: what to do instead of waiting. */
 const TAKEOVER = {
