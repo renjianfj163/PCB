@@ -1,5 +1,6 @@
 /**
- * Opens the local desktop VS Code for a session folder.
+ * Opens the local desktop VS Code, or Cursor when VS Code is not installed,
+ * for a session folder.
  *
  * omp stays the process PCB already launched. The omp-ckpt extension inside
  * that window is a client: Chat talks to PCB, and review talks to the host's
@@ -10,8 +11,8 @@ import { spawn, spawnSync, type ChildProcess, type StdioOptions } from "node:chi
 import { existsSync, statSync } from "node:fs";
 import { delimiter, join } from "node:path";
 
-/** Shown when this machine has no desktop VS Code to open. */
-export const NO_CODE = "本机没有 VS Code";
+/** Shown when this machine has neither desktop VS Code nor Cursor. */
+export const NO_CODE = "本机没有 VS Code 或 Cursor";
 
 const DEFAULT_VSIX = "D:\\Developer\\zed_omp\\omp-ckpt-0.1.0.vsix";
 const OPEN_TIMEOUT_MS = 30_000;
@@ -24,7 +25,7 @@ export interface IdeResult {
 }
 
 export interface IdeManager {
-	/** Install omp-ckpt once, then open this folder in desktop VS Code. */
+	/** Install omp-ckpt once, then open this folder in desktop VS Code or Cursor. */
 	open(cwd: string): Promise<IdeResult>;
 }
 
@@ -98,7 +99,31 @@ function installedClis(env: NodeJS.ProcessEnv): string[] {
 	return found;
 }
 
-/** The desktop `code` this machine should launch, or null. */
+/** Cursor's own CLI, then the `code` shim it ships beside that CLI. */
+function installedCursor(env: NodeJS.ProcessEnv): string | null {
+	const command = process.platform === "win32" ? "cursor.cmd" : "cursor";
+	const shim = process.platform === "win32" ? "code.cmd" : "code";
+	const roots = [env.LOCALAPPDATA, env.ProgramFiles, env["ProgramFiles(x86)"]].filter(
+		(root): root is string => Boolean(root),
+	);
+	for (const root of roots) {
+		for (const file of [
+			join(root, "Programs", "cursor", "resources", "app", "bin", command),
+			join(root, "cursor", "resources", "app", "bin", command),
+			join(root, "Programs", "cursor", "resources", "app", "bin", shim),
+			join(root, "cursor", "resources", "app", "bin", shim),
+		]) {
+			if (existsSync(file)) return file;
+		}
+	}
+	return null;
+}
+
+/**
+ * Desktop VS Code when it is installed, otherwise Cursor.
+ * An explicit `PCB_VSCODE` wins, including when it points at Cursor.
+ * Cursor's `code` on PATH does not hide an installed VS Code.
+ */
 export function findCode(env: NodeJS.ProcessEnv = process.env): string | null {
 	const forced = env.PCB_VSCODE?.trim();
 	if (forced) return existsSync(forced) ? forced : null;
@@ -106,7 +131,7 @@ export function findCode(env: NodeJS.ProcessEnv = process.env): string | null {
 	const installed = installedClis(env).find(file => !isCursor(file));
 	if (installed) return installed;
 
-	return findOnPath("code", env).find(file => !isCursor(file)) ?? null;
+	return installedCursor(env) ?? findOnPath("code", env)[0] ?? findOnPath("cursor", env)[0] ?? null;
 }
 
 function killTree(child: ChildProcess) {
@@ -186,7 +211,7 @@ export function createIdeManager(options: { env?: NodeJS.ProcessEnv } = {}): Ide
 		await install(file);
 		const opened = await run(file, [cwd], env, OPEN_TIMEOUT_MS);
 		if (opened.status === 0) return { ok: true };
-		return { ok: false, reason: lastLine(opened.text) || "VS Code 没能启动" };
+		return { ok: false, reason: lastLine(opened.text) || "编辑器没能启动" };
 	}
 
 	return {
@@ -203,7 +228,7 @@ export function createIdeManager(options: { env?: NodeJS.ProcessEnv } = {}): Ide
 
 const shared = createIdeManager();
 
-/** Open this folder in the machine's desktop VS Code. */
+/** Open this folder in desktop VS Code, or in Cursor when VS Code is absent. */
 export function openIde(cwd: string): Promise<IdeResult> {
 	return shared.open(cwd);
 }

@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
-import { NO_CODE, createIdeManager } from "../server/vscode-desktop.ts";
+import { NO_CODE, createIdeManager, findCode } from "../server/vscode-desktop.ts";
 
 const roots: string[] = [];
 
@@ -103,7 +103,7 @@ test("a failed extension install still opens the folder", async () => {
 	assert.ok(invocations(fake.log).some(args => args[0] === fake.cwd));
 });
 
-test("a missing desktop install says so and does not launch Cursor's code", async () => {
+test("Cursor's code is opened when desktop VS Code is not installed", async () => {
 	const dir = mkdtempSync(join(tmpdir(), "pcb-cursor-"));
 	roots.push(dir);
 	const cursorBin = join(dir, "cursor", "resources", "app", "bin");
@@ -137,9 +137,34 @@ test("a missing desktop install says so and does not launch Cursor's code", asyn
 	});
 
 	const result = await manager.open(cwd);
-	assert.equal(result.ok, false);
-	assert.equal(result.reason, NO_CODE);
-	assert.equal(existsSync(log), false);
+	assert.equal(result.ok, true, result.reason);
+	assert.ok(invocations(log).some(args => args[0] === cwd));
+	assert.equal(invocations(log).flat().includes("serve-web"), false);
+});
+
+test("an installed VS Code is used even when Cursor's code is earlier on PATH", () => {
+	const dir = mkdtempSync(join(tmpdir(), "pcb-both-"));
+	roots.push(dir);
+	const local = join(dir, "local");
+	const vscodeBin = join(local, "Programs", "Microsoft VS Code", "bin");
+	mkdirSync(vscodeBin, { recursive: true });
+	const vscode = join(vscodeBin, process.platform === "win32" ? "code.cmd" : "code");
+	writeFileSync(vscode, "vscode");
+	const cursorBin = join(dir, "cursor", "resources", "app", "bin");
+	mkdirSync(cursorBin, { recursive: true });
+	const cursor = join(cursorBin, process.platform === "win32" ? "code.cmd" : "code");
+	writeFileSync(cursor, "cursor");
+
+	const chosen = findCode({
+		...process.env,
+		PCB_VSCODE: "",
+		LOCALAPPDATA: local,
+		ProgramFiles: join(dir, "empty-pf"),
+		"ProgramFiles(x86)": join(dir, "empty-pf86"),
+		PATH: cursorBin,
+		Path: cursorBin,
+	});
+	assert.equal(chosen, vscode);
 });
 
 test("an explicit PCB_VSCODE that is missing is not replaced by whatever else is on PATH", async () => {

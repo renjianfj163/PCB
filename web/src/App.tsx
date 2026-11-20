@@ -387,7 +387,7 @@ export default function App() {
 							if (!session) return;
 							const opened = await api.openIde(session.cwd);
 							if (!opened.ok) {
-								setError(t(opened.reason ?? "本机没有 VS Code"));
+								setError(t(opened.reason ?? "本机没有 VS Code 或 Cursor"));
 								return;
 							}
 							setInfo(t("已打开本机 VS Code"));
