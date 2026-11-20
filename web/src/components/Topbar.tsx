@@ -55,6 +55,7 @@ export function Topbar({
 	onExpandLeft,
 	onResume,
 	onIde,
+	showIde,
 	onRefresh,
 }: {
 	session: SessionSummary | null;
@@ -65,6 +66,7 @@ export function Topbar({
 	onExpandLeft: () => void;
 	onResume: () => Promise<void>;
 	onIde: () => Promise<void>;
+	showIde: boolean;
 	onRefresh: () => Promise<void>;
 }) {
 	return (
@@ -100,9 +102,11 @@ export function Topbar({
 								<IconRestore />
 							</button>
 						)}
-						<button type="button" className="icon-btn" title={t("在 VS Code 中打开")} onClick={() => void onIde()}>
-							<IconIde />
-						</button>
+						{showIde ? (
+							<button type="button" className="icon-btn" title={t("在 VS Code 中打开")} onClick={() => void onIde()}>
+								<IconIde />
+							</button>
+						) : null}
 						<button type="button" className="icon-btn" title={t("重新拉取会话内容")} onClick={() => void onRefresh()}>
 							<IconRefresh />
 						</button>

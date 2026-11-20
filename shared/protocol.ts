@@ -185,6 +185,8 @@ export interface BootInfo {
 	auth: { provider: string; name: string; authenticated: boolean }[];
 	/** Gating for the terminal's shell choice: PowerShell only exists on Windows. */
 	platform: string;
+	/** Build edition: the everyday build has no IDE entry, the coding build has one. */
+	edition: "desktop" | "developer";
 }
 
 export interface CreateSessionBody {

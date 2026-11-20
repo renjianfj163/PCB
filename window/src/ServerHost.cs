@@ -44,6 +44,24 @@ namespace PcbWindow
 			return null;
 		}
 
+		/// <summary>
+		/// edition.txt next to the exe says "desktop" or "developer". The everyday
+		/// build has no IDE entry; anything unreadable falls back to developer.
+		/// </summary>
+		private static string Edition(string root)
+		{
+			try
+			{
+				string file = Path.Combine(root, "edition.txt");
+				if (File.Exists(file) && File.ReadAllText(file).Trim().ToLowerInvariant().StartsWith("desktop")) return "desktop";
+			}
+			catch
+			{
+				// An unreadable file must not stop the window from opening.
+			}
+			return "developer";
+		}
+
 		public static bool Listening(int timeoutMs)
 		{
 			using (TcpClient client = new TcpClient())
@@ -96,7 +114,12 @@ namespace PcbWindow
 
 		private void Start()
 		{
-			ProcessStartInfo info = new ProcessStartInfo("node", "server/main.ts");
+			// The installer drops node.exe next to the shell: a machine without Node
+			// installed must still get a window, so the bundled runtime wins over PATH.
+			string bundledNode = Path.Combine(root, "node.exe");
+			string nodeExe = File.Exists(bundledNode) ? bundledNode : "node";
+
+			ProcessStartInfo info = new ProcessStartInfo(nodeExe, "server/main.ts");
 			info.WorkingDirectory = root;
 			info.UseShellExecute = false;
 			info.CreateNoWindow = true;
@@ -104,6 +127,9 @@ namespace PcbWindow
 			info.RedirectStandardError = true;
 			info.EnvironmentVariables["PCB_HOST"] = Host;
 			info.EnvironmentVariables["PCB_PORT"] = Port.ToString();
+			info.EnvironmentVariables["PCB_EDITION"] = Edition(root);
+			string bundledOmp = Path.Combine(root, "omp.exe");
+			if (File.Exists(bundledOmp)) info.EnvironmentVariables["PCB_OMP"] = bundledOmp;
 
 			child = new Process();
 			child.StartInfo = info;
