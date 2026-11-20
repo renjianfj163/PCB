@@ -1,78 +1,91 @@
-/* PCB 项目门面：三块，都是固定的中国话，不加载任何第三方脚本。 */
+/*
+ * PCB 项目门面：一页两语，零依赖。
+ *
+ * 字典在 /i18n/{zh,en}.json；页面只用 data-i18n 挂 key，
+ * 接口只回 code（不回来中文散文），所以两种语言共用同一套接口。
+ */
 
-const FIXED = {
-	它跑在哪里:
-		"跑在你自己的电脑上。默认只监听 127.0.0.1，别的机器连不进来；对话、计划、改文件都由你本机的 omp 完成。这个网站不参与运行，也不托管你的项目。",
-	密钥会不会上传:
-		"不会。模型密钥用 omp login 存在你本机，PCB 只在本机用它。这个网站不接收、不保存、不转发密钥，也不需要你注册或登录。",
-	怎么报告问题:
-		"用本页「报告问题」那张表：填系统、你做了什么、你看到了什么，可选的 omp 版本和日志。提交后会在 GitHub 上开一条 Issue，你能拿到编号和链接。请不要贴 API Key 和源码。",
-};
+const FALLBACK_LANG = "zh";
+const REPO_URL = "https://github.com/renjianfj163/PCB";
 
 const $ = id => document.getElementById(id);
 
-// ——— 固定问答 ———
-
-const answer = $("answer");
-$("asks").addEventListener("click", event => {
-	const button = event.target.closest("button[data-q]");
-	if (!button) return;
-	answer.hidden = false;
-	answer.className = "answer";
-	answer.textContent = FIXED[button.dataset.q] ?? "";
-});
-
-// ——— 追问（history 只带最后 6 条，服务端也会再截一次） ———
-
-const thread = $("thread");
-const turn = (role, content) => {
-	const div = document.createElement("div");
-	div.className = `turn ${role}`;
-	const who = document.createElement("span");
-	who.className = "who";
-	who.textContent = role === "user" ? "你" : "介绍助手";
-	div.append(who, document.createTextNode(content));
-	thread.append(div);
-	return div;
-};
-
-const history = [];
-
-$("ask").addEventListener("submit", async event => {
-	event.preventDefault();
-	const input = $("question");
-	const question = input.value.trim();
-	if (!question) return;
-
-	turn("user", question);
-	history.push({ role: "user", content: question });
-	input.value = "";
-	const pending = turn("assistant", "…");
-	const send = event.target.querySelector("button");
-	send.disabled = true;
-
+/** 语言：?lang= → localStorage → navigator.language → zh。 */
+function pickLang() {
+	const asked = new URLSearchParams(location.search).get("lang");
+	if (asked === "zh" || asked === "en") return asked;
 	try {
-		const reply = await fetch("/api/intro", {
-			method: "POST",
-			headers: { "content-type": "application/json" },
-			body: JSON.stringify({ question, history: history.slice(-6) }),
-		});
-		const data = await reply.json().catch(() => ({}));
-		const text = data.ok ? data.reply : `介绍助手没答上来：${data.reason ?? `HTTP ${reply.status}`}`;
-		pending.lastChild.textContent = text;
-		if (data.ok) history.push({ role: "assistant", content: text });
-	} catch (error) {
-		pending.lastChild.textContent = `介绍助手没答上来：${error.message}`;
-	} finally {
-		send.disabled = false;
-		input.focus();
+		const saved = localStorage.getItem("pcbSiteLang");
+		if (saved === "zh" || saved === "en") return saved;
+	} catch {
+		// 隐私模式下没有 localStorage，无所谓
 	}
-});
+	return (navigator.language || "").toLowerCase().startsWith("zh") ? "zh" : "en";
+}
+
+const LANG = pickLang();
+const dict = {};
+const base = {};
+
+function t(key, vars) {
+	let text = dict[key];
+	if (!text) text = base[key];
+	if (!text) text = key;
+	if (!vars) return text;
+	return text.replace(/\{(\w+)\}/g, (whole, name) =>
+		Object.hasOwn(vars, name) ? String(vars[name]) : whole,
+	);
+}
+
+async function loadDict(lang) {
+	const reply = await fetch(`/i18n/${lang}.json`, { cache: "no-cache" });
+	if (!reply.ok) throw new Error(`i18n ${reply.status}`);
+	return reply.json();
+}
+
+/** 服务端只给 code；这句人话由页面出。 */
+function errorText(payload, context) {
+	const code = payload && typeof payload.code === "string" ? payload.code : "";
+	const specific = code === "rate_limited" && context ? t(`${context}.rate`) : "";
+	const text = specific || (code ? t(`err.${code}`) : "");
+	const fallback = text && text !== `err.${code}` ? text : t("err.generic");
+	const detail = payload && typeof payload.detail === "string" && payload.detail ? ` (${payload.detail})` : "";
+	return fallback + detail;
+}
+
+function applyDom() {
+	document.documentElement.lang = LANG === "zh" ? "zh-CN" : "en";
+	document.title = t("meta.title");
+	const description = document.querySelector('meta[name="description"]');
+	if (description) description.setAttribute("content", t("meta.desc"));
+
+	for (const el of document.querySelectorAll("[data-i18n]")) {
+		el.textContent = t(el.dataset.i18n);
+	}
+	for (const el of document.querySelectorAll("[data-i18n-placeholder]")) {
+		el.setAttribute("placeholder", t(el.dataset.i18nPlaceholder));
+	}
+	for (const el of document.querySelectorAll("[data-i18n-alt]")) {
+		el.setAttribute("alt", t(el.dataset.i18nAlt));
+	}
+	for (const el of document.querySelectorAll("[data-lang]")) {
+		const active = el.dataset.lang === LANG;
+		el.setAttribute("aria-current", active ? "true" : "false");
+		el.setAttribute("href", `?lang=${el.dataset.lang}`);
+		el.addEventListener("click", () => {
+			try {
+				localStorage.setItem("pcbSiteLang", el.dataset.lang);
+			} catch {
+				// 没关系，下一次还会按 navigator 猜
+			}
+		});
+	}
+}
 
 // ——— 下载与版本 ———
 
 const bytes = size => {
-	if (!size) return "大小未知";
+	if (!size) return t("download.sizeUnknown");
 	const mb = size / 1024 / 1024;
 	return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.max(1, Math.round(size / 1024))} KB`;
 };
@@ -83,125 +96,202 @@ const when = iso => {
 	return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
 };
 
+/** 两个版本，只按文件名分；认不出来的照原名列出，不猜、不拼地址。 */
+const PACKS = [
+	{ key: "packs.desktop.name", test: /(desktop|日常|daily|basic|home)/i },
+	{ key: "packs.developer.name", test: /(developer|编程|coding|code|pro)/i },
+];
+
+function packOf(name) {
+	const hits = PACKS.filter(pack => pack.test.test(name));
+	return hits.length === 1 ? hits[0].key : null;
+}
+
+function el(tag, className, text) {
+	const node = document.createElement(tag);
+	if (className) node.className = className;
+	if (text !== undefined) node.textContent = text;
+	return node;
+}
+
+function assetTable(assets) {
+	const table = el("table", "assets");
+	const head = el("thead");
+	const headRow = el("tr");
+	for (const key of ["download.col.name", "download.col.size", "download.col.hash", "download.col.action"]) {
+		headRow.append(el("th", null, t(key)));
+	}
+	head.append(headRow);
+	const body = el("tbody");
+	for (const asset of assets) {
+		const row = el("tr");
+		row.append(el("td", "mono", asset.name));
+		row.append(el("td", null, bytes(asset.size)));
+		row.append(
+			el("td", "mono", asset.sha256 ? `sha256 ${asset.sha256.slice(0, 16)}…` : t("download.shaHint")),
+		);
+		const action = el("td");
+		const link = el("a", null, t("download.col.action"));
+		link.href = asset.url;
+		link.rel = "noopener";
+		action.append(link);
+		row.append(action);
+		body.append(row);
+	}
+	table.append(head, body);
+	return table;
+}
+
+function packBlock(title, assets, note) {
+	const wrap = el("div");
+	wrap.append(el("h4", null, title));
+	if (note) wrap.append(el("p", "note small", note));
+	if (assets.length > 0) wrap.append(assetTable(assets));
+	return wrap;
+}
+
 function renderReleases(data) {
 	const box = $("releases");
 	box.textContent = "";
 	const list = Array.isArray(data.releases) ? data.releases : [];
 
 	if (list.length === 0) {
-		const p = document.createElement("p");
-		p.textContent = "还没有可下载的版本。";
-		box.append(p);
-		if (data.reason) {
-			const why = document.createElement("p");
-			why.className = "mini";
-			why.textContent = data.reason;
-			box.append(why);
+		box.append(el("p", null, t("download.empty")));
+		const pending = el("ul", "pending");
+		for (const pack of PACKS) {
+			const row = el("li");
+			row.append(el("span", null, t(pack.key)));
+			row.append(el("span", null, t("download.soon")));
+			pending.append(row);
+		}
+		box.append(pending);
+		const reason = data.reason;
+		if (reason && typeof reason.code === "string") {
+			const why = t(`download.why.${reason.code}`);
+			const detail = typeof reason.detail === "string" && reason.detail ? ` (${reason.detail})` : "";
+			box.append(el("p", "note small", (why === `download.why.${reason.code}` ? t("download.why.generic") : why) + detail));
 		}
 		return;
 	}
 
 	for (const release of list) {
-		const article = document.createElement("article");
-		article.className = "release";
+		const article = el("article", "release");
 
-		const head = document.createElement("div");
-		head.className = "head";
-		const version = document.createElement("span");
-		version.className = "ver";
-		version.textContent = release.version || "未命名版本";
-		head.append(version);
-		if (release.prerelease) {
-			const badge = document.createElement("span");
-			badge.className = "badge";
-			badge.textContent = "预发布";
-			head.append(badge);
-		}
+		const head = el("div", "head");
+		head.append(el("span", "ver", release.version || release.tag || "—"));
+		if (release.prerelease) head.append(el("span", "badge", t("download.prerelease")));
 		const date = when(release.publishedAt);
-		if (date) {
-			const span = document.createElement("span");
-			span.className = "when";
-			span.textContent = `发布于 ${date}`;
-			head.append(span);
-		}
+		if (date) head.append(el("span", "when", t("download.published", { date })));
 		article.append(head);
-
-		if (release.notes) {
-			const notes = document.createElement("div");
-			notes.className = "notes";
-			notes.textContent = release.notes;
-			article.append(notes);
-		}
 
 		const assets = Array.isArray(release.assets) ? release.assets : [];
 		if (assets.length === 0) {
-			const p = document.createElement("p");
-			p.className = "mini";
-			p.textContent = "这个版本没有 Windows 安装包。";
-			article.append(p);
+			article.append(el("p", "note small", t("download.noWindows")));
 		} else {
-			const table = document.createElement("table");
-			table.className = "assets";
-			table.innerHTML = "<thead><tr><th>Windows 安装包</th><th>大小</th><th>校验和</th><th></th></tr></thead>";
-			const body = document.createElement("tbody");
+			const groups = new Map(PACKS.map(pack => [pack.key, []]));
+			const unknown = [];
 			for (const asset of assets) {
-				const tr = document.createElement("tr");
-				const name = document.createElement("td");
-				name.className = "mono";
-				name.textContent = asset.name;
-				const size = document.createElement("td");
-				size.textContent = bytes(asset.size);
-				const hash = document.createElement("td");
-				hash.className = "mono";
-				hash.textContent = asset.sha256 ? `sha256 ${asset.sha256.slice(0, 16)}…` : "校验和随发布说明给出";
-				const action = document.createElement("td");
-				const link = document.createElement("a");
-				link.href = asset.url;
-				link.rel = "noopener";
-				link.textContent = "下载";
-				action.append(link);
-				tr.append(name, size, hash, action);
-				body.append(tr);
+				const key = packOf(String(asset.name ?? ""));
+				if (key) groups.get(key).push(asset);
+				else unknown.push(asset);
 			}
-			table.append(body);
-			article.append(table);
+			for (const [key, grouped] of groups) {
+				if (grouped.length > 0) article.append(packBlock(t(key), grouped));
+			}
+			if (unknown.length > 0) {
+				article.append(packBlock(t("download.unknownTitle"), unknown, t("download.unknownNote")));
+			}
 		}
 
-		const link = document.createElement("p");
-		link.className = "mini";
-		const html = document.createElement("a");
-		html.href = release.htmlUrl;
-		html.rel = "noopener";
-		html.textContent = "在 GitHub 看这个版本";
-		link.append(html);
+		if (release.notes) {
+			const notes = el("details", "notes");
+			notes.append(el("summary", null, t("download.notes")));
+			notes.append(el("pre", null, release.notes));
+			article.append(notes);
+		}
+
+		const link = el("a", "note small", t("download.github"));
+		link.href = release.htmlUrl || `${REPO_URL}/releases`;
+		link.rel = "noopener";
 		article.append(link);
 
 		box.append(article);
 	}
 }
 
-let loaded = { ok: true, releases: [] };
-
-(async () => {
+async function loadReleases() {
 	let data;
 	try {
-		const reply = await fetch("/api/releases");
+		const reply = await fetch("/api/releases", { cache: "no-cache" });
 		data = await reply.json();
 	} catch (error) {
-		data = { ok: true, releases: [], reason: `没能连上本站的版本接口（${error.message}）` };
+		data = { ok: true, releases: [], reason: { code: "github_unreachable", detail: error.message } };
 	}
-	loaded = data;
 	renderReleases(data);
 
 	// 报告表里的「版本」跟着版本列表走，并且始终有「还没安装」。
 	const select = $("bug-version");
+	select.textContent = "";
+	select.append(el("option", null, t("bugs.notInstalled")));
 	for (const release of Array.isArray(data.releases) ? data.releases : []) {
-		const option = document.createElement("option");
+		const option = el(
+			"option",
+			null,
+			`${release.version}${release.prerelease ? t("bugs.prereleaseTag") : ""}`,
+		);
 		option.value = release.version ?? "";
-		option.textContent = `${release.version}${release.prerelease ? "（预发布）" : ""}`;
 		select.append(option);
 	}
-})();
+}
+
+// ——— 追问 ———
+
+const history = [];
+
+function turn(role, text) {
+	const thread = $("thread");
+	const div = el("div", `turn ${role}`);
+	div.append(el("span", "who", role === "user" ? t("ask.you") : t("ask.bot")));
+	div.append(document.createTextNode(text));
+	thread.append(div);
+	return div;
+}
+
+async function ask(event) {
+	event.preventDefault();
+	const input = $("question");
+	const question = input.value.trim();
+	if (!question) return;
+
+	turn("user", question);
+	history.push({ role: "user", content: question });
+	input.value = "";
+	const pending = turn("assistant", t("ask.working"));
+	const send = event.target.querySelector("button");
+	send.disabled = true;
+
+	try {
+		const reply = await fetch("/api/intro", {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({ question, lang: LANG, history: history.slice(-6) }),
+		});
+		const data = await reply.json().catch(() => ({}));
+		if (data.ok && typeof data.reply === "string") {
+			pending.lastChild.textContent = data.reply;
+			history.push({ role: "assistant", content: data.reply });
+		} else if (data.ok && data.degraded === "no_model") {
+			pending.lastChild.textContent = t("ask.degraded");
+		} else {
+			pending.lastChild.textContent = errorText(data, "ask");
+		}
+	} catch (error) {
+		pending.lastChild.textContent = errorText({ code: "generic", detail: error.message }, "ask");
+	} finally {
+		send.disabled = false;
+		input.focus();
+	}
+}
 
 // ——— 报告问题 ———
 
@@ -210,28 +300,28 @@ $("bug").addEventListener("submit", async event => {
 	const result = $("bug-result");
 	const button = $("bug-send");
 
-	const system = $("bug-system").value;
 	const did = $("bug-did").value.trim();
 	const saw = $("bug-saw").value.trim();
 	if (!did || !saw) {
 		result.hidden = false;
 		result.className = "answer warn";
-		result.textContent = "「我做了什么」和「我看到了什么」都要写。";
+		result.textContent = t("bugs.needFields");
 		return;
 	}
 
 	button.disabled = true;
 	result.hidden = false;
 	result.className = "answer";
-	result.textContent = "正在提交…";
+	result.textContent = t("bugs.sending");
 
 	try {
 		const reply = await fetch("/api/bugs", {
 			method: "POST",
 			headers: { "content-type": "application/json" },
 			body: JSON.stringify({
+				lang: LANG,
 				version: $("bug-version").value,
-				system,
+				system: $("bug-system").value,
 				did,
 				saw,
 				omp: $("bug-omp").value.trim(),
@@ -242,21 +332,37 @@ $("bug").addEventListener("submit", async event => {
 		if (data.ok) {
 			result.className = "answer ok";
 			result.textContent = "";
-			result.append(document.createTextNode(`已开 Issue #${data.number}：`));
-			const link = document.createElement("a");
+			result.append(document.createTextNode(`${t("bugs.okPrefix")}${data.number}: `));
+			const link = el("a", null, data.url);
 			link.href = data.url;
 			link.rel = "noopener";
-			link.textContent = data.url;
 			result.append(link);
 			$("bug").reset();
 		} else {
 			result.className = "answer warn";
-			result.textContent = data.reason ?? `还不能提交（HTTP ${reply.status}）`;
+			result.textContent = errorText(data, "bugs");
 		}
 	} catch (error) {
 		result.className = "answer warn";
-		result.textContent = `还不能提交：${error.message}`;
+		result.textContent = errorText({ code: "generic", detail: error.message }, "bugs");
 	} finally {
 		button.disabled = false;
 	}
 });
+
+// ——— 启动 ———
+
+(async () => {
+	try {
+		const [chosen, fallback] = await Promise.all([loadDict(LANG), loadDict(FALLBACK_LANG)]);
+		Object.assign(dict, chosen);
+		Object.assign(base, fallback);
+	} catch (error) {
+		// 字典拿不到时页面仍然可读（HTML 里是中文原文），只是不翻译。
+		console.warn("i18n unavailable:", error.message);
+	}
+
+	applyDom();
+	$("ask").addEventListener("submit", ask);
+	await loadReleases();
+})();
