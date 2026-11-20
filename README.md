@@ -1,10 +1,30 @@
 # PCB
 
-给不写代码的人用的本地壳。对话、计划和改文件都由本机的 `omp` 子进程做，界面只做三件事：把 omp
-的 RPC 帧翻译成人能看懂的样子、在动手前挡住危险操作、把「计划」变成一句可以点「按这个做」的话。
+给不写代码的人用的本地壳，也是给写代码的人的项目入口。对话、计划和改文件都由本机的 `omp` 子进程做，
+界面只做三件事：把 omp 的 RPC 帧翻译成人能看懂的样子、在动手前挡住危险操作、把「计划」变成一句
+可以点「按这个做」的话。
 
 没有第二层假对话，也没有自己实现的 agent：每个会话就是一个 `omp --mode rpc-ui` 子进程。服务只监听
 `127.0.0.1`。
+
+开源 · MIT · [文档](docs/) · [贡献](CONTRIBUTING.md) · [更新记录](CHANGELOG.md)
+
+## 两种包，同一个窗口
+
+| | 日常版 | 编程版 |
+| --- | --- | --- |
+| 给谁 | 不写代码的人 | 还要自己改文件的人 |
+| PCB 界面 | 有 | 有 |
+| omp（对话、计划、改文件的引擎） | 有，装在包里 | 有 |
+| 编辑器 | 没有 | 不装在包里。打开本机已有的桌面版 VS Code 或 Cursor，并使用 omp-ckpt |
+| 顶栏「IDE」 | 不显示这个按钮 | 打开该编辑器，工作区是当前项目 |
+
+`omp` 两包都带：PCB 自己没有另一套模型，去掉它之后窗口能开，但发不出消息、也执行不了计划。
+两包都不附带编辑器，体积因此一样。编程版只多一个按钮，去打开你已经装好的桌面编辑器。网页版 VS Code 不在这个设计里。
+
+两包用同一个窗口：打开后不是带地址栏的浏览器，页面仍是 `http://127.0.0.1:7777`，窗口只留应用名和
+最小化、最大化、关闭，不再叠一套 File / Edit / View 菜单（PCB 里已有顶栏）。关窗口时服务可以留在
+托盘继续跑——定时的任务挂在那个进程上，错过的不补跑。
 
 ## 快速开始
 
@@ -59,14 +79,14 @@ npm run dev          # 服务端 :7777，界面 :5173（/api 代理到 7777）
 不是界面估算；单位是美元原值。
 
 顶栏的「IDE」按钮（`POST /api/vscode/open`，见 `server/vscode-desktop.ts`）打开**本机桌面版 VS Code**，
-工作区是当前会话的目录。不下载安装包，也不起网页服务。查找顺序：`PCB_VSCODE`，然后
-`%LOCALAPPDATA%\Programs\Microsoft VS Code\bin\code.cmd` 与 `Program Files` 下的同名文件
-（没有稳定版再看 Insiders），最后是 PATH 里的 `code`。PATH 上若是 Cursor 带的 `code`，跳过。
+没有安装时改开 **Cursor**。工作区是当前会话的目录。不下载安装包，也不起网页版。查找顺序：
+`PCB_VSCODE`（可以指向其中任意一个），然后已安装的 VS Code（稳定版，再 Insiders），然后已安装的
+Cursor，最后是 PATH 里的 `code` 或 `cursor`。两边都在时用 VS Code，避免 Cursor 自带的 `code` 把它挡住。
 
 omp 仍是 PCB 已经拉起的那个进程。按钮做两件事：把 omp-ckpt 的 vsix（`PCB_CKPT_VSIX`，默认
-`D:\Developer\zed_omp\omp-ckpt-0.1.0.vsix`）在这个 PCB 进程里装进 VS Code 一次，然后执行
-`code <会话目录>`。扩展里的对话连回 PCB，审查连 omp 宿主在 `127.0.0.1` 上的服务。装扩展失败也照样
-打开窗口。找不到 `code` 时只回一行「本机没有 VS Code」。
+`D:\Developer\zed_omp\omp-ckpt-0.1.0.vsix`）在这个 PCB 进程里装进该编辑器一次，然后执行
+`code <会话目录>` 或 `cursor <会话目录>`。扩展里的对话连回 PCB，审查连 omp 宿主在 `127.0.0.1` 上的服务。
+装扩展失败也照样打开窗口。两个都找不到时只回一行「本机没有 VS Code 或 Cursor」。
 `/api/sessions/:id/export` 仍在，只是顶栏不再调用它。
 
 左下角配置卡里还有一个调试开关「显示 omp 原文」（`localStorage["pcb.ompRaw"]`，缺省关）。开着时，
@@ -159,7 +179,7 @@ server/
   policy.ts       工具分级与阶段裁决（唯一决定「能不能动手」的地方）
   policies.ts     ~/.pcb/policies/<id>.jsonl：审批结论，重启后仍能对上终端记录
   project-files.ts  只读的目录列举与文件预览（路径锁死在项目根内）
-  vscode-desktop.ts  用本机 code 打开会话目录，并装一次 omp-ckpt
+  vscode-desktop.ts  用本机桌面版 VS Code 或 Cursor 打开会话目录，并装一次 omp-ckpt
   blobs.ts        ~/.omp/agent/blobs 下截图的只读出口
   hub.ts          SSE 广播
   store.ts        ~/.pcb/state.json（项目 / 会话索引 / 自动化，不存对话本体）
@@ -198,6 +218,30 @@ web/
 - **定时任务**：依赖 PCB 进程活着；关机或关掉服务就跳过，不补跑。
 - **进程数**：每个打开过的会话常驻一个 omp 子进程，暂无 LRU 上限。
 - **文件页**：只读、无搜索、无删除/改名；隐藏文件与常见构建目录不显示。
+
+## 文档
+
+完整文档在 [docs/](docs/)：按「只是用它 / 想接它 / 想改它」三种读者分开。
+
+| 文件 | 内容 |
+| --- | --- |
+| [docs/install.md](docs/install.md) | 两种包各带什么、系统要求、从源码运行、环境变量、卸载 |
+| [docs/usage.md](docs/usage.md) | 项目与会话、Chat / Plan / Build、批准、右栏四页、IDE 按钮、托盘 |
+| [docs/architecture.md](docs/architecture.md) | 每会话一个 omp 子进程、帧怎么走、政策层、状态存在哪 |
+| [docs/api.md](docs/api.md) | 本地接口清单、SSE 事件、curl 例子、请求守卫 |
+| [docs/security.md](docs/security.md) | 只听回环、密钥边界、blob 出口、怎么报漏洞 |
+| [docs/faq.md](docs/faq.md) | 常见问题 |
+
+## 开源许可
+
+MIT，见 [LICENSE](LICENSE)。
+
+许可只覆盖本仓库的代码（本地壳、界面、测试、`site/`、文档）。**不覆盖**三样东西：
+`omp`（用户自己安装、按其自身许可使用，本仓库不分发）、模型与额度（属于用户和签发方）、
+编辑器（VS Code / Cursor 由其出版方授权，PCB 只打开你本机已有的那个）。第三方依赖的清单与许可
+在 [NOTICE](NOTICE) 里。
+
+`site/` 的站点是零依赖的：只用 Node 标准库和静态文件，页面上不加载任何第三方脚本。
 
 ## 验证过的路径
 

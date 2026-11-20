@@ -1,0 +1,44 @@
+PCB — what the MIT license covers, and what it does not
+=======================================================
+
+This repository is MIT-licensed (see LICENSE). That covers the code in this
+repository: the local shell (`server/`, `web/`, `shared/`), the tests, the
+project site (`site/`) and the documentation.
+
+It does NOT cover the following, because they are not part of this repository:
+
+1. `omp` — the agent engine that does the talking, planning and file editing.
+   PCB talks to it as a separate local process (`omp --mode rpc-ui`). `omp` is
+   installed by the user and keeps its own license and terms. PCB is a shell
+   around it: without `omp` on PATH or installed next to the app, PCB can
+   start but cannot answer, plan or change anything.
+
+2. Model providers and model access — the API key and the quota behind it belong
+   to the user and to whoever issued them. Keys are configured on the user's
+   machine with `omp login`; this repository never ships, stores or forwards a
+   key, and the project site never receives one.
+
+3. Editors — desktop VS Code, Cursor, VS Code Insiders and any web build of VS
+   Code are licensed by their publishers and are not distributed by this
+   repository. The `IDE` button only opens an editor the user already has, and
+   the app never downloads one on the user's behalf.
+
+4. The optional Windows shell (WebView2 host) — when it ships it will use
+   Microsoft's WebView2 Runtime, which is installed with Windows and carries
+   Microsoft's own terms. Repository code that drives it stays MIT.
+
+Third-party packages used by this repository
+--------------------------------------------
+
+Build and runtime dependencies, all unmodified, under their own licenses:
+
+| package | license | used by |
+| --- | --- | --- |
+| react, react-dom | MIT | `web/` |
+| vite, @vitejs/plugin-react | MIT | `web/` build |
+| typescript | Apache-2.0 | type checking, `src/` build |
+| @types/node, @types/react, @types/react-dom | MIT | type checking only |
+
+The project site (`site/`) has no dependencies: it uses only Node's standard
+library and serves static files. `site/public/app.js` is written here; nothing
+is loaded from a CDN, and no third-party script runs on the page.

@@ -1,7 +1,12 @@
 {
 	"name": "pcb-web",
-	"private": true,
 	"type": "module",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/renjianfj163/PCB.git",
+		"directory": "web"
+	},
 	"scripts": {
 		"dev": "vite",
 		"build": "vite build",
