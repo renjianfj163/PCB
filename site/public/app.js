@@ -243,7 +243,9 @@ function toRelease(release) {
 async function loadReleases() {
 	let list = [];
 	try {
-		const reply = await fetch(GITHUB_RELEASES, { headers: { accept: "application/vnd.github+json" } });
+		// 不带自定义头，浏览器才把这次 GET 当成简单请求。
+		// GitHub 的跨域预检不允许 Accept，带上之后真实浏览器会拦下，页面退回「即将发布」。
+		const reply = await fetch(GITHUB_RELEASES);
 		if (reply.ok) list = await reply.json();
 	} catch (error) {
 		console.warn("releases unavailable:", error.message);
