@@ -44,7 +44,7 @@ function initialRightOpen(): boolean {
 
 export default function App() {
 	// Any language change re-renders the whole shell.
-	const locale = useLocale();
+	useLocale();
 	const [state, dispatch] = useReducer(reducer, initialState);
 	const [error, setError] = useState<string | null>(null);
 	const [info, setInfo] = useState<string | null>(null);
@@ -385,12 +385,12 @@ export default function App() {
 					onIde={() =>
 						guard(async () => {
 							if (!session) return;
-							const opened = await api.openIde(session.cwd, locale);
+							const opened = await api.openIde(session.cwd);
 							if (!opened.ok) {
-								setError(t(opened.reason ?? "本机没有 VS Code 网页服务"));
+								setError(t(opened.reason ?? "本机没有 VS Code"));
 								return;
 							}
-							setInfo(t("已在浏览器打开 {s}", { s: opened.url ?? "" }));
+							setInfo(t("已打开本机 VS Code"));
 						})
 					}
 					onRefresh={() =>

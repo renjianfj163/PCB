@@ -33,8 +33,8 @@ npm run dev          # 服务端 :7777，界面 :5173（/api 代理到 7777）
 
 环境变量：`PCB_PORT`（默认 7777）、`PCB_HOST`（默认 127.0.0.1）、`PCB_OMP`（默认 `omp`）、
 `PCB_PROXY`（覆盖系统代理检测，`off` / `none` / 空表示不用代理）、`PCB_CHROME`（指定截图用的浏览器路径）、
-`PCB_OMP_CKPT_HOST`（替换默认的 omp-ckpt 宿主扩展路径，见下）、`PCB_VSCODE_SERVER_FILE` /
-`PCB_VSCODE_SERVER_URL`（VS Code 网页端压缩包的自备来源，见下）。
+`PCB_OMP_CKPT_HOST`（替换默认的 omp-ckpt 宿主扩展路径，见下）、`PCB_VSCODE`（本机 `code` 命令）、
+`PCB_CKPT_VSIX`（omp-ckpt 扩展包，见下）。
 
 ## 打开就能说
 
@@ -58,43 +58,15 @@ npm run dev          # 服务端 :7777，界面 :5173（/api 代理到 7777）
 底部状态行显示 `上下文 N%` 与 `已花费 $x.xxxx`：金额取自 omp 的 `get_session_stats`，
 不是界面估算；单位是美元原值。
 
-顶栏的「IDE」按钮（`POST /api/vscode/open`，见 `server/vscode-web.ts`）给这台机器开一个 **VS Code 网页**：
-只绑 `127.0.0.1`，工作区设为当前会话的目录，用系统浏览器打开——编辑器在窗口里，不在三栏里。
-可执行文件按 `PCB_VSCODE_WEB` → `openvscode-server` → 能响应 `serve-web` 的 `code`（PATH，再退到
-`%LOCALAPPDATA%\Programs\Microsoft VS Code\bin\code.cmd`）查找；启动参数固定带 `--host 127.0.0.1`、
-`--port 0`（让服务自己挑端口）和 `--accept-server-license-terms`。
-`openvscode-server` 用 `--default-folder` 指工作区；没有这个参数的构建（如 `code serve-web`）就把文件夹
-拼进它打印出来的本机地址（`&folder=…`）。omp-ckpt 的 vsix（`PCB_CKPT_VSIX`，默认
-`D:\Developer\zed_omp\omp-ckpt-0.1.0.vsix`）在一个 PCB 进程里只装一次；同一个服务也只起一次，再次点击只是
-重开那个地址。三个候选都没有时只回一行「本机没有 VS Code 网页服务」，不下载、不安装、也不去开桌面版。
-服务要用网络下载自己的网页端，而 Node 不读 WinINET，所以启动前对系统代理的 `host:port` 打一次短探测
-（SOCKS5 问候 `05 01 00`，回 `05` 的是 SOCKS，回状态行的是 HTTP，800 ms 无回应就算不知道）。
-`code-tunnel` 只认 `HTTP_PROXY`/`HTTPS_PROXY`，二进制里没有 `socks5` 字样，把 SOCKS 地址冒充成
-`http://` 它就会连上然后一声不响——所以**探测到 SOCKS 时不再把 SOCKS 地址交给子进程**：PCB 在
-`127.0.0.1` 上起一个只给这次用的 HTTP `CONNECT` 代理（`server/socks-bridge.ts`），由它转上游 SOCKS5，
-子进程拿到的是 `HTTP_PROXY`/`HTTPS_PROXY=http://127.0.0.1:<这个端口>`，`ALL_PROXY`/`all_proxy` 一律不带，
-`NO_PROXY` 仍是 `127.0.0.1,localhost`。确认是 HTTP 代理时仍是 `HTTP_PROXY`/`HTTPS_PROXY=http://…`，不起桥；
-探测不出来就不给这个进程带代理，绝不猜成 `http://`。
+顶栏的「IDE」按钮（`POST /api/vscode/open`，见 `server/vscode-desktop.ts`）打开**本机桌面版 VS Code**，
+工作区是当前会话的目录。不下载安装包，也不起网页服务。查找顺序：`PCB_VSCODE`，然后
+`%LOCALAPPDATA%\Programs\Microsoft VS Code\bin\code.cmd` 与 `Program Files` 下的同名文件
+（没有稳定版再看 Insiders），最后是 PATH 里的 `code`。PATH 上若是 Cursor 带的 `code`，跳过。
 
-那个包约 250 MB（这台机器 ~260 KB/s，顺利时约 16 分钟），第一次点「IDE」要下它，下载页面是 PCB 自己给的（`/ide/wait`，带进度条和已等待秒数，
-并轮询 `/api/vscode/status`），好了一律自动跳进编辑器。进度条有真实百分比：`code-tunnel` 整包缓存在内存里、
-目录到最后一刻都是 0 字节，所以在 Windows 上读它 `\Process(code-tunnel*)\IO Data Bytes/sec` 的速率并积分成字节数，
-除以 `update.code.visualstudio.com` 那个 zip 的 `content-length`（见 `server/download-progress.ts`，实测 244–261 KB/s）。
-量不出来（没有计数器、问不到大小）就退回不确定态的滚动条，不编造数字。**下不下来时不要再等**：把它放到本机，
-让 PCB 直接解到 `%USERPROFILE%\.vscode\cli\serve-web\<commit>\`（就是 CLI 自己要填的那个目录），
-它就不下载了：
-
-| 变量 | 含义 |
-|---|---|
-| `PCB_VSCODE_SERVER_FILE` | 已经下好的 Server 压缩包（`.zip`）路径，不做网络访问 |
-| `PCB_VSCODE_SERVER_URL` | 这台机器能访问到的压缩包地址（自有镜像），经系统代理用 curl 取 |
-| `PCB_VSCODE_CLI_DIR` | 覆盖 `~/.vscode/cli`（CLI 数据目录不在默认位置时用） |
-
-`<commit>` 不猜：它取自 CLI 自己留下的 `serve-web/<commit>.staging`（`code --version` 给的是客户端提交，
-不是「最新 Server」的提交）。所以顺序是——先点一次让它建出 `.staging`、把包放好、设上面两个变量之一、
-再点一次。压缩包按 CLI 自己的方式原样解进 `<commit>/`，不拍平目录。等过 30 分钟还没好，
-等待页会把这一行原因写出来，而不是一直停在 downloading。
-`server/proxy.ts` 的返回值不变，截图与网页预检照旧用那个字符串。
+omp 仍是 PCB 已经拉起的那个进程。按钮做两件事：把 omp-ckpt 的 vsix（`PCB_CKPT_VSIX`，默认
+`D:\Developer\zed_omp\omp-ckpt-0.1.0.vsix`）在这个 PCB 进程里装进 VS Code 一次，然后执行
+`code <会话目录>`。扩展里的对话连回 PCB，审查连 omp 宿主在 `127.0.0.1` 上的服务。装扩展失败也照样
+打开窗口。找不到 `code` 时只回一行「本机没有 VS Code」。
 `/api/sessions/:id/export` 仍在，只是顶栏不再调用它。
 
 左下角配置卡里还有一个调试开关「显示 omp 原文」（`localStorage["pcb.ompRaw"]`，缺省关）。开着时，
@@ -187,6 +159,7 @@ server/
   policy.ts       工具分级与阶段裁决（唯一决定「能不能动手」的地方）
   policies.ts     ~/.pcb/policies/<id>.jsonl：审批结论，重启后仍能对上终端记录
   project-files.ts  只读的目录列举与文件预览（路径锁死在项目根内）
+  vscode-desktop.ts  用本机 code 打开会话目录，并装一次 omp-ckpt
   blobs.ts        ~/.omp/agent/blobs 下截图的只读出口
   hub.ts          SSE 广播
   store.ts        ~/.pcb/state.json（项目 / 会话索引 / 自动化，不存对话本体）
