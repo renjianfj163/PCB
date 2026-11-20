@@ -6,3 +6,5 @@ data/
 research/io/
 window/.build/
 window/dist/
+dist/
+window/installer/.build/
