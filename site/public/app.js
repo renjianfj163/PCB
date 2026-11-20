@@ -43,16 +43,6 @@ async function loadDict(lang) {
 	return reply.json();
 }
 
-/** 服务端只给 code；这句人话由页面出。 */
-function errorText(payload, context) {
-	const code = payload && typeof payload.code === "string" ? payload.code : "";
-	const specific = code === "rate_limited" && context ? t(`${context}.rate`) : "";
-	const text = specific || (code ? t(`err.${code}`) : "");
-	const fallback = text && text !== `err.${code}` ? text : t("err.generic");
-	const detail = payload && typeof payload.detail === "string" && payload.detail ? ` (${payload.detail})` : "";
-	return fallback + detail;
-}
-
 function applyDom() {
 	document.documentElement.lang = LANG === "zh" ? "zh-CN" : "en";
 	document.title = t("meta.title");
@@ -165,12 +155,10 @@ function renderReleases(data) {
 			pending.append(row);
 		}
 		box.append(pending);
-		const reason = data.reason;
-		if (reason && typeof reason.code === "string") {
-			const why = t(`download.why.${reason.code}`);
-			const detail = typeof reason.detail === "string" && reason.detail ? ` (${reason.detail})` : "";
-			box.append(el("p", "note small", (why === `download.why.${reason.code}` ? t("download.why.generic") : why) + detail));
-		}
+		const link = el("a", "note small", t("download.cta.releases"));
+		link.href = `${REPO_URL}/releases`;
+		link.rel = "noopener";
+		box.append(link);
 		return;
 	}
 
@@ -219,136 +207,52 @@ function renderReleases(data) {
 	}
 }
 
+/**
+ * 页面是纯静态的：没有自己的接口，直接读 GitHub 的公开 API（浏览器可跨域）。
+ * 读不到、或仓库还没有发布，就退回「即将发布」+ 发布页链接——不编造下载地址。
+ */
+const GITHUB_RELEASES = "https://api.github.com/repos/renjianfj163/PCB/releases?per_page=30";
+
+function windowsAssets(release) {
+	const assets = Array.isArray(release.assets) ? release.assets : [];
+	return assets
+		.filter(asset => /windows|win32|\.exe$/i.test(String(asset.name ?? "")))
+		.map(asset => {
+			const digest = typeof asset.digest === "string" ? asset.digest : "";
+			return {
+				name: String(asset.name ?? ""),
+				size: Number(asset.size ?? 0),
+				url: String(asset.browser_download_url ?? ""),
+				sha256: /^sha256:[0-9a-f]{64}$/i.test(digest) ? digest.slice(7) : undefined,
+			};
+		});
+}
+
+function toRelease(release) {
+	return {
+		version: String(release.tag_name ?? release.name ?? ""),
+		tag: String(release.tag_name ?? ""),
+		publishedAt: release.published_at ?? null,
+		notes: String(release.body ?? ""),
+		prerelease: Boolean(release.prerelease),
+		htmlUrl: String(release.html_url ?? ""),
+		assets: windowsAssets(release),
+	};
+}
+
 async function loadReleases() {
-	let data;
+	let list = [];
 	try {
-		const reply = await fetch("/api/releases", { cache: "no-cache" });
-		data = await reply.json();
+		const reply = await fetch(GITHUB_RELEASES, { headers: { accept: "application/vnd.github+json" } });
+		if (reply.ok) list = await reply.json();
 	} catch (error) {
-		data = { ok: true, releases: [], reason: { code: "github_unreachable", detail: error.message } };
+		console.warn("releases unavailable:", error.message);
 	}
-	renderReleases(data);
-
-	// 报告表里的「版本」跟着版本列表走，并且始终有「还没安装」。
-	const select = $("bug-version");
-	select.textContent = "";
-	select.append(el("option", null, t("bugs.notInstalled")));
-	for (const release of Array.isArray(data.releases) ? data.releases : []) {
-		const option = el(
-			"option",
-			null,
-			`${release.version}${release.prerelease ? t("bugs.prereleaseTag") : ""}`,
-		);
-		option.value = release.version ?? "";
-		select.append(option);
-	}
+	const all = (Array.isArray(list) ? list : []).filter(release => !release.draft).map(toRelease);
+	const stable = all.filter(release => !release.prerelease);
+	// 正式版优先；只有预发布时才展示预发布，并由页面标明。
+	renderReleases({ releases: stable.length > 0 ? stable : all.slice(0, 1) });
 }
-
-// ——— 追问 ———
-
-const history = [];
-
-function turn(role, text) {
-	const thread = $("thread");
-	const div = el("div", `turn ${role}`);
-	div.append(el("span", "who", role === "user" ? t("ask.you") : t("ask.bot")));
-	div.append(document.createTextNode(text));
-	thread.append(div);
-	return div;
-}
-
-async function ask(event) {
-	event.preventDefault();
-	const input = $("question");
-	const question = input.value.trim();
-	if (!question) return;
-
-	turn("user", question);
-	history.push({ role: "user", content: question });
-	input.value = "";
-	const pending = turn("assistant", t("ask.working"));
-	const send = event.target.querySelector("button");
-	send.disabled = true;
-
-	try {
-		const reply = await fetch("/api/intro", {
-			method: "POST",
-			headers: { "content-type": "application/json" },
-			body: JSON.stringify({ question, lang: LANG, history: history.slice(-6) }),
-		});
-		const data = await reply.json().catch(() => ({}));
-		if (data.ok && typeof data.reply === "string") {
-			pending.lastChild.textContent = data.reply;
-			history.push({ role: "assistant", content: data.reply });
-		} else if (data.ok && data.degraded === "no_model") {
-			pending.lastChild.textContent = t("ask.degraded");
-		} else {
-			pending.lastChild.textContent = errorText(data, "ask");
-		}
-	} catch (error) {
-		pending.lastChild.textContent = errorText({ code: "generic", detail: error.message }, "ask");
-	} finally {
-		send.disabled = false;
-		input.focus();
-	}
-}
-
-// ——— 报告问题 ———
-
-$("bug").addEventListener("submit", async event => {
-	event.preventDefault();
-	const result = $("bug-result");
-	const button = $("bug-send");
-
-	const did = $("bug-did").value.trim();
-	const saw = $("bug-saw").value.trim();
-	if (!did || !saw) {
-		result.hidden = false;
-		result.className = "answer warn";
-		result.textContent = t("bugs.needFields");
-		return;
-	}
-
-	button.disabled = true;
-	result.hidden = false;
-	result.className = "answer";
-	result.textContent = t("bugs.sending");
-
-	try {
-		const reply = await fetch("/api/bugs", {
-			method: "POST",
-			headers: { "content-type": "application/json" },
-			body: JSON.stringify({
-				lang: LANG,
-				version: $("bug-version").value,
-				system: $("bug-system").value,
-				did,
-				saw,
-				omp: $("bug-omp").value.trim(),
-				logs: $("bug-logs").value,
-			}),
-		});
-		const data = await reply.json().catch(() => ({}));
-		if (data.ok) {
-			result.className = "answer ok";
-			result.textContent = "";
-			result.append(document.createTextNode(`${t("bugs.okPrefix")}${data.number}: `));
-			const link = el("a", null, data.url);
-			link.href = data.url;
-			link.rel = "noopener";
-			result.append(link);
-			$("bug").reset();
-		} else {
-			result.className = "answer warn";
-			result.textContent = errorText(data, "bugs");
-		}
-	} catch (error) {
-		result.className = "answer warn";
-		result.textContent = errorText({ code: "generic", detail: error.message }, "bugs");
-	} finally {
-		button.disabled = false;
-	}
-});
 
 // ——— 启动 ———
 
@@ -363,6 +267,5 @@ $("bug").addEventListener("submit", async event => {
 	}
 
 	applyDom();
-	$("ask").addEventListener("submit", ask);
 	await loadReleases();
 })();

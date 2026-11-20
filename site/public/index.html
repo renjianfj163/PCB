@@ -218,10 +218,11 @@
       <span data-i18n="download.source">你也可以通过 GitHub 获取源码，按照开发文档自行运行。</span>
       <a href="https://github.com/renjianfj163/PCB" data-i18n="download.cta.github">查看 GitHub 项目</a>
       <a href="https://github.com/renjianfj163/PCB/blob/main/docs/install.md" data-i18n="download.cta.docs">阅读安装文档</a>
+      <a href="https://github.com/renjianfj163/PCB/releases" data-i18n="download.cta.releases">查看 GitHub 发布页</a>
     </p>
   </section>
 
-  <section class="block split" id="faq">
+  <section class="block" id="faq">
     <div>
       <div class="block-head">
         <p class="eyebrow" data-i18n="faq.eyebrow">FAQ</p>
@@ -239,61 +240,15 @@
       </div>
     </div>
 
-    <aside class="card ask-card">
-      <h3 data-i18n="ask.title">问一句</h3>
-      <form id="ask" class="ask">
-        <label class="sr-only" for="question" data-i18n="ask.title">问一句</label>
-        <textarea id="question" rows="2" maxlength="1000" data-i18n-placeholder="ask.placeholder" placeholder="比如：它和直接聊天有什么不同？"></textarea>
-        <button type="submit" class="btn primary" data-i18n="ask.send">提问</button>
-      </form>
-      <p class="note small" data-i18n="ask.note">这个助手只介绍 PCB，不会修改你的文件。</p>
-      <div class="thread" id="thread" aria-live="polite"></div>
-    </aside>
   </section>
 
   <section class="block" id="bugs">
     <details class="card bugs">
       <summary><span data-i18n="bugs.title">报告问题</span></summary>
-      <p class="note small" data-i18n="bugs.lead">提交后会在 GitHub 上开一条 Issue。</p>
-      <form id="bug">
-        <div class="grid two">
-          <label>
-            <span data-i18n="bugs.version">版本</span>
-            <select id="bug-version"><option>还没安装</option></select>
-          </label>
-          <label>
-            <span><span data-i18n="bugs.system">系统</span> <em data-i18n="common.required">必填</em></span>
-            <select id="bug-system">
-              <option value="Windows">Windows</option>
-              <option value="macOS">macOS</option>
-              <option value="Linux">Linux</option>
-            </select>
-          </label>
-        </div>
-        <label>
-          <span><span data-i18n="bugs.did">我做了什么</span> <em data-i18n="common.required">必填</em></span>
-          <textarea id="bug-did" rows="3" maxlength="4000" data-i18n-placeholder="bugs.didHint" placeholder="你点了什么、输入了什么。"></textarea>
-        </label>
-        <label>
-          <span><span data-i18n="bugs.saw">我看到了什么</span> <em data-i18n="common.required">必填</em></span>
-          <textarea id="bug-saw" rows="3" maxlength="4000" data-i18n-placeholder="bugs.sawHint" placeholder="屏幕上的提示。"></textarea>
-        </label>
-        <div class="grid two">
-          <label>
-            <span data-i18n="bugs.omp">运行组件版本（可选）</span>
-            <input id="bug-omp" maxlength="100" data-i18n-placeholder="bugs.ompHint" placeholder="omp --version 的输出">
-          </label>
-          <label>
-            <span data-i18n="bugs.logs">日志（可选）</span>
-            <textarea id="bug-logs" rows="4" maxlength="8000" data-i18n-placeholder="bugs.logsHint" placeholder="相关输出，注意删掉密钥。"></textarea>
-          </label>
-        </div>
-        <p class="actions">
-          <button type="submit" class="btn primary" id="bug-send" data-i18n="bugs.send">提交</button>
-          <span class="note small" data-i18n="bugs.note">同一 IP 一小时最多 5 次。</span>
-        </p>
-      </form>
-      <div class="answer" id="bug-result" hidden aria-live="polite"></div>
+      <p class="note small" data-i18n="bugs.lead">在 GitHub 上开一条 Issue：写清版本、系统、你做了什么、你看到了什么。请不要贴 API Key 和源码。</p>
+      <p class="actions">
+        <a class="btn primary" href="https://github.com/renjianfj163/PCB/issues/new?template=bug_report.md" rel="noopener" data-i18n="bugs.cta">打开 GitHub 表单</a>
+      </p>
     </details>
   </section>
 
