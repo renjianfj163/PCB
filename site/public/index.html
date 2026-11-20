@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PCB · 给不写代码的人用的本地程序</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <span class="brand">PCB</span>
+    <nav>
+      <a href="#intro">介绍</a>
+      <a href="#download">下载与版本</a>
+      <a href="#bugs">报告问题</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section id="intro" class="card">
+    <h1>给不写代码的人用的本地程序</h1>
+    <p class="lead">
+      你用中文说明想做什么，本机的 omp 负责对话、做计划、改文件。它跑在<strong>你自己的电脑</strong>上，
+      默认只听 <code>127.0.0.1</code>——别的机器连不进来。
+    </p>
+
+    <ul class="facts">
+      <li><b>动手前先拦一下</b>：界面拦住危险操作，并把计划变成可以点的「按这个做」。</li>
+      <li><b>三个阶段</b>：规划只读；执行时改文件、跑命令前会问；聊天只回答。</li>
+      <li><b>编辑器</b>：顶栏可以打开只绑本机的 VS Code 网页版，工作区就是当前项目。</li>
+      <li><b>密钥留在本机</b>：模型密钥用 <code>omp login</code> 配置，这个网站不接收、不保存。</li>
+      <li><b>想写代码</b>：点下面「下载与版本」把安装包装到本机；网站不替用户写代码。</li>
+      <li><b>发现问题</b>：用本页「报告问题」那张表，会在 GitHub 上开一条 Issue。</li>
+    </ul>
+
+    <p class="mini">安装和系统文件夹选择以 Windows 为先。</p>
+
+    <h2 class="sub">常见问题</h2>
+    <div class="asks" id="asks">
+      <button type="button" data-q="它跑在哪里">它跑在哪里</button>
+      <button type="button" data-q="密钥会不会上传">密钥会不会上传</button>
+      <button type="button" data-q="怎么报告问题">怎么报告问题</button>
+    </div>
+    <div class="answer" id="answer" hidden></div>
+
+    <h2 class="sub">再问一句</h2>
+    <form class="ask" id="ask">
+      <textarea id="question" rows="2" maxlength="1000" placeholder="比如：它能帮我改哪些文件？"></textarea>
+      <button type="submit" class="primary">问</button>
+    </form>
+    <p class="mini">这里只是介绍助手，不会替你改文件；写代码请下载安装包。</p>
+    <div class="thread" id="thread"></div>
+  </section>
+
+  <section id="download" class="card">
+    <h2>下载与版本</h2>
+    <p class="mini">下载公开，不用登录。校验和只有发布里给出了才显示。</p>
+    <div id="releases" class="releases">正在读取版本…</div>
+  </section>
+
+  <section id="bugs" class="card">
+    <h2>报告问题</h2>
+    <p class="mini">提交后会在 GitHub 上开一条 Issue，你会拿到编号和链接。<strong>请不要贴 API Key 和源码。</strong></p>
+    <form id="bug">
+      <div class="row two">
+        <label>
+          <span>版本</span>
+          <select id="bug-version"><option>还没安装</option></select>
+        </label>
+        <label>
+          <span>系统 <em>必填</em></span>
+          <select id="bug-system">
+            <option value="Windows">Windows</option>
+            <option value="macOS">macOS</option>
+            <option value="Linux">Linux</option>
+          </select>
+        </label>
+      </div>
+      <label>
+        <span>我做了什么 <em>必填</em></span>
+        <textarea id="bug-did" rows="3" maxlength="4000" placeholder="你点了什么、输入了什么，越具体越好。"></textarea>
+      </label>
+      <label>
+        <span>我看到了什么 <em>必填</em></span>
+        <textarea id="bug-saw" rows="3" maxlength="4000" placeholder="屏幕上的提示、报错的那句话。"></textarea>
+      </label>
+      <div class="row two">
+        <label>
+          <span>omp 版本（可选）</span>
+          <input id="bug-omp" maxlength="100" placeholder="omp --version 的输出">
+        </label>
+        <label>
+          <span>日志（可选，最多 8000 字）</span>
+          <textarea id="bug-logs" rows="4" maxlength="8000" placeholder="粘贴相关输出，注意删掉密钥。"></textarea>
+        </label>
+      </div>
+      <div class="actions">
+        <button type="submit" class="primary" id="bug-send">提交</button>
+        <span class="mini">同一 IP 一小时最多 5 次。</span>
+      </div>
+    </form>
+    <div class="answer" id="bug-result" hidden></div>
+  </section>
+
+  <footer class="foot">
+    <span>PCB 是跑在你自己电脑上的本地程序。这个网站只做三件事：介绍、提供版本下载、代为建立 Issue。</span>
+  </footer>
+</main>
+
+<script src="/app.js"></script>
+</body>
+</html>
