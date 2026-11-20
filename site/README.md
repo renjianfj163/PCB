@@ -74,6 +74,10 @@ node server.mjs
 失败一律是 `{ "ok": false, "code": "...", "detail"?: "..." }`——**code 是给页面翻译的，不是给人看的中文**。
 页面按 `err.<code>` 查字典；`rate_limited` 按表单区分文案（`ask.rate` / `bugs.rate`）。
 
+限额按**真实访客 IP**：连接本身来自回环（`127.0.0.1` / `::1` / `::ffff:127.0.0.1`）时才读
+`X-Forwarded-For` 的第一段，所以放在 Caddy / nginx 后面仍然是一人一份额度；直连时不认这个头
+（否则谁都能自己写一行 header 绕过限额）。
+
 ### `POST /api/intro`
 
 ```json
@@ -90,6 +94,8 @@ node server.mjs
 
 读 `https://api.github.com/repos/renjianfj163/PCB/releases`（`User-Agent: pcb-site`），跳过 draft，
 优先最新的正式版；只有预发布时才展示一条并标「预发布」。
+
+成功的结果在进程内存里缓存 **5 分钟**（匿名额度 60 次/小时，问不起每个访客一次）；失败不缓存。
 
 返回 `{ ok: true, releases: [...] }`；没有 release 或取不到时返回 `releases: []` 外加
 `reason: { code, detail? }`（HTTP 仍是 200，页面显示「还没有可下载的版本」+ PCB Desktop / PCB Developer 两行「即将发布」）。

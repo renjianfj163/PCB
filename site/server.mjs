@@ -89,6 +89,20 @@ const SYSTEM_PROMPT = {
 const introHits = new Map();
 const bugHits = new Map();
 
+const LOOPBACK = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
+
+/**
+ * 反代（Caddy / nginx）在本机连 127.0.0.1，真实访客只在 X-Forwarded-For 里。
+ * 只有在连接本身来自回环时才信这个头——否则谁都能自己写头绕过限额。
+ */
+function clientIp(request) {
+	const address = request.socket.remoteAddress ?? "?";
+	if (!LOOPBACK.has(address)) return address;
+	const header = request.headers["x-forwarded-for"];
+	const first = (Array.isArray(header) ? header[0] : header ?? "").split(",")[0].trim();
+	return first || address;
+}
+
 function overLimit(hits, ip, max) {
 	const now = Date.now();
 	const list = (hits.get(ip) ?? []).filter(at => now - at < 3_600_000);
@@ -149,7 +163,7 @@ function short(message) {
 // ——— 介绍对话 ———
 
 async function intro(request, response) {
-	const ip = request.socket.remoteAddress ?? "?";
+	const ip = clientIp(request);
 	let body;
 	try {
 		body = await readBody(request);
@@ -244,7 +258,19 @@ function toRelease(release) {
 	};
 }
 
+/**
+ * 公网上每个访客都打一次 GitHub，匿名额度（60 次/小时）撑不住。
+ * 成功的回答在内存里放 5 分钟；失败不缓存，下一次照旧去问。
+ */
+const RELEASES_TTL = 300_000;
+let releasesCached = null;
+
 async function releases(response) {
+	if (releasesCached && Date.now() - releasesCached.at < RELEASES_TTL) {
+		send(response, 200, releasesCached.payload);
+		return;
+	}
+
 	let list;
 	try {
 		const reply = await fetch(`${GITHUB_API}/repos/${REPO}/releases?per_page=30`, {
@@ -272,19 +298,20 @@ async function releases(response) {
 
 	const all = (Array.isArray(list) ? list : []).filter(release => !release.draft).map(toRelease);
 	const stable = all.filter(release => !release.prerelease);
-	if (stable.length === 0 && all.length === 0) {
-		send(response, 200, { ok: true, releases: [] });
-		return;
-	}
 	// 正式版优先；只有预发布时才展示预发布，并由页面标明。
-	send(response, 200, { ok: true, releases: stable.length > 0 ? stable : all.slice(0, 1) });
+	const payload =
+		stable.length === 0 && all.length === 0
+			? { ok: true, releases: [] }
+			: { ok: true, releases: stable.length > 0 ? stable : all.slice(0, 1) };
+	releasesCached = { at: Date.now(), payload };
+	send(response, 200, payload);
 }
 
 // ——— 报告问题 ———
 
 /** Issue 正文是给维护者看的，固定中文；页面上怎么说，由页面自己决定。 */
 async function bugs(request, response) {
-	const ip = request.socket.remoteAddress ?? "?";
+	const ip = clientIp(request);
 	let body;
 	try {
 		body = await readBody(request);
