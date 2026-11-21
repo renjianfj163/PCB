@@ -25,6 +25,7 @@ import type {
 	ModelRef,
 	Phase,
 	PolicyDecision,
+	PromptImage,
 	RewindResult,
 	SessionState,
 	SessionStatus,
@@ -768,23 +769,32 @@ export class PcbSession {
 		this.#deps.hub.broadcast({ t: "tool_policy", sessionId: this.record.id, tool, decision });
 	}
 
-	async prompt(text: string): Promise<{ agentInvoked: boolean; queued?: boolean }> {
+	async prompt(text: string, images: PromptImage[] = []): Promise<{ agentInvoked: boolean; queued?: boolean }> {
 		if (!this.#started) await this.ready;
-		return this.#sendPrompt(text);
+		return this.#sendPrompt(text, images);
 	}
 
-	async #sendPrompt(text: string): Promise<{ agentInvoked: boolean; queued?: boolean }> {
+	async #sendPrompt(text: string, images: PromptImage[] = []): Promise<{ agentInvoked: boolean; queued?: boolean }> {
 		// A new user message (or a queued follow-up) starts the browser over: the first call asks again.
 		this.#browserAllowed = false;
 		const client = this.#requireClient();
 		const marker =
 			this.record.phase === "build" ? "「阶段：执行」" : this.record.phase === "chat" ? "「阶段：聊天」" : "「阶段：规划」";
 		const message = `${marker}\n${text}`;
-		const response = await client.request({ type: "prompt", message });
+		const pictures = images.map(image => ({ type: "image", mimeType: image.mimeType, data: image.data }));
+		const response = await client.request({
+			type: "prompt",
+			message,
+			...(pictures.length > 0 ? { images: pictures } : {}),
+		});
 		if (response.success === false) {
 			// Typing while the agent is mid-turn queues the message instead of failing.
 			if (/already processing/i.test(response.error ?? "")) {
-				const queued = await client.request({ type: "follow_up", message });
+				const queued = await client.request({
+					type: "follow_up",
+					message,
+					...(pictures.length > 0 ? { images: pictures } : {}),
+				});
 				if (queued.success !== false) {
 					this.#scheduleRefresh({});
 					return { agentInvoked: true, queued: true };

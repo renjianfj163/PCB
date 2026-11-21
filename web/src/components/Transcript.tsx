@@ -1,10 +1,10 @@
 import { useState } from "react";
 import type { AgentMessage, SessionState } from "../../../shared/protocol.ts";
-import { phaseOf, userEntryId, userText } from "../adapters.ts";
+import { imageSources, phaseOf, promptImageSrc, userEntryId, userText } from "../adapters.ts";
 import { t } from "../i18n.ts";
 import { toolLabel } from "../labels.ts";
 import { Markdown } from "../markdown.tsx";
-import type { ToolActivity } from "../state.ts";
+import type { PendingUser, ToolActivity } from "../state.ts";
 
 /** The chip in front of a user message: which phase it was sent in. */
 const PHASE_LABEL = { plan: "规划", build: "执行", chat: "聊天" } as const;
@@ -132,7 +132,7 @@ export function Transcript({
 	messages: AgentMessage[];
 	turn: AgentMessage[];
 	live: AgentMessage | null;
-	pending: string[];
+	pending: PendingUser[];
 	tools: Record<string, ToolActivity>;
 	state: SessionState | undefined;
 	sessionAlive: boolean;
@@ -176,15 +176,23 @@ export function Transcript({
 					const body = userText(message);
 					const phase = phaseOf(message);
 					const entryId = userEntryId(message);
+					const pictures = imageSources(message);
 					return (
 						<div className="message user" key={index}>
 							<div className="message-role">
 								{t("你")}
 								{phase ? <span className="phase-chip">{t(PHASE_LABEL[phase])}</span> : null}
 							</div>
+							{pictures.length > 0 ? (
+								<div className="user-images">
+									{pictures.map((src, at) => (
+										<img key={at} src={src} alt={t("图片")} />
+									))}
+								</div>
+							) : null}
 							{body.trim() || entryId ? (
-								// The button rides the end of the last line: the text keeps its width,
-								// the control sits on the right at the same baseline.
+								// The button rides the end of the last line: the text keeps the width,
+								// the control sits on its right at the same baseline.
 								<div className="user-body">
 									{body.trim() ? <div className="user-text">{body}</div> : null}
 									{entryId ? (
@@ -244,10 +252,17 @@ export function Transcript({
 				return null;
 			})}
 
-			{pending.map((text, index) => (
+			{pending.map((entry, index) => (
 				<div className="message user" key={`pending-${index}`}>
 					<div className="message-role">{t("你")}</div>
-					<div className="user-text">{text}</div>
+					{entry.images && entry.images.length > 0 ? (
+						<div className="user-images">
+							{entry.images.map((image, at) => (
+								<img key={at} src={promptImageSrc(image)} alt={t("图片")} />
+							))}
+						</div>
+					) : null}
+					{entry.text ? <div className="user-text">{entry.text}</div> : null}
 				</div>
 			))}
 

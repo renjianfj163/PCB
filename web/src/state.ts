@@ -10,6 +10,7 @@ import type {
 	DialogRequest,
 	NoticeLevel,
 	PolicyDecision,
+	PromptImage,
 	SessionState,
 	SessionSummary,
 	UiEvent,
@@ -34,6 +35,13 @@ export interface Notice {
 	text: string;
 }
 
+/** What the user just sent: shown until the authoritative snapshot arrives. */
+export interface PendingUser {
+	text: string;
+	/** Pictures that went with the message; the text stays after omp records them. */
+	images?: PromptImage[];
+}
+
 export interface AppState {
 	boot: BootInfo | null;
 	sessions: SessionSummary[];
@@ -44,8 +52,7 @@ export interface AppState {
 	live: Record<string, AgentMessage | null>;
 	/** Assistant and tool messages of the turn in flight, in arrival order. */
 	turn: Record<string, AgentMessage[]>;
-	/** What the user just sent: shown until the authoritative snapshot arrives. */
-	pending: Record<string, string[]>;
+	pending: Record<string, PendingUser[]>;
 	tools: Record<string, Record<string, ToolActivity>>;
 	dialogs: Record<string, DialogRequest[]>;
 	/** Allow/deny decisions in arrival order, per session. */
@@ -58,7 +65,7 @@ export type Action =
 	| { type: "select"; id: string | null }
 	| { type: "set_projects"; projects: string[] }
 	| { type: "set_policies"; sessionId: string; policies: PolicyEvent[] }
-	| { type: "local_user"; sessionId: string; text: string }
+	| { type: "local_user"; sessionId: string; text: string; images?: PromptImage[] }
 	| { type: "ui"; event: UiEvent }
 	| { type: "dismiss"; key: string };
 
@@ -96,6 +103,14 @@ function blockText(content: unknown): string {
 			return type === "text" && typeof text === "string" ? text : "";
 		})
 		.join("\n");
+}
+
+/** How many picture blocks a message content carries. */
+function imageBlocks(content: unknown): number {
+	if (!Array.isArray(content)) return 0;
+	return content.filter(
+		block => block && typeof block === "object" && "type" in block && block.type === "image",
+	).length;
 }
 
 /** `{ content: ... }` from a tool result or partial result, narrowed once. */
@@ -202,7 +217,10 @@ export function reducer(state: AppState, action: Action): AppState {
 				...state,
 				pending: {
 					...state.pending,
-					[action.sessionId]: [...(state.pending[action.sessionId] ?? []), action.text],
+					[action.sessionId]: [
+						...(state.pending[action.sessionId] ?? []),
+						{ text: action.text, images: action.images },
+					],
 				},
 			};
 		case "dismiss":
@@ -238,11 +256,15 @@ export function reducer(state: AppState, action: Action): AppState {
 				case "messages": {
 					// A snapshot is authoritative for the conversation, but an echo whose
 					// message omp has not recorded yet stays visible.
-					const userTexts = event.messages
-						.filter(message => message.role === "user")
-						.map(message => blockText(message.content));
+					const userMessages = event.messages.filter(message => message.role === "user");
+					const userTexts = userMessages.map(message => blockText(message.content));
 					const pending = (state.pending[event.sessionId] ?? []).filter(
-						text => !userTexts.some(body => body.includes(text)),
+						entry =>
+							!userMessages.some(
+								(message, index) =>
+									(entry.text ? userTexts[index]!.includes(entry.text) : true) &&
+									imageBlocks(message.content) >= (entry.images?.length ?? 0),
+							),
 					);
 					return {
 						...state,

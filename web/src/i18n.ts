@@ -164,6 +164,13 @@ const EN: Record<string, string> = {
 	"聊天": "Chat",
 	"停止": "Stop",
 	"先开始一次对话": "Start a conversation first",
+	"图片": "Image",
+	"移除这张图片": "Remove this image",
+	"正在处理图片…": "Preparing the image…",
+	"图片格式不支持（只支持 PNG、JPEG、WebP）": "Unsupported image — PNG, JPEG or WebP only",
+	"一条消息最多 4 张图片": "Up to 4 images per message",
+	"图片太大，发不出去": "Too large to send",
+	"图片处理失败": "Could not read that image",
 
 	// ---- palette ----
 	"搜索项目、对话、自动化…": "Search projects, conversations, automations…",

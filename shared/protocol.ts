@@ -7,6 +7,25 @@
 /** Plan answers only, build acts, chat just talks. */
 export type Phase = "plan" | "build" | "chat";
 
+/** Formats omp's image normalization accepts from the shell. */
+export const PROMPT_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
+export type PromptImageType = (typeof PROMPT_IMAGE_TYPES)[number];
+
+/** One picture pasted into the composer: base64 without the `data:` prefix. */
+export interface PromptImage {
+	mimeType: PromptImageType;
+	data: string;
+}
+
+/** Ceilings applied on both sides, so one prompt line stays under omp's 1 MiB RPC frame. */
+export const PROMPT_IMAGE_MAX_COUNT = 4;
+/** Raw bytes for one picture after preparation. */
+export const PROMPT_IMAGE_MAX_BYTES = 450_000;
+/** Base64 characters for one picture (4/3 of the byte cap). */
+export const PROMPT_IMAGE_MAX_BASE64 = 600_000;
+/** Base64 characters across all pictures in one message. */
+export const PROMPT_IMAGE_MAX_TOTAL_BASE64 = 900_000;
+
 export type SessionStatus = "starting" | "idle" | "running" | "exited" | "error";
 
 export interface ModelRef {

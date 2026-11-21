@@ -478,10 +478,10 @@ export default function App() {
 							}
 							textAreaRef={composerRef}
 							onPhase={phase => void setPhaseOnly(phase)}
-							onSend={text =>
+							onSend={(text, images) =>
 								guard(async () => {
-									const result = await api.prompt(session.id, text);
-									dispatch({ type: "local_user", sessionId: session.id, text });
+									const result = await api.prompt(session.id, text, images);
+									dispatch({ type: "local_user", sessionId: session.id, text, images });
 									if (result.queued) setInfo(t("这一轮还在跑，已排队，等它结束再发送。"));
 								})
 							}

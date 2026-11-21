@@ -4,7 +4,7 @@
  * each rail page.
  */
 
-import type { AgentMessage, PolicyDecision } from "../../shared/protocol.ts";
+import type { AgentMessage, PolicyDecision, PromptImage } from "../../shared/protocol.ts";
 import { TOOL_LABELS } from "./labels.ts";
 import type { PolicyEvent, ToolActivity } from "./state.ts";
 
@@ -303,6 +303,23 @@ function imageSource(block: Record<string, unknown>): string | null {
 	if (data.startsWith("data:")) return data;
 	const mime = typeof block.mimeType === "string" ? block.mimeType : "image/png";
 	return `data:${mime};base64,${data}`;
+}
+
+/** A shell picture as a ready `<img src>`. */
+export function promptImageSrc(image: PromptImage): string {
+	return `data:${image.mimeType};base64,${image.data}`;
+}
+
+/** Every picture block in a message, resolved to `<img src>` (inline base64 or the blob route). */
+export function imageSources(message: AgentMessage): string[] {
+	if (!Array.isArray(message.content)) return [];
+	const sources: string[] = [];
+	for (const block of message.content) {
+		if (!block || typeof block !== "object" || block.type !== "image") continue;
+		const src = imageSource(block);
+		if (src) sources.push(src);
+	}
+	return sources;
 }
 
 function firstUrl(text: string): string | undefined {

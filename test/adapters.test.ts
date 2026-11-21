@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { AgentMessage } from "../shared/protocol.ts";
-import { planSegment, relativeTo, terminalEntries, toolCallsOf, userText } from "../web/src/adapters.ts";
+import {
+	imageSources,
+	planSegment,
+	promptImageSrc,
+	relativeTo,
+	terminalEntries,
+	toolCallsOf,
+	userText,
+} from "../web/src/adapters.ts";
 
 function user(marker: string, text: string): AgentMessage {
 	return { role: "user", content: [{ type: "text", text: `${marker}\n${text}` }] };
@@ -112,4 +120,26 @@ test("a live tool activity overrides the snapshot status", () => {
 	const entries = terminalEntries(messages, { c1: { name: "bash", args: {}, output: "", status: "running" } }, []);
 	assert.equal(entries[0]?.status, "running");
 	assert.equal(entries[0]?.policy, undefined);
+});
+
+test("a user picture becomes an image source beside its text", () => {
+	const message: AgentMessage = {
+		role: "user",
+		content: [
+			{ type: "text", text: `${PLAN}\n这是什么` },
+			{ type: "image", mimeType: "image/png", data: "iVBORw0KGgo=" },
+		],
+	};
+	assert.deepEqual(imageSources(message), ["data:image/png;base64,iVBORw0KGgo="]);
+	assert.equal(userText(message), "这是什么");
+});
+
+test("a persisted blob reference is read through the shell route", () => {
+	const ref = `blob:sha256:${"a".repeat(64)}`;
+	const message: AgentMessage = { role: "user", content: [{ type: "image", data: ref }] };
+	assert.deepEqual(imageSources(message), [`/api/blob?ref=${encodeURIComponent(ref)}`]);
+});
+
+test("a shell picture renders from its own base64", () => {
+	assert.equal(promptImageSrc({ mimeType: "image/jpeg", data: "AAAA" }), "data:image/jpeg;base64,AAAA");
 });

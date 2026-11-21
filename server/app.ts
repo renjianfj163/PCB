@@ -6,6 +6,7 @@ import { createReadStream, existsSync, statSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { extname, join, normalize, resolve } from "node:path";
 import type { Hub } from "./hub.ts";
+import { readPromptImages } from "./attachments.ts";
 import { readBlob } from "./blobs.ts";
 import { runCommand } from "./exec-box.ts";
 import { clearRaw, rawLines, watchRaw } from "./raw.ts";
@@ -24,6 +25,7 @@ import type {
 	DialogAnswer,
 	ModelsInfo,
 	Phase,
+	PromptImage,
 	SessionSummary,
 	UiEvent,
 } from "../shared/protocol.ts";
@@ -636,13 +638,20 @@ export class App {
 			switch (action) {
 				case "prompt": {
 					if (method !== "POST") break;
-					const body = (await this.#readJson(request)) as { text?: string };
-					const text = body.text?.trim();
-					if (!text) {
+					const body = (await this.#readJson(request)) as { text?: unknown; images?: unknown };
+					const text = typeof body.text === "string" ? body.text.trim() : "";
+					let images: PromptImage[];
+					try {
+						images = readPromptImages(body.images);
+					} catch (error) {
+						this.#json(response, 400, { error: (error as Error).message });
+						return;
+					}
+					if (!text && images.length === 0) {
 						this.#json(response, 400, { error: "消息为空" });
 						return;
 					}
-					const result = await session.prompt(text);
+					const result = await session.prompt(text, images);
 					this.#json(response, 200, result);
 					return;
 				}

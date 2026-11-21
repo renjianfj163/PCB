@@ -14,6 +14,7 @@ import type {
 	PageShot,
 	Phase,
 	PolicyDecision,
+	PromptImage,
 	RewindResult,
 	ShellKind,
 	SessionState,
@@ -53,10 +54,10 @@ export const api = {
 
 	deleteSession: (id: string) => json<{ ok: true }>(`/api/sessions/${id}`, { method: "DELETE" }),
 
-	prompt: (id: string, text: string) =>
+	prompt: (id: string, text: string, images?: PromptImage[]) =>
 		json<{ agentInvoked: boolean; queued?: boolean }>(`/api/sessions/${id}/prompt`, {
 			method: "POST",
-			body: JSON.stringify({ text }),
+			body: JSON.stringify({ text, ...(images && images.length > 0 ? { images } : {}) }),
 		}),
 
 	abort: (id: string) => json<{ ok: true }>(`/api/sessions/${id}/abort`, { method: "POST" }),
