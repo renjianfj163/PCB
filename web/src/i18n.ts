@@ -160,7 +160,7 @@ const EN: Record<string, string> = {
 	"已花费 {s}": "Spent {s}",
 	"下一条消息使用的阶段": "Phase for the next message",
 	"规划": "Plan",
-	"执行": "Execute",
+	"执行": "Build",
 	"聊天": "Chat",
 	"停止": "Stop",
 	"先开始一次对话": "Start a conversation first",
@@ -225,17 +225,17 @@ const EN: Record<string, string> = {
 	"还没有待办": "No todos yet",
 	"还没有规划内容。在下方输入框把阶段切到「规划」再提问。":
 		"Nothing planned yet. Switch the phase to Plan below and ask.",
-	"切到执行阶段，按这份计划动手": "Switch to Execute and follow this plan",
+	"切到执行阶段，按这份计划动手": "Switch to Build and follow this plan",
 	"等助手写出计划后才能批准": "Approve once the assistant has written the plan",
 	"按这个做": "Do this",
 	"再改一改": "Revise it",
 	"改成别的": "Change it",
 	"已经在执行阶段。切回「规划」只影响下一条消息。":
-		"Already executing. Switching back to Plan only affects the next message.",
+		"Already in Build. Switching back to Plan only affects the next message.",
 	"聊天阶段只回答问题，不改文件、不跑命令；需要动手时切到「执行」。":
-		"Chat only answers questions — no files, no commands. Switch to Execute to act.",
+		"Chat only answers questions — no files, no commands. Switch to Build to act.",
 	"「按这个做」会切到执行阶段；写文件自动进行，跑命令仍会问你。":
-		"“Do this” switches to Execute: writes go ahead, commands still ask you.",
+		"“Do this” switches to Build: writes go ahead, commands still ask you.",
 	"等助手写出计划后才能批准。": "Approve once the assistant has written the plan.",
 
 	// ---- rail: terminal ----
@@ -355,7 +355,7 @@ const EN: Record<string, string> = {
 	"（先添加一个项目）": "(add a project first)",
 	"阶段": "Phase",
 	"规划（只读，先给计划）": "Plan (read-only, plans first)",
-	"执行（直接动手）": "Execute (acts right away)",
+	"执行（直接动手）": "Build (acts right away)",
 	"要它做什么": "What should it do",
 	"例如：把下载文件夹里的图片按月份归档": "e.g. file images in Downloads by month",
 	"每天几点（可空）": "Daily time (optional)",
