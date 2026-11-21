@@ -21,9 +21,17 @@ const LEFT_PANEL_KEY = "pcb.leftPanel";
 const RAIL_WIDTH_KEY = "pcb.railW";
 const PROJECT_KEY = "pcb.project";
 
+const RAIL_MIN = 260;
+const RAIL_SHARE = 0.8;
+/** The conversation column keeps at least this much before the rail takes the rest. */
+const CHAT_MIN = 360;
+
 function clampRail(width: number): number {
-	const max = Math.max(320, Math.min(600, window.innerWidth - 256 - 420));
-	return Math.min(max, Math.max(320, Math.round(width)));
+	// The sidebar is 256px open and 0 when collapsed; read it instead of assuming.
+	const sidebar = document.querySelector(".sidebar")?.getBoundingClientRect().width ?? 0;
+	const available = Math.max(RAIL_MIN + CHAT_MIN, window.innerWidth - sidebar);
+	const max = Math.max(RAIL_MIN, Math.min(available - CHAT_MIN, Math.round(available * RAIL_SHARE)));
+	return Math.min(max, Math.max(RAIL_MIN, Math.round(width)));
 }
 
 function initialRailWidth(): number {
@@ -82,6 +90,14 @@ export default function App() {
 			dispatch({ type: "boot", boot });
 		});
 	}, [guard]);
+
+	// A wider rail is only legal while the window can back it; shrink it back
+	// in when the window does, instead of letting the conversation collapse.
+	useEffect(() => {
+		const onResize = () => setRailWidth(current => clampRail(current));
+		window.addEventListener("resize", onResize);
+		return () => window.removeEventListener("resize", onResize);
+	}, []);
 
 	useEffect(() => {
 		const source = new EventSource("/api/events");
