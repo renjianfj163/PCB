@@ -25,6 +25,7 @@ import type {
 	ModelRef,
 	Phase,
 	PolicyDecision,
+	RewindResult,
 	SessionState,
 	SessionStatus,
 	SessionSummary,
@@ -101,6 +102,101 @@ function asAgentMessage(value: unknown): AgentMessage | undefined {
 	if (!value || typeof value !== "object") return undefined;
 	if (!("role" in value) || typeof value.role !== "string") return undefined;
 	return value as AgentMessage; // shape is open by design (omp persists new fields)
+}
+
+/** The prose of one message, joined the same way the browser joins it. */
+function messageText(message: object): string {
+	if (!("content" in message) || !Array.isArray(message.content)) return "";
+	return message.content
+		.map(block => {
+			if (!block || typeof block !== "object") return "";
+			if (!("type" in block) || block.type !== "text") return "";
+			if (!("text" in block) || typeof block.text !== "string") return "";
+			return block.text;
+		})
+		.filter(Boolean)
+		.join("\n");
+}
+
+/**
+ * `navigate_tree` addresses a session entry, not an index into `get_messages`.
+ * The active branch is the chain from `leafId` back to the root, and only that
+ * chain may be paired: a rewound-away branch keeps its own copy of the same
+ * text and must not be picked up again. Walk the chain once, then match the
+ * branch's user messages to it in order. An id omp already put on the message
+ * wins; a message with no pair gets none, and its row offers no rewind button.
+ */
+export function attachUserEntryIds(
+	messages: AgentMessage[],
+	entries: unknown,
+	leafId?: unknown,
+): AgentMessage[] {
+	const rows: Array<{ id: string; parentId?: string; message?: unknown }> = [];
+	const byId = new Map<string, { id: string; parentId?: string; message?: unknown }>();
+	for (const row of Array.isArray(entries) ? entries : []) {
+		if (!row || typeof row !== "object") continue;
+		if (!("id" in row) || typeof row.id !== "string") continue;
+		const node = {
+			id: row.id,
+			parentId: "parentId" in row && typeof row.parentId === "string" ? row.parentId : undefined,
+			message: "message" in row ? row.message : undefined,
+		};
+		rows.push(node);
+		byId.set(node.id, node);
+	}
+
+	const chain: typeof rows = [];
+	if (typeof leafId === "string" && byId.has(leafId)) {
+		const seen = new Set<string>();
+		let cursor: string | undefined = leafId;
+		while (cursor && !seen.has(cursor)) {
+			seen.add(cursor);
+			const node = byId.get(cursor);
+			if (!node) break;
+			chain.push(node);
+			cursor = node.parentId;
+		}
+	}
+	// No leaf to follow (old omp, empty session): fall back to append order.
+	const candidates = chain.length > 0 ? chain.reverse() : rows;
+
+	const userRows: Array<{ id: string; text: string }> = [];
+	for (const node of candidates) {
+		const message = node.message;
+		if (!message || typeof message !== "object") continue;
+		if (!("role" in message) || message.role !== "user") continue;
+		userRows.push({ id: node.id, text: messageText(message) });
+	}
+	const known = new Set(userRows.map(row => row.id));
+
+	let cursor = 0;
+	return messages.map(message => {
+		if (message.role !== "user") return message;
+		const existing = typeof message.entryId === "string" ? message.entryId : undefined;
+		if (existing && known.has(existing)) return message;
+		const text = messageText(message);
+		while (cursor < userRows.length && userRows[cursor]?.text !== text) cursor++;
+		const row = userRows[cursor];
+		if (!row) return message;
+		cursor += 1;
+		return { ...message, entryId: row.id };
+	});
+}
+
+/** omp refused to move: `code` says why, `message` is already the user's words. */
+export class RewindRefused extends Error {
+	readonly code?: string;
+	constructor(message: string, code?: string) {
+		super(message);
+		this.code = code;
+	}
+}
+
+/** omp's refusal codes, in the user's words. */
+export function rewindFailureText(code: string | undefined, error: string | undefined): string {
+	if (code === "session_busy") return "这一轮还在跑，等它结束再回到这句。";
+	if (code === "entry_not_found") return "找不到这句话，刷新后再试。";
+	return (error ?? "").trim() || "omp 没有回到这句，对话还在原地。";
 }
 
 export class PcbSession {
@@ -462,12 +558,60 @@ export class PcbSession {
 		if (this.#state.streaming && this.#messages.length > 0) return this.#messages;
 		try {
 			const data = await client.call<{ messages: AgentMessage[] }>({ type: "get_messages" });
-			this.#messages = Array.isArray(data?.messages) ? data.messages : [];
+			const messages = Array.isArray(data?.messages) ? data.messages : [];
+			// The tree carries the entry ids a rewind needs; the message array does not.
+			const tree = await this.#tree();
+			this.#messages = attachUserEntryIds(messages, tree.entries, tree.leafId);
 			this.#deps.hub.broadcast({ t: "messages", sessionId: this.record.id, messages: this.#messages });
 		} catch (error) {
 			this.#deps.onLog?.(`[${this.record.id}] get_messages: ${(error as Error).message}`);
 		}
 		return this.#messages;
+	}
+
+	/** The session tree in append order plus its leaf, for pairing user messages with entry ids. */
+	async #tree(): Promise<{ entries: unknown[]; leafId: unknown }> {
+		const client = this.#client;
+		if (!client || client.exited) return { entries: [], leafId: null };
+		try {
+			const data = await client.call<{ entries?: unknown[]; leafId?: unknown }>({ type: "get_entries" });
+			return {
+				entries: Array.isArray(data?.entries) ? data.entries : [],
+				leafId: data?.leafId ?? null,
+			};
+		} catch (error) {
+			this.#deps.onLog?.(`[${this.record.id}] get_entries: ${(error as Error).message}`);
+			return { entries: [], leafId: null };
+		}
+	}
+
+	/**
+	 * Move the leaf back to the parent of one user message: that line and every
+	 * reply after it leave the active path. Only the conversation tree moves —
+	 * no summarize, no files, no second session, nothing deleted from the file.
+	 */
+	async rewind(entryId: string): Promise<RewindResult> {
+		const client = this.#requireClient();
+		// omp rejects this mid-turn anyway; refusing here keeps it to one message.
+		if (this.#state.streaming || this.#state.compacting) {
+			throw new RewindRefused(rewindFailureText("session_busy", undefined), "session_busy");
+		}
+		const response = await client.request({ type: "navigate_tree", entryId });
+		if (response.success === false) {
+			const code = typeof response.code === "string" ? response.code : undefined;
+			throw new RewindRefused(rewindFailureText(code, response.error), code);
+		}
+		const data = response.data;
+		// omp said no (the summarize prompt was declined): nothing moved, nothing to reread.
+		if (data && typeof data === "object" && "cancelled" in data && data.cancelled === true) {
+			return { cancelled: true };
+		}
+		await this.refreshState();
+		await this.refreshMessages();
+		if (data && typeof data === "object" && "editorText" in data && typeof data.editorText === "string") {
+			return { cancelled: false, editorText: data.editorText };
+		}
+		return { cancelled: false };
 	}
 
 	#onUiRequest(frame: RpcFrame) {

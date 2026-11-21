@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Phase, SessionState } from "../../../shared/protocol.ts";
 import { t } from "../i18n.ts";
 
@@ -15,6 +15,8 @@ export function Composer({
 	disabled,
 	resuming,
 	textAreaRef,
+	draft,
+	onDraftBlocked,
 	onSend,
 	onAbort,
 	onPhase,
@@ -27,6 +29,13 @@ export function Composer({
 	resuming: boolean;
 	textAreaRef?: React.RefObject<HTMLTextAreaElement | null>;
 	onSend: (text: string) => Promise<void>;
+	/**
+	 * Text to put in the box from outside (a rewound message). It is filled in,
+	 * never sent, and it never replaces words the user typed themselves.
+	 */
+	draft?: { id: number; text: string } | null;
+	/** Called with the draft when the box already had unset text and was left alone. */
+	onDraftBlocked?: (text: string) => void;
 	onAbort: () => Promise<void>;
 	/** Changes only the phase the next message carries — never sends anything. */
 	onPhase: (phase: Phase) => void;
@@ -35,6 +44,20 @@ export function Composer({
 	const [text, setText] = useState("");
 	const [busy, setBusy] = useState(false);
 	const streaming = state?.streaming === true;
+	const draftId = draft?.id ?? 0;
+
+	// A new draft arrives: fill an empty box, otherwise hand it back untouched.
+	useEffect(() => {
+		if (!draft?.text) return;
+		if (text.trim().length > 0) {
+			onDraftBlocked?.(draft.text);
+			return;
+		}
+		setText(draft.text);
+		textAreaRef?.current?.focus();
+		// Only a new draft (its id) may write here; typing is not a trigger.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [draftId]);
 
 	const send = async () => {
 		const body = text.trim();

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { Automation, DialogAnswer, Phase, UiEvent } from "../../shared/protocol.ts";
 import { api } from "./api.ts";
-import { browserShots, changedFiles, planSegment, terminalEntries } from "./adapters.ts";
+import { browserShots, changedFiles, planSegment, rewindNotice, stripPhaseMarker, terminalEntries } from "./adapters.ts";
 import { Automations } from "./components/Automations.tsx";
 import { Composer } from "./components/Composer.tsx";
 import { DialogLayer } from "./components/Dialogs.tsx";
@@ -74,6 +74,9 @@ export default function App() {
 	const railWidthRef = useRef(railWidth);
 	railWidthRef.current = railWidth;
 	const composerRef = useRef<HTMLTextAreaElement | null>(null);
+	// A rewound message goes back into the composer as a draft: filled in, never sent.
+	const [draft, setDraft] = useState<{ id: number; text: string } | null>(null);
+	const draftSeq = useRef(0);
 
 	const guard = useCallback(async (run: () => Promise<void>) => {
 		try {
@@ -265,6 +268,25 @@ export default function App() {
 		composerRef.current?.focus();
 	};
 
+	/**
+	 * Move the conversation back to just before one user message. Only the
+	 * transcript moves: files are untouched, and the line goes into the composer
+	 * as a draft instead of being sent again.
+	 */
+	const rewindTo = (entryId: string) =>
+		guard(async () => {
+			if (!session) return;
+			const result = await api.rewind(session.id, entryId);
+			const notice = rewindNotice(result);
+			if (notice) {
+				setInfo(t(notice));
+				return;
+			}
+			if (!result.editorText) return;
+			draftSeq.current += 1;
+			setDraft({ id: draftSeq.current, text: stripPhaseMarker(result.editorText) });
+		});
+
 	/** The composer's phase switch: changes only what the next message carries. */
 	const setPhaseOnly = (phase: Phase) =>
 		guard(async () => {
@@ -433,12 +455,22 @@ export default function App() {
 							state={state.states[session.id]}
 							sessionAlive={session.alive}
 							hasHistory={Boolean(session.sessionFile)}
+							canRewind={
+								session.alive &&
+								state.states[session.id]?.streaming !== true &&
+								state.states[session.id]?.compacting !== true
+							}
+							onRewind={rewindTo}
 						/>
 						<Composer
 							phase={session.phase}
 							state={state.states[session.id]}
 							disabled={!session.alive}
 							resuming={resuming === session.id}
+							draft={draft}
+							onDraftBlocked={text =>
+								setInfo(t("输入框里还有没发出去的文字，没有覆盖它。原文：{text}", { text }))
+							}
 							onResume={() =>
 								guard(async () => {
 									await api.resumeSession(session.id);

@@ -1,11 +1,13 @@
 import { useState } from "react";
 import type { AgentMessage, SessionState } from "../../../shared/protocol.ts";
+import { phaseOf, userEntryId, userText } from "../adapters.ts";
 import { t } from "../i18n.ts";
 import { toolLabel } from "../labels.ts";
 import { Markdown } from "../markdown.tsx";
 import type { ToolActivity } from "../state.ts";
 
-const PHASE_MARKER = /^「阶段：(规划|执行)」\n?/;
+/** The chip in front of a user message: which phase it was sent in. */
+const PHASE_LABEL = { plan: "规划", build: "执行", chat: "聊天" } as const;
 
 function argsSummary(args: unknown): string {
 	if (!args || typeof args !== "object") return "";
@@ -124,6 +126,8 @@ export function Transcript({
 	state,
 	sessionAlive,
 	hasHistory,
+	canRewind = false,
+	onRewind,
 }: {
 	messages: AgentMessage[];
 	turn: AgentMessage[];
@@ -134,7 +138,12 @@ export function Transcript({
 	sessionAlive: boolean;
 	/** The session file exists, so omp will replay a transcript. */
 	hasHistory?: boolean;
+	/** The process is alive and no turn is running: a rewind may be attempted. */
+	canRewind?: boolean;
+	onRewind?: (entryId: string) => void;
 }) {
+	// One row asks for confirmation at a time; the id is the row's session entry.
+	const [confirming, setConfirming] = useState<string | null>(null);
 	const seenToolCalls = new Set<string>();
 	// Tool results from history give finished cards their output; live frames win.
 	const callsById = new Map<string, { id: string; name: string; args: unknown }>();
@@ -164,16 +173,46 @@ export function Transcript({
 		<div className="transcript">
 			{all.map((message, index) => {
 				if (message.role === "user") {
-					const text = textBlocks(message).join("\n");
-					const marker = PHASE_MARKER.exec(text);
-					const body = text.replace(PHASE_MARKER, "");
+					const body = userText(message);
+					const phase = phaseOf(message);
+					const entryId = userEntryId(message);
 					return (
 						<div className="message user" key={index}>
-							<div className="message-role">
+							<div className={`message-role${entryId ? " with-rewind" : ""}`}>
 								{t("你")}
-								{marker ? <span className="phase-chip">{t(marker[1] ?? "")}</span> : null}
+								{phase ? <span className="phase-chip">{t(PHASE_LABEL[phase])}</span> : null}
+								{entryId ? (
+									<button
+										type="button"
+										className="rewind-btn"
+										disabled={!canRewind}
+										onClick={() => setConfirming(current => (current === entryId ? null : entryId))}
+									>
+										{t("回到这句之前")}
+									</button>
+								) : null}
 							</div>
 							<div className="user-text">{body}</div>
+							{entryId && confirming === entryId ? (
+								<div className="rewind-confirm">
+									<p>{t("回到这句之前？这句和后面的对话会离开当前路径，文件不会改。")}</p>
+									<div className="rewind-actions">
+										<button
+											type="button"
+											className="secondary"
+											onClick={() => {
+												setConfirming(null);
+												onRewind?.(entryId);
+											}}
+										>
+											{t("确认")}
+										</button>
+										<button type="button" className="ghost" onClick={() => setConfirming(null)}>
+											{t("取消")}
+										</button>
+									</div>
+								</div>
+							) : null}
 						</div>
 					);
 				}

@@ -14,6 +14,7 @@ import type {
 	PageShot,
 	Phase,
 	PolicyDecision,
+	RewindResult,
 	ShellKind,
 	SessionState,
 	SessionSummary,
@@ -59,6 +60,10 @@ export const api = {
 		}),
 
 	abort: (id: string) => json<{ ok: true }>(`/api/sessions/${id}/abort`, { method: "POST" }),
+
+	/** Move the conversation leaf back to just before one user message; files stay as they are. */
+	rewind: (id: string, entryId: string) =>
+		json<RewindResult>(`/api/sessions/${id}/rewind`, { method: "POST", body: JSON.stringify({ entryId }) }),
 
 	setPhase: (id: string, phase: Phase) =>
 		json<{ phase: Phase }>(`/api/sessions/${id}/phase`, { method: "POST", body: JSON.stringify({ phase }) }),

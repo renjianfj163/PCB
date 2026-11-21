@@ -14,7 +14,7 @@ import { openIde } from "./vscode-desktop.ts";
 import { frameCheck } from "./frame-check.ts";
 import { pageShot } from "./screenshot.ts";
 import { PathRefused, listDirectory, readPreview } from "./project-files.ts";
-import { PcbSession } from "./session.ts";
+import { PcbSession, RewindRefused } from "./session.ts";
 import type { Store, SessionRecord } from "./store.ts";
 import type {
 	Automation,
@@ -709,6 +709,23 @@ export class App {
 				case "refresh": {
 					await Promise.all([session.refreshState(), session.refreshMessages()]);
 					this.#json(response, 200, { state: session.state, messages: session.messages });
+					return;
+				}
+				case "rewind": {
+					if (method !== "POST") break;
+					const body = (await this.#readJson(request)) as { entryId?: unknown };
+					const entryId = typeof body.entryId === "string" ? body.entryId.trim() : "";
+					if (!entryId) {
+						this.#json(response, 400, { error: "缺少 entryId" });
+						return;
+					}
+					try {
+						this.#json(response, 200, await session.rewind(entryId));
+					} catch (error) {
+						// A refusal changed nothing: same conversation, same files.
+						if (!(error instanceof RewindRefused)) throw error;
+						this.#json(response, 409, { error: error.message, code: error.code });
+					}
 					return;
 				}
 			}

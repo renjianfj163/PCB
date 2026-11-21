@@ -58,7 +58,7 @@ export function textBlocks(message: AgentMessage): string[] {
 		.filter(text => text.trim().length > 0);
 }
 
-function phaseOf(message: AgentMessage): "plan" | "build" | "chat" | null {
+export function phaseOf(message: AgentMessage): "plan" | "build" | "chat" | null {
 	if (message.role !== "user") return null;
 	const text = textBlocks(message).join("\n").trimStart();
 	for (const [marker, phase] of Object.entries(PHASE_MARKERS)) {
@@ -67,13 +67,35 @@ function phaseOf(message: AgentMessage): "plan" | "build" | "chat" | null {
 	return null;
 }
 
-/** A user message without its phase marker, as the transcript shows it. */
-export function userText(message: AgentMessage): string {
-	const text = textBlocks(message).join("\n");
+/**
+ * A user message without the phase marker the shell put in front of it. All
+ * three phases are markers; anything else is left exactly as it was typed.
+ */
+export function stripPhaseMarker(text: string): string {
 	for (const marker of Object.keys(PHASE_MARKERS)) {
 		if (text.startsWith(marker)) return text.slice(marker.length).replace(/^\n/, "");
 	}
 	return text;
+}
+
+/** A user message without its phase marker, as the transcript shows it. */
+export function userText(message: AgentMessage): string {
+	return stripPhaseMarker(textBlocks(message).join("\n"));
+}
+
+/**
+ * The session entry a row can rewind to. The server pairs `get_messages` with
+ * `get_entries` and sets `entryId`; a message it could not pair has no button.
+ */
+export function userEntryId(message: AgentMessage): string | null {
+	if (message.role !== "user") return null;
+	const id = message.entryId;
+	return typeof id === "string" && id.length > 0 ? id : null;
+}
+
+/** What to say when omp declined the move without failing: nothing happened. */
+export function rewindNotice(result: { cancelled: boolean }): string | null {
+	return result.cancelled ? "没有移动。对话还在原地。" : null;
 }
 
 /** The most recent assistant prose: what the plan panel shows in the planning phase. */

@@ -69,6 +69,15 @@ export interface AgentMessage {
 	[extra: string]: unknown;
 }
 
+/**
+ * Outcome of `POST /api/sessions/:id/rewind`. `editorText` is the user message
+ * that left the active path, exactly as omp kept it (phase marker included).
+ */
+export interface RewindResult {
+	cancelled: boolean;
+	editorText?: string;
+}
+
 export interface AskOption {
 	label: string;
 	description?: string;

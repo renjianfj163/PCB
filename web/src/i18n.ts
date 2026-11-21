@@ -195,6 +195,9 @@ const EN: Record<string, string> = {
 	"先描述你想做的事，助手会先给出计划，你同意之后它才动手。":
 		"Describe what you want. The assistant writes a plan first and only acts once you agree.",
 	"点下面的「恢复会话」接着聊。": "Use Resume below to continue.",
+	"回到这句之前": "Rewind to before this",
+	"回到这句之前？这句和后面的对话会离开当前路径，文件不会改。":
+		"Rewind to before this message? It and the replies after it leave the active path. Files are not touched.",
 
 	// ---- rail: files ----
 	"这次改过": "Changed",
@@ -369,6 +372,13 @@ const EN: Record<string, string> = {
 	// ---- server messages the UI passes straight through ----
 	"只能在自己的项目目录里运行": "Only your own project folders can run commands",
 	"缺少请求标记": "Missing request marker",
+	"缺少 entryId": "Missing entryId",
+	"这一轮还在跑，等它结束再回到这句。": "This turn is still running — wait for it to finish before rewinding.",
+	"找不到这句话，刷新后再试。": "That line is not in the conversation — refresh and try again.",
+	"omp 没有回到这句，对话还在原地。": "omp did not move. The conversation stays where it was.",
+	"没有移动。对话还在原地。": "Nothing moved. The conversation stays where it was.",
+	"输入框里还有没发出去的文字，没有覆盖它。原文：{text}":
+		"The composer already had unsent text, so it was left alone. The original line: {text}",
 	"命令是空的": "The command is empty",
 	"命令太长，分几次跑": "Command too long — split it up",
 	"本机和内网地址不会被预览": "Local and LAN addresses are never previewed",
