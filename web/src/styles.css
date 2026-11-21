@@ -849,12 +849,12 @@ pre {
 	align-items: center;
 	gap: 4px;
 	margin-bottom: 1px;
-	padding: 0 7px;
+	padding: 0 8px;
 	height: 20px;
-	border: 1px solid var(--border);
+	border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
 	border-radius: 6px;
-	background: transparent;
-	color: var(--muted);
+	background: color-mix(in srgb, var(--accent) 8%, transparent);
+	color: var(--accent);
 	font-size: 11.5px;
 	line-height: 1;
 }
@@ -865,9 +865,9 @@ pre {
 }
 
 .rewind-btn:hover:not(:disabled) {
-	border-color: var(--border-strong);
-	color: var(--fg);
-	background: var(--hover);
+	border-color: var(--accent);
+	background: var(--accent);
+	color: var(--accent-fg);
 }
 
 .rewind-btn:disabled {
