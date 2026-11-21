@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Automation, BootInfo, SessionState, SessionSummary } from "../../../shared/protocol.ts";
 import { baseName, shortPath } from "../paths.ts";
 import { setLocale, t, useLocale } from "../i18n.ts";
@@ -114,6 +114,8 @@ export function Sidebar({
 	const [projectsOpen, setProjectsOpen] = useState(false);
 	const [configOpen, setConfigOpen] = useState(false);
 	const [picking, setPicking] = useState(false);
+	const configRef = useRef<HTMLDivElement>(null);
+	const configButtonRef = useRef<HTMLButtonElement>(null);
 	const locale = useLocale();
 	const ompRaw = useOmpRaw();
 
@@ -124,8 +126,20 @@ export function Sidebar({
 		const onKey = (event: KeyboardEvent) => {
 			if (event.key === "Escape") setConfigOpen(false);
 		};
+		// Gear stays out of this check so its own click can still toggle closed.
+		const onPointer = (event: PointerEvent) => {
+			const target = event.target;
+			if (!(target instanceof Node)) return;
+			if (configRef.current?.contains(target)) return;
+			if (configButtonRef.current?.contains(target)) return;
+			setConfigOpen(false);
+		};
 		window.addEventListener("keydown", onKey);
-		return () => window.removeEventListener("keydown", onKey);
+		window.addEventListener("pointerdown", onPointer);
+		return () => {
+			window.removeEventListener("keydown", onKey);
+			window.removeEventListener("pointerdown", onPointer);
+		};
 	}, [configOpen]);
 
 	const addProject = async () => {
@@ -267,7 +281,7 @@ export function Sidebar({
 
 			<div className="sidebar-foot">
 				{configOpen ? (
-					<div className="config-card" role="dialog" aria-label={t("配置")}>
+					<div className="config-card" ref={configRef} role="dialog" aria-label={t("配置")}>
 						<div className="config-title">{t("模型")}</div>
 						<ModelPicker session={session} state={state} onModel={onModel} />
 						<div className="config-title">{t("语言")}</div>
@@ -308,6 +322,7 @@ export function Sidebar({
 					<span className="user-name">Jian Ren</span>
 					<button
 						type="button"
+						ref={configButtonRef}
 						className={`icon-btn${configOpen ? " on" : ""}`}
 						title={t("配置")}
 						aria-expanded={configOpen}
