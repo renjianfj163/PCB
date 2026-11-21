@@ -845,19 +845,27 @@ pre {
 
 .rewind-btn {
 	flex: none;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
 	margin-bottom: 1px;
-	padding: 0 6px;
-	height: 18px;
-	border: 1px solid transparent;
+	padding: 0 7px;
+	height: 20px;
+	border: 1px solid var(--border);
 	border-radius: 6px;
 	background: transparent;
-	color: var(--dim);
-	font-size: 11px;
+	color: var(--muted);
+	font-size: 11.5px;
+	line-height: 1;
+}
+
+.rewind-icon {
+	font-size: 12px;
 	line-height: 1;
 }
 
 .rewind-btn:hover:not(:disabled) {
-	border-color: var(--border);
+	border-color: var(--border-strong);
 	color: var(--fg);
 	background: var(--hover);
 }

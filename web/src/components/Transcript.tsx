@@ -192,8 +192,12 @@ export function Transcript({
 											type="button"
 											className="rewind-btn"
 											disabled={!canRewind}
+											title={t("回到这句之前")}
 											onClick={() => setConfirming(current => (current === entryId ? null : entryId))}
 										>
+											<span className="rewind-icon" aria-hidden="true">
+												↩
+											</span>
 											{t("回到这句之前")}
 										</button>
 									) : null}
