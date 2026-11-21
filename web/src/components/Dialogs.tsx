@@ -163,12 +163,11 @@ function QuestionCard({
 	request: Extract<DialogRequest, { kind: "question" }>;
 	onAnswer: (answer: DialogAnswer) => void;
 }) {
-	const [choice, setChoice] = useState<string>("");
-	const [custom, setCustom] = useState("");
-	// Single-question asks arrive as a select menu with an "Other" escape hatch.
-	const options = request.options.filter(option => !/^Other\b/i.test(option));
-	const otherLabel = request.options.find(option => /^Other\b/i.test(option));
-
+	// omp walks an RPC host one select per answer, so every row here is a one-shot answer:
+	// clicking it answers, omp then re-asks a checkbox group with its new "(N selected)" count.
+	// The answer must be one of the option labels — omp drops anything else and re-asks, which
+	// is why this card has no free-text field of its own ("Other (type your own)" is an option
+	// row, and picking it makes omp ask for the text with a separate input prompt).
 	return (
 		<div className="dialog-card">
 			<header>
@@ -178,35 +177,13 @@ function QuestionCard({
 				<pre className="dialog-body">{request.title.split("\n").slice(1).join("\n").trim()}</pre>
 			) : null}
 			<div className="ask-options">
-				{options.map(option => (
-					<label key={option} className={`ask-option${choice === option ? " chosen" : ""}`}>
-						<input type="radio" name={`q-${request.id}`} checked={choice === option} onChange={() => setChoice(option)} />
-						<span>
-							<strong>{option}</strong>
-						</span>
-					</label>
+				{request.options.map(option => (
+					<button key={option} type="button" className="ask-option" onClick={() => onAnswer({ value: option })}>
+						{option}
+					</button>
 				))}
-				{otherLabel !== undefined || options.length === 0 ? (
-					<input
-						className="ask-custom"
-						placeholder={otherLabel ?? t("自己写一个答案")}
-						value={custom}
-						onChange={event => setCustom(event.target.value)}
-					/>
-				) : null}
 			</div>
 			<footer>
-				<button
-					type="button"
-					className="primary"
-					onClick={() => {
-						const text = custom.trim();
-						if (text) onAnswer({ value: text });
-						else if (choice) onAnswer({ value: choice });
-					}}
-				>
-					{t("提交")}
-				</button>
 				<button type="button" className="ghost" onClick={() => onAnswer({ cancelled: true })}>
 					{t("跳过")}
 				</button>

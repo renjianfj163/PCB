@@ -2101,6 +2101,8 @@ pre {
 	border-radius: 8px;
 	cursor: pointer;
 	background: var(--bg-panel);
+	width: 100%;
+	text-align: left;
 }
 
 .ask-option:hover {
