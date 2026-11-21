@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import type { PromptImage } from "../../../shared/protocol.ts";
+import { AttachmentPicker, AttachmentTray, usePromptImages } from "./attachments.tsx";
 import { t } from "../i18n.ts";
 
 function shortPath(path: string): string {
@@ -17,23 +19,25 @@ export function Home({
 	project: string | null;
 	projects: string[];
 	busy: boolean;
-	onSend: (text: string) => Promise<void>;
+	onSend: (text: string, images: PromptImage[]) => Promise<void>;
 	onPickProject: () => Promise<void>;
 }) {
 	const [text, setText] = useState("");
+	const picks = usePromptImages();
 	const input = useRef<HTMLTextAreaElement | null>(null);
 
 	useEffect(() => {
 		input.current?.focus();
 	}, []);
 
-	const ready = project !== null && text.trim().length > 0 && !busy;
+	const ready = project !== null && (text.trim().length > 0 || picks.images.length > 0) && !busy && !picks.preparing;
 
 	const send = async () => {
 		if (!ready) return;
 		const body = text.trim();
-		await onSend(body);
+		await onSend(body, picks.images);
 		setText("");
+		picks.clear();
 	};
 
 	return (
@@ -41,13 +45,20 @@ export function Home({
 			<div className="home-inner">
 				<h1>{t("想做什么？")}</h1>
 
-				<div className="home-card">
+				<div className={`home-card${picks.dragging ? " dragging" : ""}`} {...picks.dragProps}>
+					<AttachmentTray
+						images={picks.images}
+						preparing={picks.preparing}
+						error={picks.error}
+						onRemove={picks.removeImage}
+					/>
 					<textarea
 						ref={input}
 						rows={4}
 						value={text}
 						placeholder={t("说说你想让电脑帮你做什么…")}
 						onChange={event => setText(event.target.value)}
+						onPaste={picks.onPaste}
 						onKeyDown={event => {
 							if (event.key === "Enter" && !event.shiftKey) {
 								event.preventDefault();
@@ -72,6 +83,7 @@ export function Home({
 									{t("添加项目")}
 								</button>
 							) : null}
+							<AttachmentPicker disabled={busy || picks.preparing} onFiles={picks.addFiles} />
 							<button type="button" className="primary" disabled={!ready} onClick={() => void send()}>
 								{busy ? t("启动中…") : t("发送")}
 							</button>

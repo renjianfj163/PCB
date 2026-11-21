@@ -223,6 +223,8 @@ export interface CreateSessionBody {
 	resumeSessionFile?: string;
 	/** Sent as the first user message once omp is ready. */
 	initialPrompt?: string;
+	/** Pictures that go with that first message. */
+	initialImages?: PromptImage[];
 }
 
 export interface ModelsInfo {

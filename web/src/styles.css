@@ -1770,6 +1770,16 @@ pre {
 	gap: 8px;
 }
 
+.home-card.dragging {
+	border-color: var(--accent);
+}
+
+.home-actions .composer-attach {
+	height: 32px;
+	padding: 0 10px;
+	font-size: 12.5px;
+}
+
 .home-card textarea {
 	border: none;
 	background: transparent;

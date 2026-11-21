@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
-import type { Automation, DialogAnswer, Phase, UiEvent } from "../../shared/protocol.ts";
+import type { Automation, DialogAnswer, Phase, PromptImage, UiEvent } from "../../shared/protocol.ts";
 import { api } from "./api.ts";
 import { browserShots, changedFiles, planSegment, rewindNotice, stripPhaseMarker, terminalEntries } from "./adapters.ts";
 import { Automations } from "./components/Automations.tsx";
@@ -238,7 +238,7 @@ export default function App() {
 		});
 
 	/** First message: creates the conversation in the chosen folder and sends it. */
-	const sendFromHome = async (text: string) => {
+	const sendFromHome = async (text: string, images: PromptImage[]) => {
 		if (!project) throw new Error(t("先选一个项目文件夹"));
 		setSending(true);
 		try {
@@ -248,10 +248,11 @@ export default function App() {
 				name: sessionTitle(text),
 				extensions: false,
 				initialPrompt: text,
+				...(images.length > 0 ? { initialImages: images } : {}),
 			});
 			dispatch({ type: "ui", event: { t: "session", session: created } });
 			dispatch({ type: "select", id: created.id });
-			dispatch({ type: "local_user", sessionId: created.id, text });
+			dispatch({ type: "local_user", sessionId: created.id, text, images });
 		} finally {
 			setSending(false);
 		}
@@ -508,7 +509,7 @@ export default function App() {
 						project={project}
 						projects={projects}
 						busy={sending}
-						onSend={text => guard(() => sendFromHome(text))}
+						onSend={(text, images) => guard(() => sendFromHome(text, images))}
 						onPickProject={addProject}
 					/>
 				)}

@@ -585,9 +585,17 @@ export class App {
 					resumeSessionFile: body.resumeSessionFile,
 					phase: body.phase,
 				});
+				let initialImages: PromptImage[];
+				try {
+					initialImages = readPromptImages(body.initialImages);
+				} catch (error) {
+					this.#json(response, 400, { error: (error as Error).message });
+					return;
+				}
 				this.#deps.store.addProject(cwd);
 				const session = this.#spawn(record);
-				if (body.initialPrompt?.trim()) session.queuePrompt(body.initialPrompt.trim());
+				const first = body.initialPrompt?.trim() ?? "";
+				if (first || initialImages.length > 0) session.queuePrompt(first, initialImages);
 				this.#deps.hub.broadcast({ t: "session", session: session.summary() });
 				this.#json(response, 201, { session: session.summary() });
 				return;

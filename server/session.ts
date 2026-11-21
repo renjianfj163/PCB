@@ -230,7 +230,7 @@ export class PcbSession {
 	#models: RpcModelInfo[] = [];
 	#refreshTimer: NodeJS.Timeout | undefined;
 	#closed = false;
-	#queuedPrompt: string | undefined;
+	#queuedPrompt: { text: string; images: PromptImage[] } | undefined;
 	/** Set once the user allows the browser in this message; cleared by the next prompt or phase change. */
 	#browserAllowed = false;
 	#started = false;
@@ -302,8 +302,8 @@ export class PcbSession {
 	}
 
 	/** First user message: sent as soon as omp is ready. */
-	queuePrompt(text: string) {
-		this.#queuedPrompt = text;
+	queuePrompt(text: string, images: PromptImage[] = []) {
+		this.#queuedPrompt = { text, images };
 	}
 
 	summary(): SessionSummary {
@@ -402,7 +402,7 @@ export class PcbSession {
 		if (queued) {
 			this.#queuedPrompt = undefined;
 			try {
-				await this.#sendPrompt(queued);
+				await this.#sendPrompt(queued.text, queued.images);
 			} catch (error) {
 				this.#failure = `发送失败：${(error as Error).message}`;
 				this.#notice("error", this.#failure);
