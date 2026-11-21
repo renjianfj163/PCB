@@ -211,7 +211,11 @@ export function reducer(state: AppState, action: Action): AppState {
 			const event = action.event;
 			switch (event.t) {
 				case "hello":
-					return { ...state, sessions: event.sessions };
+					// A new stream starts with the server's own truth: dialogs belong to the
+					// process that opened them, so anything left over from a previous
+					// connection is dead and can never be answered. The open ones are
+					// replayed right after this frame.
+					return { ...state, sessions: event.sessions, dialogs: {} };
 				case "projects":
 					return {
 						...state,
