@@ -47,38 +47,35 @@ export function ModelPicker({
 		};
 	}, [session?.id, session?.status, session?.updatedAt]);
 
-	if (!session) {
-		return (
-			<select className="config-select" disabled title={t("模型")}>
-				<option>{t("先开始一次对话")}</option>
-			</select>
-		);
-	}
+	if (!session) return null;
 
 	const current = state?.model ?? session.model ?? null;
 	const value = current ? `${current.provider}/${current.id}` : "";
 	const options = models?.models ?? [];
 
 	return (
-		<select
-			className="config-select"
-			value={value}
-			disabled={!session.alive}
-			title={t("模型")}
-			onChange={event => {
-				const [provider, id] = event.target.value.split("/");
-				if (provider && id) void onModel(provider, id);
-			}}
-		>
-			{value ? null : <option value="">{t("模型")}</option>}
-			{options.map(model => (
-				<option key={`${model.provider}/${model.id}`} value={`${model.provider}/${model.id}`}>
-					{model.id}
-				</option>
-			))}
-			{value && !options.some(model => `${model.provider}/${model.id}` === value) ? (
-				<option value={value}>{current?.id}</option>
-			) : null}
-		</select>
+		<>
+			<div className="config-title">{t("模型")}</div>
+			<select
+				className="config-select"
+				value={value}
+				disabled={!session.alive}
+				title={t("模型")}
+				onChange={event => {
+					const [provider, id] = event.target.value.split("/");
+					if (provider && id) void onModel(provider, id);
+				}}
+			>
+				{value ? null : <option value="">{t("模型")}</option>}
+				{options.map(model => (
+					<option key={`${model.provider}/${model.id}`} value={`${model.provider}/${model.id}`}>
+						{model.id}
+					</option>
+				))}
+				{value && !options.some(model => `${model.provider}/${model.id}` === value) ? (
+					<option value={value}>{current?.id}</option>
+				) : null}
+			</select>
+		</>
 	);
 }

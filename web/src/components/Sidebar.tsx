@@ -285,7 +285,6 @@ export function Sidebar({
 			<div className="sidebar-foot">
 				{configOpen ? (
 					<div className="config-card" ref={configRef} role="dialog" aria-label={t("配置")}>
-						<div className="config-title">{t("模型")}</div>
 						<ModelPicker session={session} state={state} onModel={onModel} />
 						<ThinkingPicker session={session} state={state} onThinking={onThinking} />
 						<div className="config-title">{t("语言")}</div>
