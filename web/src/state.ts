@@ -40,6 +40,8 @@ export interface PendingUser {
 	text: string;
 	/** Pictures that went with the message; the text stays after omp records them. */
 	images?: PromptImage[];
+	/** When it was sent, so the row can sit where it was written instead of at the end. */
+	at: number;
 }
 
 export interface AppState {
@@ -65,7 +67,7 @@ export type Action =
 	| { type: "select"; id: string | null }
 	| { type: "set_projects"; projects: string[] }
 	| { type: "set_policies"; sessionId: string; policies: PolicyEvent[] }
-	| { type: "local_user"; sessionId: string; text: string; images?: PromptImage[] }
+	| { type: "local_user"; sessionId: string; text: string; images?: PromptImage[]; at?: number }
 	| { type: "ui"; event: UiEvent }
 	| { type: "dismiss"; key: string };
 
@@ -219,7 +221,7 @@ export function reducer(state: AppState, action: Action): AppState {
 					...state.pending,
 					[action.sessionId]: [
 						...(state.pending[action.sessionId] ?? []),
-						{ text: action.text, images: action.images },
+						{ text: action.text, images: action.images, at: action.at ?? Date.now() },
 					],
 				},
 			};

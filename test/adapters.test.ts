@@ -3,6 +3,7 @@ import { test } from "node:test";
 import type { AgentMessage } from "../shared/protocol.ts";
 import {
 	imageSources,
+	mergePending,
 	planSegment,
 	promptImageSrc,
 	relativeTo,
@@ -142,4 +143,24 @@ test("a persisted blob reference is read through the shell route", () => {
 
 test("a shell picture renders from its own base64", () => {
 	assert.equal(promptImageSrc({ mimeType: "image/jpeg", data: "AAAA" }), "data:image/jpeg;base64,AAAA");
+});
+
+test("an echo typed mid-turn sits above the reply it caused", () => {
+	const messages: AgentMessage[] = [
+		{ role: "assistant", timestamp: 1000, content: [{ type: "text", text: "before" }] },
+		{ role: "assistant", timestamp: 2000, content: [{ type: "text", text: "after" }] },
+	];
+	const rows = mergePending(messages, [{ text: "DSL + 常驻 Python", at: 1500 }]);
+	assert.deepEqual(
+		rows.map(row => (row.kind === "pending" ? row.entry.text : row.message.timestamp)),
+		[1000, "DSL + 常驻 Python", 2000],
+	);
+});
+
+test("an echo with nothing after it stays last, and messages without timestamps keep their order", () => {
+	const rows = mergePending([{ role: "assistant", content: [] }], [{ text: "hi", at: 5 }]);
+	assert.deepEqual(
+		rows.map(row => row.kind),
+		["message", "pending"],
+	);
 });

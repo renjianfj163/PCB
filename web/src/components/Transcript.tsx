@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { AgentMessage, SessionState } from "../../../shared/protocol.ts";
-import { imageSources, phaseOf, promptImageSrc, userEntryId, userText } from "../adapters.ts";
+import { imageSources, mergePending, phaseOf, promptImageSrc, userEntryId, userText } from "../adapters.ts";
 import { t } from "../i18n.ts";
 import { toolLabel } from "../labels.ts";
 import { Markdown } from "../markdown.tsx";
@@ -149,6 +149,7 @@ export function Transcript({
 	const callsById = new Map<string, { id: string; name: string; args: unknown }>();
 	const resolved: Record<string, ToolActivity> = {};
 	const all = [...messages, ...turn];
+	const rows = mergePending(all, pending);
 	for (const message of all) {
 		for (const call of toolCalls(message)) {
 			seenToolCalls.add(call.id);
@@ -171,7 +172,23 @@ export function Transcript({
 
 	return (
 		<div className="transcript">
-			{all.map((message, index) => {
+			{rows.map((row, index) => {
+				if (row.kind === "pending") {
+					return (
+						<div className="message user" key={`pending-${index}`}>
+							<div className="message-role">{t("你")}</div>
+							{row.entry.images && row.entry.images.length > 0 ? (
+								<div className="user-images">
+									{row.entry.images.map((image, at) => (
+										<img key={at} src={promptImageSrc(image)} alt={t("图片")} />
+									))}
+								</div>
+							) : null}
+							{row.entry.text ? <div className="user-text">{row.entry.text}</div> : null}
+						</div>
+					);
+				}
+				const message = row.message;
 				if (message.role === "user") {
 					const body = userText(message);
 					const phase = phaseOf(message);
@@ -251,20 +268,6 @@ export function Transcript({
 				}
 				return null;
 			})}
-
-			{pending.map((entry, index) => (
-				<div className="message user" key={`pending-${index}`}>
-					<div className="message-role">{t("你")}</div>
-					{entry.images && entry.images.length > 0 ? (
-						<div className="user-images">
-							{entry.images.map((image, at) => (
-								<img key={at} src={promptImageSrc(image)} alt={t("图片")} />
-							))}
-						</div>
-					) : null}
-					{entry.text ? <div className="user-text">{entry.text}</div> : null}
-				</div>
-			))}
 
 			{live ? <AssistantMessage message={live} tools={resolved} streaming /> : null}
 

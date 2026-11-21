@@ -6,7 +6,7 @@
 
 import type { AgentMessage, PolicyDecision, PromptImage } from "../../shared/protocol.ts";
 import { TOOL_LABELS } from "./labels.ts";
-import type { PolicyEvent, ToolActivity } from "./state.ts";
+import type { PolicyEvent, PendingUser, ToolActivity } from "./state.ts";
 
 /** Tools that touch workspace files (mirrors server/policy.ts). */
 export const WRITE_TOOLS: Record<string, true> = {
@@ -308,6 +308,29 @@ function imageSource(block: Record<string, unknown>): string | null {
 /** A shell picture as a ready `<img src>`. */
 export function promptImageSrc(image: PromptImage): string {
 	return `data:${image.mimeType};base64,${image.data}`;
+}
+
+/** One row of the conversation: a message omp reported, or the echo of one just sent. */
+export type TranscriptRow = { kind: "message"; message: AgentMessage } | { kind: "pending"; entry: PendingUser };
+
+/**
+ * omp's messages in their own order, with every unsent echo spliced in at the moment it
+ * was written. Rendered after the list instead, the echo sits below the reply it caused
+ * for as long as the turn runs.
+ */
+export function mergePending(messages: AgentMessage[], pending: PendingUser[]): TranscriptRow[] {
+	const rows: TranscriptRow[] = messages.map(message => ({ kind: "message", message }));
+	for (const entry of pending) {
+		let index = rows.length;
+		while (index > 0) {
+			const previous = rows[index - 1]!;
+			const at = previous.kind === "message" ? previous.message.timestamp : previous.entry.at;
+			if (typeof at !== "number" || at <= entry.at) break;
+			index -= 1;
+		}
+		rows.splice(index, 0, { kind: "pending", entry });
+	}
+	return rows;
 }
 
 /** Every picture block in a message, resolved to `<img src>` (inline base64 or the blob route). */
