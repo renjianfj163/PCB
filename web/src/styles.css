@@ -831,15 +831,21 @@ pre {
 	margin-bottom: 4px;
 }
 
-/* The rewind control rides the role line, so it reads as part of the row. */
-.message-role.with-rewind {
+/* The rewind control rides the end of the last line of the sentence. */
+.user-body {
 	display: flex;
-	align-items: center;
-	gap: 8px;
+	align-items: flex-end;
+	gap: 10px;
+}
+
+.user-body .user-text {
+	flex: 1 1 auto;
+	min-width: 0;
 }
 
 .rewind-btn {
-	margin-left: auto;
+	flex: none;
+	margin-bottom: 1px;
 	padding: 0 6px;
 	height: 18px;
 	border: 1px solid transparent;

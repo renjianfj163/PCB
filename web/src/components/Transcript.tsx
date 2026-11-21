@@ -178,21 +178,27 @@ export function Transcript({
 					const entryId = userEntryId(message);
 					return (
 						<div className="message user" key={index}>
-							<div className={`message-role${entryId ? " with-rewind" : ""}`}>
+							<div className="message-role">
 								{t("你")}
 								{phase ? <span className="phase-chip">{t(PHASE_LABEL[phase])}</span> : null}
-								{entryId ? (
-									<button
-										type="button"
-										className="rewind-btn"
-										disabled={!canRewind}
-										onClick={() => setConfirming(current => (current === entryId ? null : entryId))}
-									>
-										{t("回到这句之前")}
-									</button>
-								) : null}
 							</div>
-							<div className="user-text">{body}</div>
+							{body.trim() || entryId ? (
+								// The button rides the end of the last line: the text keeps its width,
+								// the control sits on the right at the same baseline.
+								<div className="user-body">
+									{body.trim() ? <div className="user-text">{body}</div> : null}
+									{entryId ? (
+										<button
+											type="button"
+											className="rewind-btn"
+											disabled={!canRewind}
+											onClick={() => setConfirming(current => (current === entryId ? null : entryId))}
+										>
+											{t("回到这句之前")}
+										</button>
+									) : null}
+								</div>
+							) : null}
 							{entryId && confirming === entryId ? (
 								<div className="rewind-confirm">
 									<p>{t("回到这句之前？这句和后面的对话会离开当前路径，文件不会改。")}</p>
