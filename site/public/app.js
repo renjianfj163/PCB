@@ -46,8 +46,10 @@ async function loadDict(lang) {
 function applyDom() {
 	document.documentElement.lang = LANG === "zh" ? "zh-CN" : "en";
 	document.title = t("meta.title");
-	const description = document.querySelector('meta[name="description"]');
-	if (description) description.setAttribute("content", t("meta.desc"));
+	for (const [name, key] of [["description", "meta.desc"], ["og:title", "meta.title"], ["og:description", "meta.desc"]]) {
+		const meta = document.querySelector(`meta[name="${name}"], meta[property="${name}"]`);
+		if (meta) meta.setAttribute("content", t(key));
+	}
 
 	for (const el of document.querySelectorAll("[data-i18n]")) {
 		el.textContent = t(el.dataset.i18n);
@@ -107,7 +109,7 @@ function assetTable(assets) {
 		row.append(el("td", "mono", asset.name));
 		row.append(el("td", null, bytes(asset.size)));
 		row.append(
-			el("td", "mono", asset.sha256 ? `sha256 ${asset.sha256.slice(0, 16)}…` : t("download.shaHint")),
+			el("td", "mono hash", asset.sha256 ? asset.sha256 : t("download.shaHint")),
 		);
 		const action = el("td");
 		const link = el("a", null, t("download.col.action"));
@@ -123,26 +125,11 @@ function assetTable(assets) {
 
 function renderReleases(data) {
 	const box = $("releases");
-	box.textContent = "";
+	const block = $("others");
 	const list = Array.isArray(data.releases) ? data.releases : [];
-
-	const status = document.querySelector("#download .status");
-	if (status) status.hidden = list.length > 0;
-
-	if (list.length === 0) {
-		box.append(el("p", null, t("download.empty")));
-		const pending = el("ul", "pending");
-		const row = el("li");
-		row.append(el("span", null, t("download.pendingName")));
-		row.append(el("span", null, t("download.soon")));
-		pending.append(row);
-		box.append(pending);
-		const link = el("a", "note small", t("download.cta.releases"));
-		link.href = `${REPO_URL}/releases`;
-		link.rel = "noopener";
-		box.append(link);
-		return;
-	}
+	box.textContent = "";
+	if (block) block.hidden = list.length === 0;
+	if (list.length === 0) return;
 
 	for (const release of list) {
 		const article = el("article", "release");
@@ -225,11 +212,33 @@ function toRelease(release) {
 	};
 }
 
+/**
+ * 下载区顶部是一张预填真实版本的卡片（页面里写死 v0.1.0）。
+ * 接口能读到更新的正式版时改写这张卡片；读不到就保持页面里的真实数据，绝不编造。
+ */
+function syncPin(release) {
+	const asset = onePackage(Array.isArray(release.assets) ? release.assets : [])[0];
+	const set = (id, text) => {
+		const node = $(id);
+		if (node && text) node.textContent = text;
+	};
+	set("pin-version", release.version || release.tag);
+	set("pin-date", when(release.publishedAt));
+	if (!asset) return;
+	set("pin-file", asset.name);
+	set("pin-size", bytes(asset.size));
+	set("pin-sha", asset.sha256 || t("download.shaHint"));
+	const download = $("pin-download");
+	if (download && asset.url) download.href = asset.url;
+	const link = $("pin-release");
+	if (link && release.htmlUrl) link.href = release.htmlUrl;
+}
+
 async function loadReleases() {
 	let list = [];
 	try {
 		// 不带自定义头，浏览器才把这次 GET 当成简单请求。
-		// GitHub 的跨域预检不允许 Accept，带上之后真实浏览器会拦下，页面退回「即将发布」。
+		// GitHub 的跨域预检不允许 Accept，带上之后真实浏览器会拦下，页面保留静态的版本卡片。
 		const reply = await fetch(GITHUB_RELEASES);
 		if (reply.ok) list = await reply.json();
 	} catch (error) {
@@ -237,8 +246,10 @@ async function loadReleases() {
 	}
 	const all = (Array.isArray(list) ? list : []).filter(release => !release.draft).map(toRelease);
 	const stable = all.filter(release => !release.prerelease);
-	// 正式版优先；只有预发布时才展示预发布，并由页面标明。
-	renderReleases({ releases: stable.length > 0 ? stable : all.slice(0, 1) });
+	// 正式版优先；只有预发布时才用预发布，并由页面标明。
+	const latest = stable[0] || all[0];
+	if (latest) syncPin(latest);
+	renderReleases({ releases: all.filter(release => release.tag !== latest?.tag) });
 }
 
 // ——— 启动 ———

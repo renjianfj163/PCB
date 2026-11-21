@@ -19,11 +19,11 @@ PCB 的开源项目门面：一页两语（中文 / English）。一个软件包
 
 | 位置 | 怎么做 | 失败时 |
 | --- | --- | --- |
-| 下载区 | 浏览器直接读 `https://api.github.com/repos/renjianfj163/PCB/releases`（公开接口、可跨域），只挑文件名带 `windows` / `win32` / `.exe` 的 asset，链接用 API 给的 `browser_download_url` | 保留「即将发布」两行 + 链到 `https://github.com/renjianfj163/PCB/releases`，不编造地址 |
+| 下载区 | 页面里写死最新正式版（`v0.1.0`、文件名、164.4 MB、完整 SHA256、GitHub Release 与安装文档链接）；同时用浏览器读 `https://api.github.com/repos/renjianfj163/PCB/releases`（公开接口、可跨域），只挑文件名带 `windows` / `win32` / `.exe` 的 asset：读到更新的正式版就改写卡片，更早的版本列在「其他版本」里 | 保留页面里的静态真实值，不编造地址；「其他版本」整块隐藏 |
 | 报告问题 | 一条静态链接，指向仓库的 bug_report 表单 | 不适用（不经过本站） |
 | 介绍助手 | **已下线**：它需要模型密钥和一组限流接口，静态页没有 | — |
 
-匿名调用 GitHub API 的额度是每 IP 每小时 60 次，页面每次加载只读一次；读不到就退回「即将发布」。
+匿名调用 GitHub API 的额度是每 IP 每小时 60 次，页面每次加载只读一次；读不到就用页面里的静态版本卡片。
 
 ## 文件
 
@@ -89,9 +89,12 @@ cd site && node server.mjs
 - 优先级：`?lang=` → `localStorage.pcbSiteLang` → `navigator.language` → `zh`。
 - 切换语言会带 `?lang=` 重新加载（静态页，最省事也最不会错位），同时记录到 `localStorage`。
 - `data-i18n`（文本）、`data-i18n-placeholder`、`data-i18n-alt` 三种 key 由 `applyDom()` 套用；
-  `<html lang>`、`<title>`、`<meta name="description">` 也跟着变。
+  `<html lang>`、`<title>`、`<meta name="description">`、`og:title`、`og:description` 也跟着变。
 - 字典缺 key 时先用中文兜底，再用 key 本名——宁可露出 key，也不静默丢一句话。
 - 两个字典必须同 key 同数量；页面上只剩一处中文固定文本：语言切换里的「中文」。
+- 阶段名的写法：英文页用 `Chat / Plan / Build / Promote / Monetize`，中文页把 `对话 / 规划 / 实现 / 推广 / 变现`
+  放在副标题里（`stage.*`、`journey.*`）。状态永远是 `可用 / 规划中`（英文 `Available / Coming next`），
+  前三个阶段可用，后两个是规划。
 
 ## 页面
 
@@ -99,7 +102,8 @@ cd site && node server.mjs
 正文 `#edeef0`、次要 `#969ca6`、强调 `#5b8cff`（只用于主按钮、链接、章节眉与编号）；没有第二套浅色主题，
 因为产品本身就是深色桌面应用。字体 `-apple-system, "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "PingFang SC", "Noto Sans SC", system-ui`。
 
-顺序是：定位（LOCAL AI WORKSPACE + 一句主张 + 三个入口）→ 本机窗口里的真实截图 →
-三层工作方式（自然语言界面、IDE + OMP + OMP-ckpt、产品方向）→ 一个软件包的对照表 →
-From Ideas to Products（后三步标规划中）→ 三项路线图 → 本地边界 → 收束段 →
-下载 → FAQ → 收起的「报告问题」→ 关于与许可。1280 与 390 两个宽度都要看过。
+顺序是：Hero（LOCAL AI PRODUCT WORKSPACE + 主口号 + 三个入口 + 五阶段轨 + 三个属性）→ 本机窗口里的真实截图 →
+工作方式（Chat / Plan / Build / Review 四步，Review 标为 Build 环节）→ IDE + OMP + OMP-ckpt（五项能力）→
+一个 PCB 的对照表 → 产品旅程（五阶段横向轨，后两段规划中）→ 三项路线图 → 本地边界 →
+下载（写死真实版本卡片 + 其他版本）→ FAQ（每条都有完整回答）→ 收起的「报告问题」→ 关于与许可。
+1280、900 与 390 三个宽度都要看过；`document.documentElement.scrollWidth` 不应超过 `clientWidth`。

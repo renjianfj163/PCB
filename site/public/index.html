@@ -3,8 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PCB — Your Local AI Workspace</title>
-<meta name="description" content="PCB 是基于 Oh My Pi 深度扩展的本地 AI 工作平台。用自然语言把工作做完；需要时打开本机的 VS Code 或 Cursor，并用 OMP-ckpt 检查和恢复 AI 的修改。开源，MIT。">
+<title>PCB — 从对话到产品，从创意到价值</title>
+<meta name="description" content="PCB 是一个基于 Oh My Pi 构建和扩展的本地 AI 工作平台，覆盖对话、规划、实现，并向产品推广与商业化延伸。开源，MIT。">
+<meta name="theme-color" content="#08090b">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PCB">
+<meta property="og:title" content="PCB — 从对话到产品，从创意到价值">
+<meta property="og:description" content="PCB 是一个基于 Oh My Pi 构建和扩展的本地 AI 工作平台，覆盖对话、规划、实现，并向产品推广与商业化延伸。开源，MIT。">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="/styles.css">
 <link rel="alternate" hreflang="zh-CN" href="?lang=zh">
 <link rel="alternate" hreflang="en" href="?lang=en">
@@ -16,8 +22,10 @@
     <a class="brand" href="/">PCB</a>
     <nav class="nav">
       <a href="#work" data-i18n="nav.work">工作方式</a>
-      <a href="#who" data-i18n="nav.who">适合谁</a>
-      <a href="#path" data-i18n="nav.path">路线图</a>
+      <a href="#ide" data-i18n="nav.ide">IDE</a>
+      <a href="#who" data-i18n="nav.who">工作空间</a>
+      <a href="#path" data-i18n="nav.path">产品旅程</a>
+      <a href="#roadmap" data-i18n="nav.roadmap">路线图</a>
       <a href="#security" data-i18n="nav.security">本地</a>
       <a href="#download" data-i18n="nav.download">下载</a>
       <a href="#faq" data-i18n="nav.faq">常见问题</a>
@@ -35,25 +43,59 @@
 <main class="wrap">
 
   <section class="hero">
-    <p class="eyebrow" data-i18n="hero.eyebrow">LOCAL AI WORKSPACE</p>
-    <h1 data-i18n="hero.title">从一句自然语言，到一个真正可以交付的产品。</h1>
-    <p class="tagline" data-i18n="hero.tagline">Your Local AI Workspace.</p>
-    <p class="lead" data-i18n="hero.lead">PCB 是一个基于 Oh My Pi（OMP）构建和深度扩展的本地 AI 工作平台。</p>
-    <p class="lead" data-i18n="hero.lead2">我们重新设计了和 AI 协作的方式：不熟悉代码的人可以用自然语言把工作做完；熟悉代码的人可以打开本机的 VS Code 或 Cursor，和 OMP、OMP-ckpt 一起开发。</p>
-    <p class="note strong" data-i18n="hero.one">一个软件包，两种使用方式。普通用户可以直接使用，开发者可以进一步扩展。</p>
-
-    <ul class="chips">
-      <li data-i18n="hero.chip.local">本地运行</li>
-      <li data-i18n="hero.chip.mit">开源 MIT</li>
-      <li data-i18n="hero.chip.win">Windows</li>
-    </ul>
+    <p class="eyebrow" data-i18n="hero.eyebrow">LOCAL AI PRODUCT WORKSPACE</p>
+    <h1 data-i18n="hero.title">从对话到产品，从创意到价值。</h1>
+    <p class="tagline" data-i18n="hero.tagline">From Conversation to Product. From Ideas to Value.</p>
+    <p class="lead" data-i18n="hero.lead">PCB 是一个基于 Oh My Pi 构建和扩展的本地 AI 工作平台。</p>
+    <p class="lead" data-i18n="hero.lead2">通过自然语言交流、任务规划和本地执行，让 AI 帮助你把想法变成软件产品。无论你是否熟悉代码，都可以从 PCB 开始；需要深入开发时，还可以打开 VS Code 或 Cursor，结合 OMP-ckpt 继续工作。</p>
 
     <p class="cta">
       <a class="btn primary" href="#download" data-i18n="hero.cta.download">下载 PCB</a>
-      <a class="btn" href="https://github.com/renjianfj163/PCB" data-i18n="hero.cta.github">GitHub</a>
+      <a class="btn" href="https://github.com/renjianfj163/PCB" data-i18n="hero.cta.github">查看 GitHub</a>
       <a class="btn" href="https://github.com/renjianfj163/PCB/tree/main/docs" data-i18n="hero.cta.docs">产品文档</a>
     </p>
-    <p class="meta" data-i18n="hero.meta">开源 · MIT License · Windows · Local First</p>
+
+    <div class="flow-block">
+      <p class="flow-label" data-i18n="hero.flow.label">五个产品阶段</p>
+      <ol class="flow">
+        <li data-status="on">
+          <span class="flow-icon" aria-hidden="true"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M3.2 6A2.3 2.3 0 0 1 5.5 3.7h9A2.3 2.3 0 0 1 16.8 6v4.4a2.3 2.3 0 0 1-2.3 2.3H9.1l-3.4 2.9v-2.9H5.5a2.3 2.3 0 0 1-2.3-2.3Z"/></svg></span>
+          <span class="flow-name">Chat</span>
+          <span class="flow-sub" data-i18n="stage.chat">对话</span>
+          <span class="flow-state" data-i18n="state.on">可用</span>
+        </li>
+        <li data-status="on">
+          <span class="flow-icon" aria-hidden="true"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.2h9M4 10h6.6M4 14.8h4.4"/><circle cx="15.3" cy="10" r="1.6"/></svg></span>
+          <span class="flow-name">Plan</span>
+          <span class="flow-sub" data-i18n="stage.plan">规划</span>
+          <span class="flow-state" data-i18n="state.on">可用</span>
+        </li>
+        <li data-status="on">
+          <span class="flow-icon" aria-hidden="true"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7.2 6.5 3.6 10l3.6 3.5M12.8 6.5 16.4 10l-3.6 3.5"/><path d="M11.3 4.6 8.7 15.4"/></svg></span>
+          <span class="flow-name">Build</span>
+          <span class="flow-sub" data-i18n="stage.build">实现</span>
+          <span class="flow-state" data-i18n="state.on">可用</span>
+        </li>
+        <li data-status="next">
+          <span class="flow-icon" aria-hidden="true"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M3.2 8.4v3.2l2.9.5 7.6 3.6V4.3L6.1 7.9l-2.9.5Z"/><path d="M6.1 12.1v2.6a1.4 1.4 0 0 0 1.4 1.4h.7"/></svg></span>
+          <span class="flow-name">Promote</span>
+          <span class="flow-sub" data-i18n="stage.promote">推广</span>
+          <span class="flow-state" data-i18n="state.next">规划中</span>
+        </li>
+        <li data-status="next">
+          <span class="flow-icon" aria-hidden="true"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><rect x="2.6" y="5.2" width="14.8" height="9.6" rx="2"/><path d="M2.6 8.6h14.8"/><path d="M5.6 12h2.6"/></svg></span>
+          <span class="flow-name">Monetize</span>
+          <span class="flow-sub" data-i18n="stage.monetize">变现</span>
+          <span class="flow-state" data-i18n="state.next">规划中</span>
+        </li>
+      </ol>
+    </div>
+
+    <ul class="chips">
+      <li data-i18n="hero.chip.local">Local First</li>
+      <li data-i18n="hero.chip.mit">Open Source · MIT</li>
+      <li data-i18n="hero.chip.win">Windows</li>
+    </ul>
   </section>
 
   <figure class="hero-visual">
@@ -69,290 +111,348 @@
 
   <section class="block" id="work">
     <div class="block-head">
-      <p class="eyebrow" data-i18n="work.eyebrow">HOW YOU WORK</p>
-      <h2 data-i18n="work.title">不只是 AI 对话，而是一个真正的工作入口</h2>
-      <p class="lead" data-i18n="work.lead">PCB 基于 Oh My Pi（OMP）构建。我们没有重新实现一套 AI Agent，也没有在 OMP 之外再加一层对话引擎。每个会话都由本机运行的 OMP RPC 子进程处理。</p>
-      <p class="lead" data-i18n="work.lead2">我们重点改进的，是你和 OMP 之间的交互，以及 AI 辅助开发时的工作流程。</p>
+      <p class="eyebrow" data-i18n="work.eyebrow">HOW IT WORKS</p>
+      <h2 data-i18n="work.title">从一个想法开始，逐步把它变成产品。</h2>
+      <p class="lead" data-i18n="work.lead">PCB 将自然语言交互、AI 任务规划和本地执行整合在一个工作空间中。</p>
+      <p class="lead" data-i18n="work.lead2">PCB 不自己实现另一套 AI Agent。OMP 负责真正的 AI 工作，PCB 负责让这个过程更直观、更容易控制。</p>
     </div>
 
-    <article class="layer">
-      <p class="kicker" data-i18n="ui.kicker">01</p>
-      <div>
-        <h3 data-i18n="ui.title">更友好的自然语言交互</h3>
-        <p class="sub" data-i18n="ui.sub">让不会编程的人，也能用 AI 完成实际工作。</p>
-        <p data-i18n="ui.body">我们为 OMP 做了更直观的图形界面，把原本偏向开发者的交互，收成普通用户也能跟着走的步骤。</p>
-        <ul class="quad">
-          <li>
-            <h4 data-i18n="ui.chat.t">Chat</h4>
-            <p data-i18n="ui.chat.d">用自然语言交流、提出需求、讨论问题。这一步不改文件。</p>
-          </li>
-          <li>
-            <h4 data-i18n="ui.plan.t">Plan</h4>
-            <p data-i18n="ui.plan.d">让 AI 阅读项目、分析需求，并生成可以检查的实施计划。</p>
-          </li>
-          <li>
-            <h4 data-i18n="ui.build.t">Build</h4>
-            <p data-i18n="ui.build.d">你批准计划之后，交由 OMP 修改文件并完成相关任务。</p>
-          </li>
-          <li>
-            <h4 data-i18n="ui.review.t">Review</h4>
-            <p data-i18n="ui.review.d">查看实际修改，按需要接受，或恢复到之前的状态。</p>
-          </li>
-        </ul>
-        <p class="note" data-i18n="ui.note">不需要先弄懂底层命令。沿着对话和计划，就可以把工作往前做。</p>
-      </div>
-    </article>
+    <ol class="stages">
+      <li class="stage">
+        <header>
+          <h3 data-i18n="work.chat.t">Chat</h3>
+          <span class="stage-tag" data-i18n="work.chat.tag">对话</span>
+        </header>
+        <p class="role" data-i18n="work.chat.sub">把你的想法告诉 AI。</p>
+        <p data-i18n="work.chat.d">通过自然语言提出需求、讨论产品构思、分析问题、解释代码和探索解决方案。普通对话不会修改项目文件。</p>
+      </li>
+      <li class="stage">
+        <header>
+          <h3 data-i18n="work.plan.t">Plan</h3>
+          <span class="stage-tag" data-i18n="work.plan.tag">规划</span>
+        </header>
+        <p class="role" data-i18n="work.plan.sub">让 AI 理解项目，制定实施方案。</p>
+        <p data-i18n="work.plan.d">OMP 可以读取项目上下文、分析需求，并形成具体的任务计划。你可以先检查计划，再决定是否批准执行。</p>
+      </li>
+      <li class="stage">
+        <header>
+          <h3 data-i18n="work.build.t">Build</h3>
+          <span class="stage-tag" data-i18n="work.build.tag">实现</span>
+        </header>
+        <p class="role" data-i18n="work.build.sub">让想法真正变成代码和产品。</p>
+        <p data-i18n="work.build.d">批准计划后，OMP 在本机执行任务、修改文件、调用相关工具。执行过程中，用户仍然掌握必要的授权和审查权。</p>
+      </li>
+      <li class="stage stage-review">
+        <header>
+          <h3 data-i18n="work.review.t">Review</h3>
+          <span class="stage-tag" data-i18n="work.review.tag">审查</span>
+          <span class="badge now" data-i18n="work.review.badge">Build 环节</span>
+        </header>
+        <p class="role" data-i18n="work.review.sub">检查修改，确认结果。</p>
+        <p data-i18n="work.review.d">查看实际文件变化，根据需要接受修改或恢复之前的状态。</p>
+      </li>
+    </ol>
+    <p class="note" data-i18n="work.note">Review 是 Build 工作流程中的审查环节，不是与 Chat、Plan、Build 并列的另一套 AI 引擎。</p>
+  </section>
 
-    <article class="layer">
-      <p class="kicker" data-i18n="dev.kicker">02</p>
-      <div>
-        <h3 data-i18n="dev.title">VS Code / Cursor + OMP + OMP-ckpt</h3>
-        <p class="sub" data-i18n="dev.sub">给开发者一个更完整的 AI 编程协作环境。</p>
-        <p data-i18n="dev.body">对熟悉代码的人，PCB 不只是一个对话窗口，也可以是进入项目的统一入口。可以直接打开本机已经安装的桌面版 VS Code 或 Cursor，在熟悉的 IDE 里继续开发，并结合 OMP 与 OMP-ckpt 做 AI 辅助编程。</p>
-        <div class="ckpt">
-          <h4 data-i18n="ckpt.title">OMP-ckpt：让 AI 改代码的过程更容易检查，也更容易恢复。</h4>
-          <p data-i18n="ckpt.body">它解决的是连续修改之后，不容易看清改了哪里、也不容易退回去的问题。</p>
-          <ul class="quad">
-            <li>
-              <h4 data-i18n="ckpt.record.t">修改记录</h4>
-              <p data-i18n="ckpt.record.d">为开发过程建立检查点，保留修改前后的状态。</p>
-            </li>
-            <li>
-              <h4 data-i18n="ckpt.diff.t">差异检查</h4>
-              <p data-i18n="ckpt.diff.d">查看文件发生了哪些变化。</p>
-            </li>
-            <li>
-              <h4 data-i18n="ckpt.restore.t">选择性恢复</h4>
-              <p data-i18n="ckpt.restore.d">发现问题时，用检查点恢复之前的文件状态。</p>
-            </li>
-            <li>
-              <h4 data-i18n="ckpt.guard.t">开发过程保护</h4>
-              <p data-i18n="ckpt.guard.d">AI 可以参与更复杂的修改，人仍然留有检查和恢复的空间。</p>
-            </li>
-          </ul>
-        </div>
-        <p class="note" data-i18n="dev.note">普通用户可以直接使用 PCB。开发者可以再进入 IDE，用自己熟悉的方式继续检查、修改和开发。</p>
-      </div>
-    </article>
+  <section class="block" id="ide">
+    <div class="block-head">
+      <p class="eyebrow" data-i18n="ide.eyebrow">IDE · OMP · OMP-CKPT</p>
+      <h2 data-i18n="ide.title">不只是使用 AI，更是与 AI 一起开发。</h2>
+      <p class="lead" data-i18n="ide.lead">对于需要深入开发的用户，PCB 可以直接打开本机已有的桌面版 VS Code 或 Cursor。</p>
+      <p class="lead" data-i18n="ide.lead2">在熟悉的 IDE 中，结合 OMP 和 OMP-ckpt，完成代码编写、AI 修改、差异检查和项目恢复。</p>
+    </div>
 
-    <article class="layer">
-      <p class="kicker" data-i18n="make.kicker">03</p>
-      <div>
-        <h3 data-i18n="make.title">从开发工具走向产品创建</h3>
-        <p class="sub" data-i18n="make.sub">让 AI 不仅帮你写代码，也帮你把想法做成产品。</p>
-        <p data-i18n="make.body">我们希望 PCB 逐步形成一套更完整的产品创建流程：借助 AI 开发软件，再调用专门的 Skill，协助完成产品演示、内容制作、推广和商业化。这些是方向，下面的路线图会逐项标明，现在还没有提供。</p>
-      </div>
-    </article>
+    <div class="ckpt">
+      <p class="eyebrow tight" data-i18n="ckpt.eyebrow">OMP-CKPT</p>
+      <h3 data-i18n="ckpt.title">让 AI 修改代码的每一步，都更容易检查和恢复。</h3>
+      <p data-i18n="ckpt.lead">AI 可以快速修改大量代码，但开发者需要知道项目发生了什么变化，并在修改不符合预期时保留恢复的能力。OMP-ckpt 为 OMP 辅助开发提供检查点管理。</p>
+      <ul class="features">
+        <li>
+          <h3 data-i18n="ckpt.1.t">Checkpoints · 检查点</h3>
+          <p data-i18n="ckpt.1.d">在开发过程中的关键节点保存项目状态，为后续恢复提供依据。</p>
+        </li>
+        <li>
+          <h3 data-i18n="ckpt.2.t">Project History · 项目状态记录</h3>
+          <p data-i18n="ckpt.2.d">保留不同开发阶段的检查点，帮助开发者管理连续修改过程。</p>
+        </li>
+        <li>
+          <h3 data-i18n="ckpt.3.t">Restore · 状态恢复</h3>
+          <p data-i18n="ckpt.3.d">当 AI 修改导致问题时，可以利用之前保存的检查点恢复项目状态。</p>
+        </li>
+        <li>
+          <h3 data-i18n="ckpt.4.t">Non-Git Project Support · 非 Git 项目</h3>
+          <p data-i18n="ckpt.4.d">不要求用户必须先建立 Git 仓库，也可以使用检查点机制。</p>
+        </li>
+        <li>
+          <h3 data-i18n="ckpt.5.t">IDE Workflow · IDE 协同</h3>
+          <p data-i18n="ckpt.5.d">与 VS Code、Cursor 等桌面开发环境配合，让开发者在熟悉的 IDE 中检查 AI 的修改结果。</p>
+        </li>
+      </ul>
+      <p class="note" data-i18n="ckpt.note">OMP-ckpt 是项目状态保护与恢复工具，不是 Git 的替代品，也不是另一个 AI Agent。检查点的实现方式、恢复粒度和文件排除规则以当前代码为准。</p>
+    </div>
   </section>
 
   <section class="block" id="who">
     <div class="block-head">
-      <p class="eyebrow" data-i18n="who.eyebrow">ONE PACKAGE</p>
-      <h2 data-i18n="who.title">一个软件包，适合不同经验的用户</h2>
-      <p class="lead" data-i18n="who.lead">PCB 只提供一个统一的软件包，不再区分日常版和编程版。</p>
+      <p class="eyebrow" data-i18n="who.eyebrow">ONE WORKSPACE</p>
+      <h2 data-i18n="who.title">一个 PCB，适合不同的工作方式。</h2>
+      <p class="lead" data-i18n="who.lead">PCB 只有一个统一的软件包。不熟悉代码的用户，可以直接通过自然语言与 AI 协作；熟悉代码的用户，可以打开本机已有的 VS Code 或 Cursor，进一步检查、修改和开发。</p>
     </div>
     <div class="table-scroll">
       <table class="compare">
         <thead>
           <tr>
             <th data-i18n="who.col.cap">功能</th>
-            <th data-i18n="who.col.user">普通用户</th>
-            <th data-i18n="who.col.dev">开发者</th>
+            <th data-i18n="who.col.direct">直接使用 PCB</th>
+            <th data-i18n="who.col.deep">深入开发</th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <td data-i18n="who.r1">PCB 图形界面</td>
-            <td class="mark" data-i18n="who.yes">✓</td>
-            <td class="mark" data-i18n="who.yes">✓</td>
+            <td class="mark" data-i18n="who.yes">支持</td>
+            <td class="mark" data-i18n="who.yes">支持</td>
           </tr>
           <tr>
             <td data-i18n="who.r2">OMP AI 引擎</td>
-            <td class="mark" data-i18n="who.yes">✓</td>
-            <td class="mark" data-i18n="who.yes">✓</td>
+            <td class="mark" data-i18n="who.yes">支持</td>
+            <td class="mark" data-i18n="who.yes">支持</td>
           </tr>
           <tr>
             <td data-i18n="who.r3">自然语言对话</td>
-            <td class="mark" data-i18n="who.yes">✓</td>
-            <td class="mark" data-i18n="who.yes">✓</td>
+            <td class="mark" data-i18n="who.yes">支持</td>
+            <td class="mark" data-i18n="who.yes">支持</td>
           </tr>
           <tr>
             <td data-i18n="who.r4">任务规划与执行</td>
-            <td class="mark" data-i18n="who.yes">✓</td>
-            <td class="mark" data-i18n="who.yes">✓</td>
+            <td class="mark" data-i18n="who.yes">支持</td>
+            <td class="mark" data-i18n="who.yes">支持</td>
           </tr>
           <tr>
             <td data-i18n="who.r5">文件修改与审查</td>
-            <td class="mark" data-i18n="who.yes">✓</td>
-            <td class="mark" data-i18n="who.yes">✓</td>
+            <td class="mark" data-i18n="who.yes">支持</td>
+            <td class="mark" data-i18n="who.yes">支持</td>
           </tr>
           <tr>
-            <td data-i18n="who.r6">打开本机 VS Code / Cursor</td>
+            <td data-i18n="who.r6">VS Code / Cursor</td>
             <td class="mark opt" data-i18n="who.opt">可选</td>
-            <td class="mark" data-i18n="who.yes">✓</td>
+            <td class="mark opt" data-i18n="who.opt">可选</td>
           </tr>
           <tr>
-            <td data-i18n="who.r7">OMP-ckpt 开发辅助</td>
+            <td data-i18n="who.r7">OMP-ckpt</td>
             <td class="mark opt" data-i18n="who.opt">可选</td>
-            <td class="mark" data-i18n="who.yes">✓</td>
+            <td class="mark opt" data-i18n="who.opt">可选</td>
           </tr>
         </tbody>
       </table>
     </div>
-    <p class="note strong" data-i18n="who.note">是否使用 IDE，由你自己的工作习惯决定。</p>
-    <p class="note" data-i18n="who.note2">不熟悉代码，可以一直在 PCB 里用自然语言完成工作。熟悉代码，可以随时打开 VS Code 或 Cursor，进一步检查、修改和开发。</p>
+    <p class="note" data-i18n="who.note">只有一个软件包。IDE 是可选的外部开发环境：PCB 不附带编辑器，也不自动安装编辑器。</p>
   </section>
 
   <section class="block" id="path">
     <div class="block-head">
-      <p class="eyebrow" data-i18n="path.eyebrow">FROM IDEAS TO PRODUCTS</p>
-      <h2 data-i18n="path.title">From Ideas to Products.</h2>
-      <p class="lead" data-i18n="path.lead">从想法到产品。前两步是现在就能做的事，后三步是明确的后续路线。</p>
+      <p class="eyebrow" data-i18n="path.eyebrow">PRODUCT JOURNEY</p>
+      <h2 data-i18n="path.title">从创意到产品，从产品到市场。</h2>
+      <p class="lead" data-i18n="path.lead">PCB 的目标不只是帮助用户开发软件，还希望逐步打通产品演示、内容传播和商业化流程。</p>
     </div>
-    <ol class="steps">
-      <li>
-        <div class="step-top">
-          <h3 data-i18n="path.s1.t">Create</h3>
-          <span class="badge now" data-i18n="path.now">现在</span>
+    <ol class="journey">
+      <li data-status="on">
+        <div class="journey-head">
+          <span class="badge now" data-i18n="state.on">可用</span>
         </div>
-        <p data-i18n="path.s1.d">用自然语言提出想法，AI 帮助规划。</p>
+        <h3>Chat</h3>
+        <p class="journey-sub" data-i18n="journey.chat">对话 · Explore Ideas</p>
+        <p data-i18n="journey.chat.d">用自然语言提出想法，讨论需求，探索可能性。</p>
       </li>
-      <li>
-        <div class="step-top">
-          <h3 data-i18n="path.s2.t">Develop</h3>
-          <span class="badge now" data-i18n="path.now">现在</span>
+      <li data-status="on">
+        <div class="journey-head">
+          <span class="badge now" data-i18n="state.on">可用</span>
         </div>
-        <p data-i18n="path.s2.d">OMP、IDE 与 OMP-ckpt 协助完成开发。</p>
+        <h3>Plan</h3>
+        <p class="journey-sub" data-i18n="journey.plan">规划 · Plan &amp; Design</p>
+        <p data-i18n="journey.plan.d">让 AI 理解需求、分析项目并制定实施计划。</p>
       </li>
-      <li>
-        <div class="step-top">
-          <h3 data-i18n="path.s3.t">Demonstrate</h3>
-          <span class="badge planned" data-i18n="path.planned">规划中</span>
+      <li data-status="on">
+        <div class="journey-head">
+          <span class="badge now" data-i18n="state.on">可用</span>
         </div>
-        <p data-i18n="path.s3.d">通过 Skill 制作产品演示。</p>
+        <h3>Build</h3>
+        <p class="journey-sub" data-i18n="journey.build">实现 · Build Products</p>
+        <p data-i18n="journey.build.d">借助 OMP、IDE 和 OMP-ckpt，完成软件开发与项目实现。</p>
       </li>
-      <li>
-        <div class="step-top">
-          <h3 data-i18n="path.s4.t">Publish</h3>
-          <span class="badge planned" data-i18n="path.planned">规划中</span>
+      <li data-status="next">
+        <div class="journey-head">
+          <span class="badge planned" data-i18n="state.next">规划中</span>
         </div>
-        <p data-i18n="path.s4.d">把产品发布到社交和推广平台。</p>
+        <h3>Promote</h3>
+        <p class="journey-sub" data-i18n="journey.promote">推广 · Demonstrate &amp; Promote</p>
+        <p data-i18n="journey.promote.d">通过产品演示 Skill，帮助用户整理产品开发过程、制作功能演示和介绍视频，并逐步连接社交媒体及产品推广平台。</p>
       </li>
-      <li>
-        <div class="step-top">
-          <h3 data-i18n="path.s5.t">Monetize</h3>
-          <span class="badge planned" data-i18n="path.planned">规划中</span>
+      <li data-status="next">
+        <div class="journey-head">
+          <span class="badge planned" data-i18n="state.next">规划中</span>
         </div>
-        <p data-i18n="path.s5.d">通过支付接口探索商业化。</p>
+        <h3>Monetize</h3>
+        <p class="journey-sub" data-i18n="journey.monetize">变现 · Monetize &amp; Grow</p>
+        <p data-i18n="journey.monetize.d">通过支付功能和相关服务接口，为软件销售、数字产品交付及 AI 产品商业化提供支持。</p>
       </li>
     </ol>
-    <p class="note" data-i18n="path.note">现在作为事实来写的，是 PCB 界面、OMP 集成和 OMP-ckpt。演示、发布和商业化不会被说成已经上线。</p>
+    <p class="note" data-i18n="path.note">前三阶段是现在可以使用的能力。Promote 与 Monetize 属于规划，尚未提供。</p>
   </section>
 
   <section class="block" id="roadmap">
     <div class="block-head">
       <p class="eyebrow" data-i18n="road.eyebrow">ROADMAP</p>
-      <h2 data-i18n="road.title">接下来，我们希望 PCB 具备更多能力</h2>
-      <p class="lead" data-i18n="road.lead">下一阶段不只是把工作界面做完，还包括从产品开发走到产品发布。下面三项正在规划，尚未正式提供。</p>
+      <h2 data-i18n="road.title">让产品从开发走向市场。</h2>
+      <p class="lead" data-i18n="road.lead">PCB 将逐步从本地 AI 开发工作空间，扩展为覆盖产品演示、推广和商业化的工具平台。</p>
     </div>
     <div class="grid three">
       <article class="card road">
         <header>
-          <span class="badge planned" data-i18n="path.planned">规划中</span>
+          <span class="badge planned" data-i18n="state.next">规划中</span>
           <h3 data-i18n="road.demo.t">产品演示 Skill</h3>
         </header>
-        <p data-i18n="road.demo.d">把作者用 PCB / OMP 做实际产品的过程，整理成一个专门的 Skill。</p>
+        <p data-i18n="road.demo.d">将作者利用 PCB 和 OMP 开发实际产品的经验整理成专门的 Skill。通过真实开发案例，让 AI 能够辅助用户整理产品构思、开发过程、功能介绍和演示视频。</p>
+        <p class="road-goal"><span data-i18n="road.goal">目标</span> · <span data-i18n="road.demo.goal">让每个用户都能更容易展示自己创造的产品。</span></p>
       </article>
       <article class="card road">
         <header>
-          <span class="badge planned" data-i18n="path.planned">规划中</span>
+          <span class="badge planned" data-i18n="state.next">规划中</span>
           <h3 data-i18n="road.social.t">产品展示与社交推广</h3>
         </header>
-        <p data-i18n="road.social.d">打通演示和对外传播。产品做完之后，可以借助相关 Skill 整理介绍和演示视频。</p>
+        <p data-i18n="road.social.d">进一步打通产品介绍、演示视频与外部传播渠道。让用户能够整理产品介绍和演示内容，并逐步发布到支持的社交媒体和产品推广平台。</p>
+        <p class="road-goal"><span data-i18n="road.goal">目标</span> · <span data-i18n="road.social.goal">让做出来的产品能够被更多人发现。</span></p>
       </article>
       <article class="card road">
         <header>
-          <span class="badge planned" data-i18n="path.planned">规划中</span>
+          <span class="badge planned" data-i18n="state.next">规划中</span>
           <h3 data-i18n="road.pay.t">支付功能与商业化接口</h3>
         </header>
-        <p data-i18n="road.pay.d">为以后的产品商业化准备基础设施。逐步加入支付、购买和相关服务接口。</p>
+        <p data-i18n="road.pay.d">逐步引入支付功能、购买流程和相关服务接口。为软件销售、数字产品交付和 AI 产品商业化提供基础设施。</p>
+        <p class="road-goal"><span data-i18n="road.goal">目标</span> · <span data-i18n="road.pay.goal">让产品不仅能够被创造出来，也能够产生商业价值。</span></p>
       </article>
     </div>
+    <p class="note" data-i18n="road.note">以上三项均为 Coming Next · 规划中，尚未正式提供。</p>
   </section>
 
   <section class="block" id="security">
     <div class="block-head">
       <p class="eyebrow" data-i18n="sec.eyebrow">LOCAL FIRST</p>
-      <h2 data-i18n="sec.title">本地运行，用户掌握主动权</h2>
-      <p class="lead" data-i18n="sec.lead">PCB 负责友好的交互、工作流程和必要的安全控制。OMP 负责真正的 AI 工作。</p>
+      <h2 data-i18n="sec.title">你的项目在本地，控制权始终在你手中。</h2>
+      <p class="lead" data-i18n="sec.lead">PCB 将 AI 工作环境放在用户自己的电脑上。PCB 负责交互和安全控制，OMP 负责 AI 工作。</p>
     </div>
     <div class="grid auto">
       <article class="card feature">
-        <h3 data-i18n="sec.engine.t">本地 AI 引擎</h3>
+        <h3 data-i18n="sec.engine.t">Local AI Engine</h3>
         <p data-i18n="sec.engine.d">OMP 作为本机子进程运行，负责对话、计划和文件操作。</p>
       </article>
       <article class="card feature">
-        <h3 data-i18n="sec.local.t">本地服务</h3>
-        <p data-i18n="sec.local.d">PCB 服务只监听 127.0.0.1，不把这个工作环境放到公网。</p>
+        <h3 data-i18n="sec.local.t">Localhost Only</h3>
+        <p data-i18n="sec.local.d">PCB 服务仅监听 127.0.0.1，不向公网开放本地工作服务。</p>
       </article>
       <article class="card feature">
-        <h3 data-i18n="sec.auth.t">操作授权</h3>
-        <p data-i18n="sec.auth.d">执行计划需要你明确批准。危险命令需要额外确认。</p>
+        <h3 data-i18n="sec.auth.t">User Authorization</h3>
+        <p data-i18n="sec.auth.d">计划执行需要用户明确批准，受保护的命令需要额外确认。</p>
       </article>
       <article class="card feature">
-        <h3 data-i18n="sec.file.t">文件保护</h3>
-        <p data-i18n="sec.file.d">通过检查点和变更审查，降低 AI 修改项目带来的风险。</p>
+        <h3 data-i18n="sec.file.t">Project Recovery</h3>
+        <p data-i18n="sec.file.d">通过 OMP-ckpt 检查点机制，为项目修改提供恢复能力。</p>
       </article>
       <article class="card feature">
-        <h3 data-i18n="sec.ide.t">开放的开发环境</h3>
-        <p data-i18n="sec.ide.d">可以使用本机已经安装的 VS Code 或 Cursor。PCB 不附带、也不下载编辑器。</p>
+        <h3 data-i18n="sec.ide.t">Your Development Environment</h3>
+        <p data-i18n="sec.ide.d">可以使用本机已经安装的 VS Code 或 Cursor。PCB 不附带编辑器，也不强制用户安装 IDE。</p>
       </article>
     </div>
-  </section>
-
-  <section class="band">
-    <h2 data-i18n="start.title">从使用 AI，到用 AI 创造产品。</h2>
-    <p class="lead" data-i18n="start.lead">PCB 是一个开源项目。我们希望它成为普通用户和开发者都能使用的本地 AI 工作入口。</p>
-    <p class="cta">
-      <a class="btn primary" href="#download" data-i18n="hero.cta.download">下载 PCB</a>
-      <a class="btn" href="https://github.com/renjianfj163/PCB" data-i18n="hero.cta.github">GitHub</a>
-      <a class="btn" href="https://github.com/renjianfj163/PCB/tree/main/docs" data-i18n="hero.cta.docs">产品文档</a>
-    </p>
+    <p class="note" data-i18n="sec.note">模型请求是否向模型服务商发送上下文，取决于实际模型调用方式与配置。</p>
   </section>
 
   <section class="block" id="download">
     <div class="block-head split-head">
       <div>
         <p class="eyebrow" data-i18n="download.eyebrow">DOWNLOAD</p>
-        <h2 data-i18n="download.title">获取 PCB</h2>
+        <h2 data-i18n="download.title">开始创造你的第一个 AI 产品。</h2>
       </div>
-      <p class="lead" data-i18n="download.lead">Windows · Open Source · MIT License</p>
+      <p class="lead" data-i18n="download.lead">一个软件包，一个本地 AI 工作空间。Windows · Open Source · MIT License</p>
     </div>
-    <p class="status" data-i18n="download.status">当前版本尚在准备中。</p>
-    <div id="releases" class="releases" aria-live="polite"></div>
-    <p class="note">
-      <span data-i18n="download.source">你也可以通过 GitHub 获取源码，按照文档自行运行。</span>
-      <a href="https://github.com/renjianfj163/PCB" data-i18n="download.cta.github">查看 GitHub 项目</a>
-      <a href="https://github.com/renjianfj163/PCB/blob/main/docs/install.md" data-i18n="download.cta.docs">阅读安装文档</a>
-      <a href="https://github.com/renjianfj163/PCB/releases" data-i18n="download.cta.releases">查看 GitHub 发布页</a>
-    </p>
+
+    <article class="pin">
+      <div class="pin-main">
+        <div class="pin-top">
+          <span class="badge now" data-i18n="download.latest">最新正式版</span>
+          <span class="pin-plat" data-i18n="download.platform">Windows · x64</span>
+        </div>
+        <p class="pin-ver" id="pin-version">v0.1.0</p>
+        <p class="pin-file" id="pin-file">PCB-0.1.0-Developer-windows-x64.exe</p>
+        <dl class="pin-facts">
+          <div>
+            <dt data-i18n="download.dateLabel">发布日期</dt>
+            <dd id="pin-date">2026-11-20</dd>
+          </div>
+          <div>
+            <dt data-i18n="download.sizeLabel">大小</dt>
+            <dd id="pin-size">164.4 MB</dd>
+          </div>
+        </dl>
+        <p class="cta">
+          <a class="btn primary" id="pin-download" href="https://github.com/renjianfj163/PCB/releases/download/v0.1.0/PCB-0.1.0-Developer-windows-x64.exe" rel="noopener" data-i18n="download.cta.download">下载 PCB</a>
+          <a class="btn" id="pin-release" href="https://github.com/renjianfj163/PCB/releases/tag/v0.1.0" rel="noopener" data-i18n="download.cta.releases">GitHub Release</a>
+          <a class="btn" href="https://github.com/renjianfj163/PCB/blob/main/docs/install.md" data-i18n="download.cta.install">安装文档</a>
+        </p>
+      </div>
+      <div class="pin-hash">
+        <p class="pin-label">SHA256</p>
+        <code id="pin-sha">0246dcc844e28b9679e842e5aadf20cbbaab514ca77fab20530dc744ad748f09</code>
+      </div>
+    </article>
+
+    <p class="note small" data-i18n="download.source">你也可以通过 GitHub 获取源码，按照安装文档自行运行。</p>
+
+    <div class="releases-block" id="others" hidden>
+      <h3 class="releases-title" data-i18n="download.others">其他版本</h3>
+      <div id="releases" class="releases" aria-live="polite"></div>
+    </div>
   </section>
 
   <section class="block" id="faq">
     <div class="block-head">
       <p class="eyebrow" data-i18n="faq.eyebrow">FAQ</p>
-      <h2 data-i18n="faq.title">常见问题</h2>
-      <p class="lead" data-i18n="faq.lead">关于它是什么、OMP，以及现在还没有的能力。</p>
+      <h2 data-i18n="faq.title">关于 PCB，你需要了解的事情。</h2>
+      <p class="lead" data-i18n="faq.lead">它是什么、和 OMP 的关系，以及哪些能力已经提供、哪些还在规划中。</p>
     </div>
     <div class="faq">
-      <details><summary data-i18n="faq.q1">PCB 是什么？</summary><p data-i18n="faq.a1">PCB 是基于 Oh My Pi 深度扩展的本地 AI 工作平台。</p></details>
-      <details><summary data-i18n="faq.q2">PCB 和 Oh My Pi 是什么关系？</summary><p data-i18n="faq.a2">Oh My Pi（OMP）是本机上的 AI 引擎。</p></details>
-      <details><summary data-i18n="faq.q3">OMP-ckpt 做什么？</summary><p data-i18n="faq.a3">它为 AI 修改文件留下检查点。</p></details>
-      <details><summary data-i18n="faq.q4">一定要安装 VS Code 或 Cursor 吗？</summary><p data-i18n="faq.a4">不一定。</p></details>
-      <details><summary data-i18n="faq.q5">AI 会自动修改我的文件吗？</summary><p data-i18n="faq.a5">普通对话不会改文件。</p></details>
-      <details><summary data-i18n="faq.q6">修改出错怎么办？</summary><p data-i18n="faq.a6">可以按修改块检查、接受或恢复。</p></details>
-      <details><summary data-i18n="faq.q7">项目文件会上传到 PCB 的网站吗？</summary><p data-i18n="faq.a7">不会。</p></details>
-      <details><summary data-i18n="faq.q8">演示、发布和支付现在能用吗？</summary><p data-i18n="faq.a8">不能。这三项都在规划中。</p></details>
+      <details>
+        <summary data-i18n="faq.q1">PCB 是什么？</summary>
+        <p data-i18n="faq.a1">PCB 是一个基于 Oh My Pi 构建和扩展的本地 AI 工作平台，帮助用户通过自然语言交互、任务规划和本地执行完成工作，并逐步扩展产品创建、推广和商业化能力。</p>
+      </details>
+      <details>
+        <summary data-i18n="faq.q2">PCB 和 Oh My Pi 是什么关系？</summary>
+        <p data-i18n="faq.a2">OMP 是 AI 执行引擎，负责对话、计划和文件修改。PCB 提供更友好的图形界面、工作流程和安全控制。PCB 不重新实现一套 Agent。</p>
+      </details>
+      <details>
+        <summary data-i18n="faq.q3">OMP-ckpt 做什么？</summary>
+        <p data-i18n="faq.a3">OMP-ckpt 为 AI 辅助开发提供检查点管理和项目状态恢复能力，帮助开发者查看和管理 AI 连续修改项目带来的变化。</p>
+      </details>
+      <details>
+        <summary data-i18n="faq.q4">一定要安装 VS Code 或 Cursor 吗？</summary>
+        <p data-i18n="faq.a4">不需要。PCB 可以独立使用。需要深入开发时，可以选择打开本机已有的 VS Code 或 Cursor。</p>
+      </details>
+      <details>
+        <summary data-i18n="faq.q5">AI 会自动修改我的文件吗？</summary>
+        <p data-i18n="faq.a5">普通聊天不会修改项目。进入 Build 阶段需要明确批准计划，运行需要确认的命令时还会进行额外授权。</p>
+      </details>
+      <details>
+        <summary data-i18n="faq.q6">修改出错怎么办？</summary>
+        <p data-i18n="faq.a6">可以通过 OMP-ckpt 检查点恢复之前保存的项目状态。重要项目仍建议同时使用 Git 等版本控制工具。</p>
+      </details>
+      <details>
+        <summary data-i18n="faq.q7">项目文件会上传到 PCB 的网站吗？</summary>
+        <p data-i18n="faq.a7">PCB 官网不承担用户项目的云端存储和执行。PCB 的项目操作在本地进行。但执行 AI 任务时，发送给模型服务的上下文可能会传输到相应模型服务商，具体取决于使用的模型和配置。</p>
+      </details>
+      <details>
+        <summary data-i18n="faq.q8">演示、推广和支付现在能用吗？</summary>
+        <p data-i18n="faq.a8">目前属于未来规划。产品演示 Skill、社交推广和支付接口尚未正式提供。</p>
+      </details>
     </div>
   </section>
 
@@ -368,20 +468,20 @@
 
   <footer class="foot">
     <div class="about">
-      <h3 data-i18n="about.title">关于 PCB</h3>
-      <p data-i18n="about.p1">PCB 是一个开源项目，希望成为普通用户和开发者都能使用的本地 AI 工作入口。</p>
-      <p data-i18n="about.p2">它不只是 OMP 的一层外壳。</p>
+      <h3 data-i18n="about.title">PCB — From Ideas to Value.</h3>
+      <p data-i18n="about.p1">PCB 是一个开源的本地 AI 产品创造平台。</p>
+      <p data-i18n="about.p2">从自然语言交流、任务规划，到软件开发，再到未来的产品演示、推广和商业化，我们希望让更多人能够借助 AI 将想法变成真正的产品。</p>
     </div>
     <p class="foot-links">
       <a href="https://github.com/renjianfj163/PCB" data-i18n="nav.github">GitHub</a>
       <a href="https://github.com/renjianfj163/PCB/tree/main/docs" data-i18n="footer.docs">文档</a>
       <a href="https://github.com/renjianfj163/PCB/blob/main/LICENSE" data-i18n="footer.license">MIT License</a>
-      <a href="https://github.com/renjianfj163/PCB/blob/main/CONTRIBUTING.md" data-i18n="footer.contrib">贡献指南</a>
+      <a href="https://github.com/renjianfj163/PCB/blob/main/CONTRIBUTING.md" data-i18n="footer.contrib">Contributing</a>
       <span data-i18n="footer.rights">© 2026 PCB Contributors</span>
     </p>
   </footer>
 </main>
 
-<script src="/app.js?v=2"></script>
+<script src="/app.js?v=3"></script>
 </body>
 </html>
