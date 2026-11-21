@@ -164,6 +164,8 @@ const EN: Record<string, string> = {
 	"聊天": "Chat",
 	"停止": "Stop",
 	"先开始一次对话": "Start a conversation first",
+	"思考等级": "Thinking",
+	"这个模型没有档位": "This model offers no levels",
 	"图片": "Image",
 	"移除这张图片": "Remove this image",
 	"正在处理图片…": "Preparing the image…",

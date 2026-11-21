@@ -17,6 +17,7 @@ import { pageShot } from "./screenshot.ts";
 import { PathRefused, listDirectory, readPreview } from "./project-files.ts";
 import { PcbSession, RewindRefused } from "./session.ts";
 import type { Store, SessionRecord } from "./store.ts";
+import { THINKING_LEVELS } from "../shared/protocol.ts";
 import type {
 	Automation,
 	AutomationInput,
@@ -27,6 +28,8 @@ import type {
 	Phase,
 	PromptImage,
 	SessionSummary,
+	ThinkingInfo,
+	ThinkingLevel,
 	UiEvent,
 } from "../shared/protocol.ts";
 
@@ -705,6 +708,37 @@ export class App {
 					};
 					this.#json(response, 200, models);
 					return;
+				}
+				case "thinking": {
+					if (method === "GET") {
+						let levels: string[] = [];
+						try {
+							levels = await session.thinkingLevels();
+						} catch (error) {
+							this.#json(response, 502, { error: (error as Error).message });
+							return;
+						}
+						const info: ThinkingInfo = { levels, current: session.state.thinkingLevel ?? null };
+						this.#json(response, 200, info);
+						return;
+					}
+					if (method === "POST") {
+						const body = (await this.#readJson(request)) as { level?: unknown };
+						const level = typeof body.level === "string" ? body.level : "";
+						if (!(THINKING_LEVELS as readonly string[]).includes(level)) {
+							this.#json(response, 400, { error: "thinking level 不认识" });
+							return;
+						}
+						try {
+							await session.setThinkingLevel(level as ThinkingLevel);
+						} catch (error) {
+							this.#json(response, 502, { error: (error as Error).message });
+							return;
+						}
+						this.#json(response, 200, { level });
+						return;
+					}
+					break;
 				}
 				case "policies": {
 					this.#json(response, 200, { policies: session.policies });

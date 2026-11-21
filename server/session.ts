@@ -30,6 +30,7 @@ import type {
 	SessionState,
 	SessionStatus,
 	SessionSummary,
+	ThinkingLevel,
 } from "../shared/protocol.ts";
 
 export interface SessionDeps {
@@ -827,6 +828,17 @@ export class PcbSession {
 
 	async setModel(provider: string, modelId: string): Promise<void> {
 		await this.#requireClient().call({ type: "set_model", provider, modelId });
+		await this.refreshState();
+	}
+
+	/** What the live model accepts; omp answers "off" plus the model's own efforts. */
+	async thinkingLevels(): Promise<string[]> {
+		const data = await this.#requireClient().call<{ levels?: unknown }>({ type: "get_available_thinking_levels" });
+		return Array.isArray(data?.levels) ? data.levels.filter((level): level is string => typeof level === "string") : [];
+	}
+
+	async setThinkingLevel(level: ThinkingLevel): Promise<void> {
+		await this.#requireClient().call({ type: "set_thinking_level", level });
 		await this.refreshState();
 	}
 

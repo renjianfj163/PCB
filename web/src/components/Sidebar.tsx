@@ -4,6 +4,7 @@ import { baseName, shortPath } from "../paths.ts";
 import { setLocale, t, useLocale } from "../i18n.ts";
 import { setOmpRaw, useOmpRaw } from "../raw.ts";
 import { ModelPicker } from "./ModelPicker.tsx";
+import { ThinkingPicker } from "./ThinkingPicker.tsx";
 
 function IconPlus() {
 	return (
@@ -88,6 +89,7 @@ export function Sidebar({
 	onOpenAutomations,
 	onCollapse,
 	onModel,
+	onThinking,
 }: {
 	open: boolean;
 	collapsed: boolean;
@@ -110,6 +112,7 @@ export function Sidebar({
 	onOpenAutomations: () => void;
 	onCollapse: () => void;
 	onModel: (provider: string, id: string) => Promise<void>;
+	onThinking: (level: string) => Promise<void>;
 }) {
 	const [projectsOpen, setProjectsOpen] = useState(false);
 	const [configOpen, setConfigOpen] = useState(false);
@@ -284,6 +287,7 @@ export function Sidebar({
 					<div className="config-card" ref={configRef} role="dialog" aria-label={t("配置")}>
 						<div className="config-title">{t("模型")}</div>
 						<ModelPicker session={session} state={state} onModel={onModel} />
+						<ThinkingPicker session={session} state={state} onThinking={onThinking} />
 						<div className="config-title">{t("语言")}</div>
 						<div className="config-langs" role="group" aria-label={t("语言")}>
 							<button

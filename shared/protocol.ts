@@ -232,6 +232,16 @@ export interface ModelsInfo {
 	current?: ModelRef | null;
 }
 
+/** Levels omp accepts for a session's thinking effort. */
+export const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
+export type ThinkingLevel = (typeof THINKING_LEVELS)[number];
+
+/** What the live model offers right now, and where the session sits. */
+export interface ThinkingInfo {
+	levels: string[];
+	current?: string | null;
+}
+
 /** One row of the project file tree (paths are relative to the project root). */
 export interface DirEntry {
 	name: string;

@@ -406,6 +406,11 @@ export default function App() {
 						if (session) await api.setModel(session.id, provider, id);
 					})
 				}
+				onThinking={level =>
+					guard(async () => {
+						if (session) await api.setThinking(session.id, level);
+					})
+				}
 			/>
 
 			<main className="chat">

@@ -19,6 +19,7 @@ import type {
 	ShellKind,
 	SessionState,
 	SessionSummary,
+	ThinkingInfo,
 } from "../../shared/protocol.ts";
 
 /**
@@ -82,6 +83,14 @@ export const api = {
 		}),
 
 	models: (id: string) => json<ModelsInfo>(`/api/sessions/${id}/models`),
+
+	thinking: (id: string) => json<ThinkingInfo>(`/api/sessions/${id}/thinking`),
+
+	setThinking: (id: string, level: string) =>
+		json<{ level: string }>(`/api/sessions/${id}/thinking`, {
+			method: "POST",
+			body: JSON.stringify({ level }),
+		}),
 
 	messages: (id: string) => json<{ messages: AgentMessage[] }>(`/api/sessions/${id}/messages`),
 
