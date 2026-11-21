@@ -82,7 +82,7 @@ cd site && node server.mjs
 - OMP 在首页就写明：每个会话是本机的 OMP RPC 子进程，PCB 没有第二套 Agent。
 - 产品演示 Skill、社交推广、支付接口使用「规划中」标记，不写成已经提供。
 
-下载区按文件名列出 Windows 安装包。构建只打一个 `PCB-<版本>-windows-x64.exe`，里面没有 VS Code，见 `window/installer/README.md`。
+下载区只给一个 Windows 安装包。已经是 `PCB-<版本>-windows-x64.exe` 时用它；旧发布若还有 Desktop 和 Developer 两个文件，页面只留 Developer 那一个。构建说明见 `window/installer/README.md`。
 
 ## 语言
 

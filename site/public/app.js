@@ -126,6 +126,9 @@ function renderReleases(data) {
 	box.textContent = "";
 	const list = Array.isArray(data.releases) ? data.releases : [];
 
+	const status = document.querySelector("#download .status");
+	if (status) status.hidden = list.length > 0;
+
 	if (list.length === 0) {
 		box.append(el("p", null, t("download.empty")));
 		const pending = el("ul", "pending");
@@ -151,7 +154,7 @@ function renderReleases(data) {
 		if (date) head.append(el("span", "when", t("download.published", { date })));
 		article.append(head);
 
-		const assets = Array.isArray(release.assets) ? release.assets : [];
+		const assets = onePackage(Array.isArray(release.assets) ? release.assets : []);
 		if (assets.length === 0) {
 			article.append(el("p", "note small", t("download.noWindows")));
 		} else {
@@ -179,6 +182,21 @@ function renderReleases(data) {
  * 读不到、或仓库还没有发布，就退回「即将发布」+ 发布页链接——不编造下载地址。
  */
 const GITHUB_RELEASES = "https://api.github.com/repos/renjianfj163/PCB/releases?per_page=30";
+
+/**
+ * 对外只有一个安装包。新文件名是 PCB-<版本>-windows-x64.exe。
+ * 旧发布若同时带 Desktop 和 Developer，只留 Developer：它有「IDE」按钮，
+ * 和现在这一份包一致；VS Code 仍然不在包里。
+ */
+function onePackage(assets) {
+	const exes = assets.filter(asset => /\.exe$/i.test(asset.name));
+	const pool = exes.length > 0 ? exes : assets;
+	if (pool.length <= 1) return pool;
+	const unified = pool.filter(asset => !/(desktop|developer|日常|编程)/i.test(asset.name));
+	if (unified.length > 0) return [unified[0]];
+	const developer = pool.find(asset => /developer|编程/i.test(asset.name));
+	return [developer || pool[0]];
+}
 
 function windowsAssets(release) {
 	const assets = Array.isArray(release.assets) ? release.assets : [];
