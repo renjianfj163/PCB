@@ -896,6 +896,9 @@ pre {
 .message.user {
 	align-self: flex-end;
 	max-width: 640px;
+	/* Hug the sentence: a short line plus its rewind control, never a 640px box
+	   with the words stranded on the left. Long text still wraps at the cap. */
+	width: fit-content;
 	background: var(--bg-panel);
 	border: 1px solid var(--border);
 	border-radius: 12px;
