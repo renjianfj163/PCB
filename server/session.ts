@@ -183,6 +183,24 @@ export function attachUserEntryIds(
 	});
 }
 
+/**
+ * Mirror one streamed message where its own timestamp says, not where it arrives.
+ * A steering message is committed after the reply it caused, so a plain append puts
+ * its row below that reply until the next `get_messages` reorders the transcript.
+ * Equal or missing timestamps keep arrival order.
+ */
+export function insertByTimestamp(messages: AgentMessage[], message: AgentMessage): AgentMessage[] {
+	const at = typeof message.timestamp === "number" ? message.timestamp : undefined;
+	if (at === undefined) return [...messages, message];
+	let index = messages.length;
+	while (index > 0) {
+		const previous = messages[index - 1]?.timestamp;
+		if (typeof previous !== "number" || previous <= at) break;
+		index -= 1;
+	}
+	return [...messages.slice(0, index), message, ...messages.slice(index)];
+}
+
 /** omp refused to move: `code` says why, `message` is already the user's words. */
 export class RewindRefused extends Error {
 	readonly code?: string;
@@ -482,7 +500,7 @@ export class PcbSession {
 				// Keep a usable transcript while a turn is in flight: get_messages
 				// answers empty mid-turn, so mirror the message we just saw.
 				const message = asAgentMessage(frame.message);
-				if (message) this.#messages = [...this.#messages, message];
+				if (message) this.#messages = insertByTimestamp(this.#messages, message);
 				this.#deps.hub.broadcast({ t: "frame", sessionId: this.record.id, frame });
 				return;
 			}
