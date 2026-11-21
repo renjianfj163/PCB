@@ -1,13 +1,13 @@
 # PCB 文档
 
-PCB 是一个本地壳：你用自己的话说明想做什么，本机的 `omp` 负责对话、计划、改文件；PCB 只做三件
-事——把 omp 的 RPC 帧翻译成人能看懂的样子、在动手前挡住危险操作、把「计划」变成一句可以点
-「按这个做」的话。它跑在你自己的电脑上，默认只听 `127.0.0.1`。
+PCB 是基于 Oh My Pi（OMP）深度扩展的本地 AI 工作平台。你用自己的话说明想做什么，本机的 `omp` 负责对话、计划、改文件；PCB 把这个过程收成能跟着走的界面：翻译 omp 的 RPC 帧、在动手前挡住危险操作、把「计划」变成一句可以点「按这个做」的话。熟悉代码时，可以打开本机的 VS Code 或 Cursor，并用 OMP-ckpt 检查和恢复修改。它跑在你自己的电脑上，默认只听 `127.0.0.1`。
+
+产品演示、社交发布和支付还在规划中，不是现在的能力。
 
 This repository is MIT-licensed (see [LICENSE](../LICENSE) and
-[NOTICE](../NOTICE)). PCB is a local shell around `omp`; `omp` itself is a
-separate, user-installed engine with its own license. The app never forwards a
-model key and never listens on anything but loopback.
+[NOTICE](../NOTICE)). PCB is a local workspace built on `omp`; `omp` itself is a
+separate engine with its own license. The app never forwards a model key and
+never listens on anything but loopback.
 
 ## 三种读者，三条路
 
@@ -21,7 +21,7 @@ model key and never listens on anything but loopback.
 
 | 文件 | 内容 |
 | --- | --- |
-| [install.md](install.md) | 两种安装包各带什么、系统要求、从源码运行、环境变量、卸载 |
+| [install.md](install.md) | 一个软件包里有什么、系统要求、从源码运行、环境变量、卸载 |
 | [usage.md](usage.md) | 项目与会话、Chat / Plan / Build、批准、右栏四页、IDE 按钮、托盘 |
 | [architecture.md](architecture.md) | 每会话一个 omp 子进程、帧怎么走、政策层在哪决定、状态存哪 |
 | [api.md](api.md) | 本地 HTTP 接口清单、SSE 事件、curl 例子、请求守卫 |

@@ -409,7 +409,6 @@ export default function App() {
 							setInfo(t("已打开本机 VS Code"));
 						})
 					}
-					showIde={state.boot?.edition !== "desktop"}
 					onRefresh={() =>
 						guard(async () => {
 							if (!session) return;

@@ -36,19 +36,19 @@ const FACTS = {
 	local:
 		"PCB is a local program on the user's own computer; it listens on 127.0.0.1 only, so no other machine can connect.",
 	engine:
-		"omp is the engine: it talks, plans and edits files. Both Windows builds ship omp; PCB has no model of its own, so without omp the window opens but cannot answer, plan or change anything.",
+		"OMP (Oh My Pi) is the engine: it talks, plans and edits files. PCB ships one package with OMP inside. PCB has no model of its own, so without omp the window opens but cannot answer, plan or change anything.",
 	phases:
-		"Three phases decide whether files are touched: Chat answers only; Plan is read-only and produces a plan plus a 'Do this' button; Build writes files and runs commands. Commands are always confirmed first, and the single strong gate is that 'Do this' button.",
+		"Chat talks and does not edit. Plan reads the project and writes a plan. Build runs after the user approves that plan. Review is where each change can be accepted or restored. Commands are confirmed before they run. The single strong gate is the 'Do this' button.",
 	packs:
-		"There are two Windows builds of the same PCB and the same omp, and they are the same size. Neither build bundles an editor. The everyday build is for people who do not write code: no editor, no IDE button. The coding build adds an IDE button that opens the desktop VS Code or Cursor already installed on this machine, with the omp-ckpt extension, and sets the workspace to the current project. It does not download or bundle a web VS Code.",
+		"There is one PCB package. It does not contain VS Code. People who do not write code stay in the interface. People who want an editor install desktop VS Code or Cursor themselves; the IDE button opens that local editor and OMP-ckpt can review the edits. Product demos, social publishing and payments are planned and not available.",
 	window:
-		"Both builds open in the same window: not a browser with an address bar, but a WebView2 shell with only the app name and minimize/maximize/close. The page inside is still http://127.0.0.1:7777. Closing the window can leave the service in the tray, because a daily scheduled task lives in that process; a missed run is not caught up.",
+		"PCB opens in one window: not a browser with an address bar, but a WebView2 shell with only the app name and minimize/maximize/close. The page inside is still http://127.0.0.1:7777. Closing the window can leave the service in the tray, because a daily scheduled task lives in that process; a missed run is not caught up.",
 	keys:
 		"Model keys stay on the machine and are configured with 'omp login'. This site never receives, stores or forwards a key, and there is no sign-up.",
 	review:
 		"Before a turn, omp-ckpt checkpoints the folder; after it, each change can be accepted or reverted hunk by hunk. The review server runs inside omp, not on this website.",
 	scope:
-		"This website only introduces PCB, offers the two Windows builds and files a GitHub issue for you. It does not write code for you and does not run PCB.",
+		"This website only introduces PCB, offers the Windows download and files a GitHub issue for you. It does not write code for you and does not run PCB.",
 };
 
 const SYSTEM_PROMPT = {

@@ -12,18 +12,17 @@ using Microsoft.Win32;
 namespace PcbInstaller
 {
 	/// <summary>
-	/// A per-user installer for one PCB edition: no admin, nothing outside
+	/// A per-user installer for the one PCB package: no admin, nothing outside
 	/// %LOCALAPPDATA%, %APPDATA% and HKCU. The whole application tree travels
 	/// inside this exe as a zip resource, so the payload is not a renamed archive
 	/// sitting next to an installer — it is the installer.
 	///
-	///   PCB-0.1.0-Desktop-windows-x64.exe        installs "PCB Desktop"
-	///   PCB-0.1.0-Developer-windows-x64.exe      installs "PCB Developer"
+	///   PCB-0.1.0-windows-x64.exe                installs "PCB"
 	///   ... --silent                             no UI, no launch
 	///   <install dir>\uninstall.exe              removes everything it added
 	///
-	/// The only difference between the two editions is edition.txt inside the
-	/// payload ("desktop" hides the IDE entry, "developer" shows it).
+	/// The package does not contain VS Code. The IDE button opens an editor
+	/// the user installed themselves.
 	/// </summary>
 	internal static class Program
 	{
@@ -230,7 +229,7 @@ namespace PcbInstaller
 		}
 	}
 
-	/// <summary>The few facts that differ between the two installer builds.</summary>
+	/// <summary>The name, registry key and version written into this installer.</summary>
 	internal sealed class Meta
 	{
 		internal string AppName = "PCB";

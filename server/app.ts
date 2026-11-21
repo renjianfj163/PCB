@@ -140,7 +140,6 @@ export interface AppDeps {
 	bin: string;
 	port: number;
 	webRoot: string;
-	edition: "desktop" | "developer";
 	onLog?: (message: string) => void;
 }
 
@@ -294,7 +293,6 @@ export class App {
 				ompVersion: this.#ompVersion,
 				auth: this.#auth,
 				platform: process.platform,
-				edition: this.#deps.edition,
 			};
 			this.#json(response, 200, boot);
 			return;

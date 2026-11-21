@@ -1,17 +1,18 @@
-# Builds one Windows installer for one edition.
+# Builds the one Windows installer.
 #
-#   powershell -ExecutionPolicy Bypass -File window/installer/build-installer.ps1 -Edition Desktop
-#   powershell -ExecutionPolicy Bypass -File window/installer/build-installer.ps1 -Edition Developer
+#   powershell -ExecutionPolicy Bypass -File window/installer/build-installer.ps1
 #
-# Inputs : dist/stage/<edition>   (the whole application tree)
-# Output : dist/PCB-<version>-<Edition>-windows-x64.exe
+# Inputs : dist/stage   (the whole application tree)
+# Output : dist/PCB-<version>-windows-x64.exe
+#
+# VS Code is not in the package. Someone who wants it installs the desktop
+# editor themselves; the IDE button only opens what is already on the machine.
 #
 # Uses the in-box csc.exe (no dotnet SDK), the same way window/build.ps1 does.
 # The payload is embedded in the exe as a resource, so the result is a single
 # file installer, not a zip with a different extension.
 
 param(
-	[Parameter(Mandatory = $true)][ValidateSet("Desktop", "Developer")][string]$Edition,
 	[string]$Version = "0.1.0",
 	[string]$Stage = "",
 	[string]$Out = ""
@@ -21,8 +22,8 @@ $ErrorActionPreference = "Stop"
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $root = Split-Path -Parent (Split-Path -Parent $here)
 
-if (-not $Stage) { $Stage = Join-Path $root ("dist\stage\" + $Edition.ToLower()) }
-if (-not $Out) { $Out = Join-Path $root ("dist\PCB-" + $Version + "-" + $Edition + "-windows-x64.exe") }
+if (-not $Stage) { $Stage = Join-Path $root "dist\stage" }
+if (-not $Out) { $Out = Join-Path $root ("dist\PCB-" + $Version + "-windows-x64.exe") }
 
 if (-not (Test-Path -LiteralPath (Join-Path $Stage "PCBWindow.exe"))) {
 	throw ("missing " + $Stage + "\PCBWindow.exe - stage the app tree first")
@@ -34,19 +35,18 @@ New-Item -ItemType Directory -Force -Path $build | Out-Null
 $csc = Join-Path $env:WINDIR "Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 if (-not (Test-Path -LiteralPath $csc)) { throw "csc.exe not found (.NET Framework 4.8 in-box compiler)" }
 
-# meta.txt travels inside the installer: it is the only difference between builds.
-$appName = "PCB " + $Edition
-$registryKey = "PCB-" + $Edition
+# meta.txt names the one product. The installer does not ship an editor.
+$appName = "PCB"
+$registryKey = "PCB"
 $meta = Join-Path $build "meta.txt"
 @(("AppName=" + $appName), ("RegistryKey=" + $registryKey), ("Version=" + $Version)) | Set-Content -LiteralPath $meta -Encoding ASCII
 
-# The uninstaller is small and identical for both editions.
 $uninstall = Join-Path $build "uninstall.exe"
 & $csc /nologo /target:winexe /platform:x64 /optimize+ ("/out:" + $uninstall) /r:System.dll /r:System.Windows.Forms.dll (Join-Path $here "Uninstall.cs") | Out-Null
 if ($LASTEXITCODE -ne 0) { throw ("uninstall.exe failed: csc exit " + $LASTEXITCODE) }
 
 # Payload: the staged tree, zipped (bsdtar ships with Windows 10+).
-$payload = Join-Path $build ("payload-" + $Edition.ToLower() + ".zip")
+$payload = Join-Path $build "payload.zip"
 if (Test-Path -LiteralPath $payload) { Remove-Item -LiteralPath $payload -Force }
 & tar -a -cf $payload -C $Stage .
 if ($LASTEXITCODE -ne 0) { throw ("payload zip failed: tar exit " + $LASTEXITCODE) }

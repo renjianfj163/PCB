@@ -9,8 +9,6 @@ const here = dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PCB_PORT ?? 7777);
 const host = process.env.PCB_HOST ?? "127.0.0.1";
 const bin = process.env.PCB_OMP ?? "omp";
-/** 两个安装包唯一的差别：日常版不显示「IDE」入口。默认是编程版，和源码运行一致。 */
-const edition = process.env.PCB_EDITION === "desktop" ? "desktop" : "developer";
 
 const log = (message: string) => console.log(message);
 
@@ -22,7 +20,6 @@ const app = new App({
 	bin,
 	port,
 	webRoot: join(here, "..", "web", "dist"),
-	edition,
 	onLog: log,
 });
 

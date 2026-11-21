@@ -1,8 +1,8 @@
 # PCB 网站（site/）
 
-PCB 的开源项目门面：一页两语（中文 / English），七块内容——概览、窗口、Chat · Plan · Build、
-产品定位（一个工作空间 / 完整工作流 / 本地优先 / 两个版本）、下载、常见问题、报告问题。
-只做两件事：介绍、给版本下载；第三个问题入口直接指向 GitHub 的表单。
+PCB 的开源项目门面：一页两语（中文 / English）。一个软件包，不区分日常版和编程版。
+已经能用的写成事实：界面、Oh My Pi（OMP）、OMP-ckpt。演示、发布、支付标成规划中。
+只做两件事：介绍、给版本下载；问题入口直接指向 GitHub 的表单。
 
 **公网版本是纯静态页**：只发 `public/` 这一套文件，没有自己的接口、没有密钥、没有服务端进程。
 
@@ -32,7 +32,7 @@ PCB 的开源项目门面：一页两语（中文 / English），七块内容—
 | `public/index.html` | 结构与文案骨架；文字挂 `data-i18n` key，正文里放中文原文当兜底 |
 | `public/styles.css` | 全部样式；深色，无外部字体 |
 | `public/app.js` | 读字典、套用 key、读 GitHub 版本列表并渲染 |
-| `public/i18n/zh.json`、`en.json` | 两种语言的字典（135 个 key，两边必须一致） |
+| `public/i18n/zh.json`、`en.json` | 两种语言的字典（key 必须一致） |
 | `public/shots/app.png` | 首屏截图：1440×900 的 PCB 实拍，页面只裁掉底部一小条渲染重叠 |
 | `server.mjs` | **本机预览用**，公网不部署。见下 |
 
@@ -73,17 +73,16 @@ cd site && node server.mjs
 `/api/intro` 每小时 20 次、`/api/bugs` 每小时 5 次；`/api/releases` 成功结果在内存里缓存 5 分钟，
 失败不缓存。
 
-## 两个版本
+## 一个软件包
 
-页面按产品语言写：**PCB Desktop**（日常工作版）与 **PCB Developer**（开发者版）。两者的说明是
-产品事实，改文案前先读 `docs/install.md`：
+页面按一个 PCB 来写，不再把安装包说成日常版和编程版。改文案前先读 `docs/install.md`：
 
-- **PCB Desktop**：完整工作环境 + 内置 AI 运行组件；没有编辑器，不显示「IDE」入口。
-- **PCB Developer**：同一套核心，另加 IDE 入口——用它打开本机已安装的桌面版 VS Code 或 Cursor，
-  并装上 omp-ckpt。
-- 两个版本共用同一个 PCB 核心、同一个运行组件、同一套项目目录；切换不需要迁移项目。
+- 普通用户留在界面里，用自然语言走 Chat / Plan / Build / Review。
+- 开发者可以打开本机已安装的桌面版 VS Code 或 Cursor，并用 OMP-ckpt 检查和恢复修改。
+- OMP 在首页就写明：每个会话是本机的 OMP RPC 子进程，PCB 没有第二套 Agent。
+- 产品演示 Skill、社交推广、支付接口使用「规划中」标记，不写成已经提供。
 
-首页把「omp」写成 **AI 运行组件**，只在 FAQ 里出现一次；「日常版 / 编程版」只留在下载区的文件名分组里。
+下载区按文件名列出 Windows 安装包。构建只打一个 `PCB-<版本>-windows-x64.exe`，里面没有 VS Code，见 `window/installer/README.md`。
 
 ## 语言
 
@@ -100,6 +99,7 @@ cd site && node server.mjs
 正文 `#edeef0`、次要 `#969ca6`、强调 `#5b8cff`（只用于主按钮、链接、章节眉与编号）；没有第二套浅色主题，
 因为产品本身就是深色桌面应用。字体 `-apple-system, "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "PingFang SC", "Noto Sans SC", system-ui`。
 
-顺序是：定位（LOCAL AI WORKSPACE + 一句主张 + 三个硬指标 + 两个入口）→ 本机窗口里的真实截图 →
-Chat / Plan / Build 三张编号卡 → 五条工作流事实 → 五条安全边界 → 两个版本 → 统一入口的收束段 →
-下载 → FAQ → 收起的「报告问题」→ 关于与许可。1280 与 390 两个宽度都验过。
+顺序是：定位（LOCAL AI WORKSPACE + 一句主张 + 三个入口）→ 本机窗口里的真实截图 →
+三层工作方式（自然语言界面、IDE + OMP + OMP-ckpt、产品方向）→ 一个软件包的对照表 →
+From Ideas to Products（后三步标规划中）→ 三项路线图 → 本地边界 → 收束段 →
+下载 → FAQ → 收起的「报告问题」→ 关于与许可。1280 与 390 两个宽度都要看过。

@@ -86,17 +86,6 @@ const when = iso => {
 	return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
 };
 
-/** 两个版本，只按文件名分；认不出来的照原名列出，不猜、不拼地址。 */
-const PACKS = [
-	{ key: "packs.desktop.name", test: /(desktop|日常|daily|basic|home)/i },
-	{ key: "packs.developer.name", test: /(developer|编程|coding|code|pro)/i },
-];
-
-function packOf(name) {
-	const hits = PACKS.filter(pack => pack.test.test(name));
-	return hits.length === 1 ? hits[0].key : null;
-}
-
 function el(tag, className, text) {
 	const node = document.createElement(tag);
 	if (className) node.className = className;
@@ -132,14 +121,6 @@ function assetTable(assets) {
 	return table;
 }
 
-function packBlock(title, assets, note) {
-	const wrap = el("div");
-	wrap.append(el("h4", null, title));
-	if (note) wrap.append(el("p", "note small", note));
-	if (assets.length > 0) wrap.append(assetTable(assets));
-	return wrap;
-}
-
 function renderReleases(data) {
 	const box = $("releases");
 	box.textContent = "";
@@ -148,12 +129,10 @@ function renderReleases(data) {
 	if (list.length === 0) {
 		box.append(el("p", null, t("download.empty")));
 		const pending = el("ul", "pending");
-		for (const pack of PACKS) {
-			const row = el("li");
-			row.append(el("span", null, t(pack.key)));
-			row.append(el("span", null, t("download.soon")));
-			pending.append(row);
-		}
+		const row = el("li");
+		row.append(el("span", null, t("download.pendingName")));
+		row.append(el("span", null, t("download.soon")));
+		pending.append(row);
 		box.append(pending);
 		const link = el("a", "note small", t("download.cta.releases"));
 		link.href = `${REPO_URL}/releases`;
@@ -176,19 +155,7 @@ function renderReleases(data) {
 		if (assets.length === 0) {
 			article.append(el("p", "note small", t("download.noWindows")));
 		} else {
-			const groups = new Map(PACKS.map(pack => [pack.key, []]));
-			const unknown = [];
-			for (const asset of assets) {
-				const key = packOf(String(asset.name ?? ""));
-				if (key) groups.get(key).push(asset);
-				else unknown.push(asset);
-			}
-			for (const [key, grouped] of groups) {
-				if (grouped.length > 0) article.append(packBlock(t(key), grouped));
-			}
-			if (unknown.length > 0) {
-				article.append(packBlock(t("download.unknownTitle"), unknown, t("download.unknownNote")));
-			}
+			article.append(assetTable(assets));
 		}
 
 		if (release.notes) {
