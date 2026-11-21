@@ -4,6 +4,7 @@ web/dist/
 data/
 *.log
 research/io/
+research/*.json
 window/.build/
 window/dist/
 dist/
