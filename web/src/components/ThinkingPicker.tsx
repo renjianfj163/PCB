@@ -35,32 +35,29 @@ export function ThinkingPicker({
 		};
 	}, [session?.id, session?.status, state?.model?.id, state?.model?.provider]);
 
-	if (!session) {
-		return (
-			<select className="config-select" disabled title={t("思考等级")}>
-				<option>{t("先开始一次对话")}</option>
-			</select>
-		);
-	}
+	if (!session) return null;
 
 	const value = state?.thinkingLevel ?? info?.current ?? "";
 	const levels = info?.levels ?? [];
 
 	return (
-		<select
-			className="config-select"
-			value={value}
-			disabled={!session.alive || levels.length === 0}
-			title={t("思考等级")}
-			onChange={event => void onThinking(event.target.value)}
-		>
-			{value && !levels.includes(value) ? <option value={value}>{value}</option> : null}
-			{levels.length === 0 ? <option value="">{t("这个模型没有档位")}</option> : null}
-			{levels.map(level => (
-				<option key={level} value={level}>
-					{level}
-				</option>
-			))}
-		</select>
+		<>
+			<div className="config-title">{t("思考等级")}</div>
+			<select
+				className="config-select"
+				value={value}
+				disabled={!session.alive || levels.length === 0}
+				title={t("思考等级")}
+				onChange={event => void onThinking(event.target.value)}
+			>
+				{value && !levels.includes(value) ? <option value={value}>{value}</option> : null}
+				{levels.length === 0 ? <option value="">{t("这个模型没有档位")}</option> : null}
+				{levels.map(level => (
+					<option key={level} value={level}>
+						{level}
+					</option>
+				))}
+			</select>
+		</>
 	);
 }
