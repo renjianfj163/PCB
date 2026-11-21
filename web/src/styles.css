@@ -835,7 +835,7 @@ pre {
 .user-body {
 	display: flex;
 	align-items: flex-end;
-	gap: 10px;
+	gap: 14px;
 }
 
 .user-body .user-text {
