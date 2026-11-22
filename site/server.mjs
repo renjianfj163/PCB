@@ -233,7 +233,7 @@ async function intro(request, response) {
 function windowsAssets(release) {
 	const assets = Array.isArray(release.assets) ? release.assets : [];
 	return assets
-		.filter(asset => /windows|win32|\.exe/i.test(String(asset.name ?? "")))
+		.filter(asset => /^PCB-.*\.exe$/i.test(String(asset.name ?? "")))
 		.map(asset => {
 			const digest = String(asset.digest ?? "");
 			const match = /^sha256:([0-9a-f]{64})$/i.exec(digest);

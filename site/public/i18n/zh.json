@@ -164,7 +164,6 @@
 	"download.prerelease": "预发布",
 	"download.notes": "发布说明",
 	"download.github": "在 GitHub 查看这个版本",
-	"download.noWindows": "这个版本没有 Windows 安装包。",
 
 	"faq.eyebrow": "FAQ",
 	"faq.title": "关于 PCB，你需要了解的事情。",

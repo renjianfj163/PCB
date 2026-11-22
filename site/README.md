@@ -19,7 +19,7 @@ PCB 的开源项目门面：一页两语（中文 / English）。一个软件包
 
 | 位置 | 怎么做 | 失败时 |
 | --- | --- | --- |
-| 下载区 | 卡片上的版本、文件名、大小、发布日期、SHA256 全部来自浏览器读的 `https://api.github.com/repos/renjianfj163/PCB/releases`（公开接口、可跨域）：只认**正式版**，只挑文件名带 `windows` / `win32` / `.exe` 的 asset，SHA256 取 GitHub 给资产的 `digest`；其它版本（含 `main-build` 这类预发布）列在「其他版本」里。页面里只有占位符与「版本信息见 GitHub Releases」，没有任何写死的版本号 | 卡片停在提示并链到 Releases；「其他版本」整块隐藏。不编造版本、大小或校验和 |
+| 下载区 | 卡片上的版本、文件名、大小、发布日期、SHA256 全部来自浏览器读的 `https://api.github.com/repos/renjianfj163/PCB/releases`（公开接口、可跨域）：只认**正式版**，只认文件名以 `PCB-` 开头的 `.exe`（同一仓库里 `omp-windows-x64.exe` 这类制品不算产品包，整条发布不出现），SHA256 取 GitHub 给资产的 `digest`；其它版本（含 `main-build` 这类预发布）列在「其他版本」里。页面里只有占位符与「版本信息见 GitHub Releases」，没有任何写死的版本号 | 卡片停在提示并链到 Releases；「其他版本」整块隐藏。不编造版本、大小或校验和 |
 
 | 报告问题 | 一条静态链接，指向仓库的 bug_report 表单 | 不适用（不经过本站） |
 | 介绍助手 | **已下线**：它需要模型密钥和一组限流接口，静态页没有 | — |

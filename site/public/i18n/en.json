@@ -164,7 +164,6 @@
 	"download.prerelease": "pre-release",
 	"download.notes": "Release notes",
 	"download.github": "This release on GitHub",
-	"download.noWindows": "This release has no Windows package.",
 
 	"faq.eyebrow": "FAQ",
 	"faq.title": "What you need to know about PCB.",

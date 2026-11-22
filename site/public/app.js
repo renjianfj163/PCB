@@ -141,12 +141,7 @@ function renderReleases(data) {
 		if (date) head.append(el("span", "when", t("download.published", { date })));
 		article.append(head);
 
-		const assets = onePackage(Array.isArray(release.assets) ? release.assets : []);
-		if (assets.length === 0) {
-			article.append(el("p", "note small", t("download.noWindows")));
-		} else {
-			article.append(assetTable(assets));
-		}
+		article.append(assetTable(onePackage(release.assets)));
 
 		if (release.notes) {
 			const notes = el("details", "notes");
@@ -171,9 +166,10 @@ function renderReleases(data) {
 const GITHUB_RELEASES = "https://api.github.com/repos/renjianfj163/PCB/releases?per_page=30";
 
 /**
- * 对外只有一个安装包。新文件名是 PCB-<版本>-windows-x64.exe。
- * 旧发布若同时带 Desktop 和 Developer，只留 Developer：它有「IDE」按钮，
- * 和现在这一份包一致；VS Code 仍然不在包里。
+ * 对外只有一个安装包：文件名以 PCB- 开头的 .exe。
+ * 同一仓库里的其它制品（例如 omp 的 omp-windows-x64.exe）不是产品包，页面一律不认，
+ * 否则它们会顶掉下载卡片。旧发布若同时带 Desktop 和 Developer，只留 Developer：
+ * 它有「IDE」按钮，和现在这一份包一致；VS Code 仍然不在包里。
  */
 function onePackage(assets) {
 	const exes = assets.filter(asset => /\.exe$/i.test(asset.name));
@@ -188,7 +184,7 @@ function onePackage(assets) {
 function windowsAssets(release) {
 	const assets = Array.isArray(release.assets) ? release.assets : [];
 	return assets
-		.filter(asset => /windows|win32|\.exe$/i.test(String(asset.name ?? "")))
+		.filter(asset => /^PCB-.*\.exe$/i.test(String(asset.name ?? "")))
 		.map(asset => {
 			const digest = typeof asset.digest === "string" ? asset.digest : "";
 			return {
@@ -244,7 +240,11 @@ async function loadReleases() {
 	} catch (error) {
 		console.warn("releases unavailable:", error.message);
 	}
-	const all = (Array.isArray(list) ? list : []).filter(release => !release.draft).map(toRelease);
+	const all = (Array.isArray(list) ? list : [])
+		.filter(release => !release.draft)
+		.map(toRelease)
+		// 没有 PCB-*.exe 的发布不是产品版本（例如 omp 的制品发布），整条不出现。
+		.filter(release => release.assets.length > 0);
 	// 卡片只放正式版。滚动预发布（main-build）和其它预览版都进「其他版本」，
 	// 不冒充「最新正式版」——没有正式版时卡片保持页面里的提示，不编造。
 	const latest = all.find(release => !release.prerelease);
