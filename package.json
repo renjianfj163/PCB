@@ -1,6 +1,6 @@
 {
 	"name": "pcb",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"type": "module",
 	"description": "Local shell for omp: conversation, plans and actions over omp's own RPC",
 	"license": "MIT",
