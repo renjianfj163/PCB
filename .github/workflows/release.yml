@@ -64,9 +64,26 @@ jobs:
         shell: powershell
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File window/build.ps1
 
+      - name: Toolchain
+        shell: pwsh
+        run: |
+          $tar = Join-Path $env:WINDIR 'System32\tar.exe'
+          $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+          foreach ($path in @($tar, $csc)) {
+            if (-not (Test-Path -LiteralPath $path)) { throw "this runner image is missing $path" }
+            Write-Host "ok $path"
+          }
+
       - name: Stage
-        shell: powershell
-        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File window/stage.ps1 -NodeVersion $env:NODE_VERSION -OmpUrl $env:OMP_URL -OmpSha256 $env:OMP_SHA256
+        shell: pwsh
+        run: |
+          $argv = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'window/stage.ps1', '-NodeVersion', $env:NODE_VERSION)
+          # Empty variables must not reach the script as an empty argument.
+          if ($env:OMP_URL) {
+            $argv += @('-OmpUrl', $env:OMP_URL, '-OmpSha256', $env:OMP_SHA256)
+          }
+          powershell.exe @argv
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Version
         shell: pwsh
