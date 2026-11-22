@@ -237,6 +237,7 @@ export class PcbSession {
 	#queuedPrompt: { text: string; images: PromptImage[] } | undefined;
 	/** Names omp admits as slash commands; empty until it answers. */
 	#commands = new Set<string>();
+	#replaying = false;
 	/** Set once the user allows the browser in this message; cleared by the next prompt or phase change. */
 	#browserAllowed = false;
 	#started = false;
@@ -247,6 +248,8 @@ export class PcbSession {
 		this.record = record;
 		this.#deps = deps;
 		this.#policies = loadPolicies(record.id);
+		// Only a session that was opened from a transcript can be replaying one.
+		this.#replaying = Boolean(record.sessionFile);
 	}
 
 	static create(
@@ -323,6 +326,7 @@ export class PcbSession {
 			createdAt: this.record.createdAt,
 			updatedAt: this.record.updatedAt,
 			sessionFile: this.record.sessionFile ?? null,
+			replaying: this.#replaying,
 			alive: this.alive,
 			extensions: this.record.extensions,
 		};
@@ -397,6 +401,9 @@ export class PcbSession {
 		void this.#loadCommands();
 		await Promise.allSettled([this.refreshState(), this.refreshMessages()]);
 		this.#status = this.#state.streaming ? "running" : "idle";
+		// A resumed transcript often lands with that first snapshot: nothing is being
+		// replayed any more, so the shell shows the conversation instead of a spinner.
+		if (this.#messages.length > 0) this.#replaying = false;
 		this.#broadcastSession();
 
 		// A resumed session answers get_messages with an empty snapshot for a while
@@ -418,11 +425,18 @@ export class PcbSession {
 	}
 
 	async #probeHistory(): Promise<void> {
-		for (let attempt = 0; attempt < 40 && !this.#closed; attempt++) {
-			await new Promise(resolve => setTimeout(resolve, 500));
-			if (this.#messages.length > 0) return;
-			await this.refreshMessages();
-			if (this.#messages.length > 0) return;
+		try {
+			for (let attempt = 0; attempt < 40 && !this.#closed; attempt++) {
+				await new Promise(resolve => setTimeout(resolve, 500));
+				if (this.#messages.length > 0) return;
+				await this.refreshMessages();
+				if (this.#messages.length > 0) return;
+			}
+		} finally {
+			// Nothing arrived: the conversation is empty, and the shell should offer
+			// "say something" instead of "replaying history" forever.
+			this.#replaying = false;
+			this.#broadcastSession();
 		}
 	}
 

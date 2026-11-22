@@ -126,7 +126,7 @@ export function Transcript({
 	tools,
 	state,
 	sessionAlive,
-	hasHistory,
+	replaying,
 	canRewind = false,
 	onRewind,
 }: {
@@ -139,8 +139,8 @@ export function Transcript({
 	tools: Record<string, ToolActivity>;
 	state: SessionState | undefined;
 	sessionAlive: boolean;
-	/** The session file exists, so omp will replay a transcript. */
-	hasHistory?: boolean;
+	/** True only while a resumed transcript is still being replayed. */
+	replaying?: boolean;
 	/** The process is alive and no turn is running: a rewind may be attempted. */
 	canRewind?: boolean;
 	onRewind?: (entryId: string) => void;
@@ -285,14 +285,14 @@ export function Transcript({
 				<div className="empty-state">
 					<h2>
 						{sessionAlive
-							? hasHistory || (state && state.messageCount > 0)
+							? replaying || (state && state.messageCount > 0)
 								? t("正在载入这段对话…")
 								: t("说一句话开始")
 							: t("这个会话已经结束")}
 					</h2>
 					<p>
 						{sessionAlive
-							? hasHistory || (state && state.messageCount > 0)
+							? replaying || (state && state.messageCount > 0)
 								? t("omp 正在回放历史，稍等一下。")
 								: state?.todos.length
 									? t("计划列在右侧。批准之前，助手只会读，不会改。")

@@ -961,6 +961,21 @@ export class App {
 	}
 
 	#spawn(record: SessionRecord): PcbSession {
+		// omp deletes old transcripts, and `--resume <missing file>` makes it exit
+		// with code 1 before it is ready — the whole conversation then refuses to
+		// open. The record stays; only the resume of a file that is gone is dropped.
+		if (record.sessionFile && !existsSync(record.sessionFile)) {
+			this.#deps.onLog?.(`session ${record.id}: transcript gone (${record.sessionFile}), starting fresh`);
+			this.#deps.hub.broadcast({
+				t: "notice",
+				sessionId: record.id,
+				level: "info",
+				text: "这个对话的记录文件已经不在了，这一轮从空白开始。",
+			});
+			record = { ...record, sessionFile: undefined };
+			this.#deps.store.upsertSession(record);
+		}
+
 		const session = new PcbSession(record, {
 			bin: this.#deps.bin,
 			hub: this.#deps.hub,

@@ -510,7 +510,7 @@ export default function App() {
 							tools={state.tools[session.id] ?? {}}
 							state={state.states[session.id]}
 							sessionAlive={session.alive}
-							hasHistory={Boolean(session.sessionFile)}
+							replaying={session.replaying === true}
 							canRewind={
 								session.alive &&
 								state.states[session.id]?.streaming !== true &&

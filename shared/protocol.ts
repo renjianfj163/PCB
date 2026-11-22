@@ -44,6 +44,8 @@ export interface SessionSummary {
 	updatedAt: number;
 	/** omp session file, when the run persists one. */
 	sessionFile?: string | null;
+	/** True only while a resumed transcript is being replayed and has not arrived yet. */
+	replaying?: boolean;
 	/** True while the process is alive. */
 	alive: boolean;
 	error?: string | null;
