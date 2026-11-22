@@ -152,6 +152,7 @@ const EN: Record<string, string> = {
 	"已经打开一个登录窗口，在那边完成 omp login。": "A login window is open — finish omp login there.",
 	"正在打开…": "Opening…",
 	"登录模型": "Log in a model",
+	"登录其它模型": "Log in another model",
 	"安装位置": "Install location",
 	"目录": "Folder",
 	"未安装（从源码运行）": "Not installed (running from source)",

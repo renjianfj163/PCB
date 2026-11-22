@@ -134,7 +134,7 @@ export function Settings({ boot }: { boot: BootInfo | null }) {
 							})
 						}
 					>
-						{busy === "login" ? t("正在打开…") : t("登录模型")}
+						{busy === "login" ? t("正在打开…") : loggedIn.length > 0 ? t("登录其它模型") : t("登录模型")}
 					</button>
 				</div>
 			</section>

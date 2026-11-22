@@ -313,9 +313,11 @@ export function Sidebar({
 										? t("已登录：{s}", { s: loggedIn.map(item => item.name || item.provider).join("、") })
 										: t("还没有登录模型，现在发不出消息。")}
 								</p>
-								<button type="button" className="config-action" onClick={onLogin}>
-									{t("登录模型")}
-								</button>
+								{loggedIn.length === 0 ? (
+									<button type="button" className="config-action" onClick={onLogin}>
+										{t("登录模型")}
+									</button>
+								) : null}
 							</>
 						)}
 						<ThinkingPicker session={session} state={state} onThinking={onThinking} />
