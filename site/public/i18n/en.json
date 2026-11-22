@@ -159,6 +159,7 @@
 	"download.col.action": "Download",
 	"download.sizeUnknown": "Size unknown",
 	"download.shaHint": "Checksum is in the release notes",
+	"download.unavailable": "Version info is on GitHub Releases",
 	"download.published": "Published {date}",
 	"download.prerelease": "pre-release",
 	"download.notes": "Release notes",

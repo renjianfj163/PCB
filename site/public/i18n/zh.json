@@ -159,6 +159,7 @@
 	"download.col.action": "下载",
 	"download.sizeUnknown": "大小未知",
 	"download.shaHint": "校验和随发布说明给出",
+	"download.unavailable": "版本信息见 GitHub Releases",
 	"download.published": "发布于 {date}",
 	"download.prerelease": "预发布",
 	"download.notes": "发布说明",

@@ -213,8 +213,8 @@ function toRelease(release) {
 }
 
 /**
- * 下载区顶部是一张预填真实版本的卡片（页面里写死 v0.1.0）。
- * 接口能读到更新的正式版时改写这张卡片；读不到就保持页面里的真实数据，绝不编造。
+ * 下载区顶部是一张卡片：数值全部来自 GitHub Releases（版本、文件名、大小、日期、SHA256）。
+ * 页面里只留占位与提示，读不到接口时它显示的就是提示，不编造任何版本信息。
  */
 function syncPin(release) {
 	const asset = onePackage(Array.isArray(release.assets) ? release.assets : [])[0];
@@ -245,9 +245,9 @@ async function loadReleases() {
 		console.warn("releases unavailable:", error.message);
 	}
 	const all = (Array.isArray(list) ? list : []).filter(release => !release.draft).map(toRelease);
-	const stable = all.filter(release => !release.prerelease);
-	// 正式版优先；只有预发布时才用预发布，并由页面标明。
-	const latest = stable[0] || all[0];
+	// 卡片只放正式版。滚动预发布（main-build）和其它预览版都进「其他版本」，
+	// 不冒充「最新正式版」——没有正式版时卡片保持页面里的提示，不编造。
+	const latest = all.find(release => !release.prerelease);
 	if (latest) syncPin(latest);
 	renderReleases({ releases: all.filter(release => release.tag !== latest?.tag) });
 }
