@@ -1,0 +1,133 @@
+name: release
+
+# push 到 main：构建一个滚动预发布 `main-build`（站点「其他版本」里能看到）。
+# 打 v* tag：构建正式 Release（站点的下载卡只认正式版）。
+# 手动触发：默认只构建并上传 artifact，publish=true 才动 Releases。
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Upload the installer to GitHub Releases
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "24.16.0"
+  # 仓库变量（Settings → Secrets and variables → Actions → Variables）：
+  #   OMP_ASSET_URL  omp win-x64 的下载地址
+  #   OMP_SHA256     它的 sha256（小写十六进制）
+  # 没有这两个变量时，stage.ps1 直接失败，不会产出一个不含 omp 的包。
+  OMP_URL: ${{ vars.OMP_ASSET_URL }}
+  OMP_SHA256: ${{ vars.OMP_SHA256 }}
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            web/package-lock.json
+
+      - name: Dependencies
+        shell: pwsh
+        run: |
+          npm ci
+          Push-Location web
+          npm ci
+          Pop-Location
+
+      - name: Verify
+        run: npm run verify
+
+      - name: Build UI
+        run: npm run build
+
+      - name: Build shell
+        shell: powershell
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File window/build.ps1
+
+      - name: Stage
+        shell: powershell
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File window/stage.ps1 -NodeVersion $env:NODE_VERSION -OmpUrl $env:OMP_URL -OmpSha256 $env:OMP_SHA256
+
+      - name: Version
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            $version = $env:GITHUB_REF_NAME -replace '^v', ''
+          } else {
+            $base = (Get-Content package.json -Raw | ConvertFrom-Json).version
+            $version = "$base-main.$($env:GITHUB_SHA.Substring(0, 7))"
+          }
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "version $version"
+
+      - name: Build installer
+        shell: powershell
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File window/installer/build-installer.ps1 -Version $env:VERSION
+
+      - name: Checksum
+        shell: pwsh
+        run: |
+          $exe = Get-Item -LiteralPath (Join-Path 'dist' "PCB-$env:VERSION-windows-x64.exe")
+          $hash = (Get-FileHash -LiteralPath $exe.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          "ASSET=$($exe.Name)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "SHA256=$hash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+          $size = [math]::Round($exe.Length / 1MB, 1)
+          $lines = @(
+            "自动构建：$env:VERSION",
+            "",
+            "- 提交：``$env:GITHUB_SHA``",
+            "- 文件：``$($exe.Name)``",
+            "- 大小：$size MB",
+            "- SHA256：``$hash``",
+            "",
+            "构建于 $([DateTime]::UtcNow.ToString('yyyy-MM-dd')) UTC，未签名，首次运行会有 SmartScreen 提示。"
+          )
+          $lines -join "`n" | Out-File -FilePath release-notes.md -Encoding utf8
+          Write-Host "$($exe.Name) $size MB sha256 $hash"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PCB-${{ env.VERSION }}-windows-x64
+          path: dist/PCB-${{ env.VERSION }}-windows-x64.exe
+          if-no-files-found: error
+
+      - name: Publish
+        if: github.event_name == 'push' || inputs.publish
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $exe = Join-Path 'dist' $env:ASSET
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            $tag = $env:GITHUB_REF_NAME
+            gh release view $tag *> $null
+            if ($LASTEXITCODE -eq 0) { throw "release $tag already exists; bump the version instead of re-tagging" }
+            gh release create $tag $exe --title "PCB $env:VERSION" --notes-file release-notes.md --target $env:GITHUB_SHA
+          } else {
+            # 一个滚动预发布：重建而不是覆盖，github.com 的 release 列表才会把它排在最前。
+            $tag = 'main-build'
+            gh release view $tag *> $null
+            if ($LASTEXITCODE -eq 0) { gh release delete $tag --cleanup-tag --yes }
+            gh release create $tag $exe --title "PCB main-build $env:VERSION" --notes-file release-notes.md --prerelease --target $env:GITHUB_SHA
+          }

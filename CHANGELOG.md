@@ -1,5 +1,16 @@
 # 更新记录
 
+## 未发布
+
+- 发布流水线（`.github/workflows/release.yml`）：push 到 `main` 构建滚动预发布 `main-build`
+  （每次删掉重建，只留一份），打 `v*` tag 出正式版；两者都先跑 `npm run verify`。
+  版本号：tag 去掉 `v`；main 构建是 `<package.json 版本>-main.<提交前 7 位>`。
+- 新增 `window/stage.ps1`：安装包的程序树不再手工拼。`node.exe` 从 nodejs.org 取并按官方
+  `SHASUMS256.txt` 校验，`omp.exe` 按 `OMP_SHA256` 校验，缺 omp 时直接失败。
+- 站点下载卡不再写死版本：版本、文件名、大小、发布日期、SHA256 都来自 GitHub Releases API，
+  只认正式版，预发布（含 `main-build`）只进「其他版本」；接口读不到时显示
+  「版本信息见 GitHub Releases」并链到发布页，不再展示任何具体数值。发新版不需要重新部署站点。
+
 ## 0.1.0 — 尚未发布
 
 第一个公开版本，还没有 Windows 安装包；从源码运行（见 [docs/install.md](docs/install.md)）。
