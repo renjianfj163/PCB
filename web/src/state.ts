@@ -255,6 +255,11 @@ export function reducer(state: AppState, action: Action): AppState {
 						...state,
 						boot: state.boot === null ? state.boot : { ...state.boot, projects: event.projects },
 					};
+				case "auth":
+					return {
+						...state,
+						boot: state.boot === null ? state.boot : { ...state.boot, auth: event.auth },
+					};
 				case "automations":
 					return { ...state, automations: event.automations };
 				case "session":

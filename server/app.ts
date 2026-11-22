@@ -10,6 +10,7 @@ import { readPromptImages } from "./attachments.ts";
 import { readBlob } from "./blobs.ts";
 import { runCommand } from "./exec-box.ts";
 import { clearRaw, rawLines, watchRaw } from "./raw.ts";
+import { queryProviders } from "./auth.ts";
 import { openInSystemBrowser } from "./external.ts";
 import { checkUpdate, downloadAndRun, installInfo, openLog, openLogin } from "./install.ts";
 import { openIde } from "./vscode-desktop.ts";
@@ -162,6 +163,8 @@ export class App {
 	#deps: AppDeps;
 	#sessions = new Map<string, PcbSession>();
 	#auth: BootInfo["auth"] = [];
+	#authAt = 0;
+	#authRefresh: Promise<BootInfo["auth"]> | null = null;
 	#ompVersion = "unknown";
 	#scheduler: NodeJS.Timeout | undefined;
 	#picking = false;
@@ -178,6 +181,31 @@ export class App {
 
 	get sessions(): PcbSession[] {
 		return [...this.#sessions.values()];
+	}
+
+	/**
+	 * Re-read the login state from omp. `boot.auth` otherwise only fills when a
+	 * conversation runs, so a shell with none open could not tell "logged out"
+	 * from "not asked yet". Concurrent callers share one omp run.
+	 */
+	refreshAuth(force = false): Promise<BootInfo["auth"]> {
+		if (!force && Date.now() - this.#authAt < 15_000) return Promise.resolve(this.#auth);
+		if (this.#authRefresh) return this.#authRefresh;
+		this.#authRefresh = queryProviders(this.#deps.bin, this.#deps.root, this.#deps.onLog)
+			.then(auth => {
+				this.#auth = auth;
+				this.#authAt = Date.now();
+				this.#deps.hub.broadcast({ t: "auth", auth });
+				return auth;
+			})
+			.catch(error => {
+				this.#deps.onLog?.(`auth refresh failed: ${(error as Error).message}`);
+				return this.#auth;
+			})
+			.finally(() => {
+				this.#authRefresh = null;
+			});
+		return this.#authRefresh;
 	}
 
 	/**
@@ -310,6 +338,11 @@ export class App {
 				platform: process.platform,
 			};
 			this.#json(response, 200, boot);
+			return;
+		}
+
+		if (head === "auth" && id === "refresh" && method === "POST") {
+			this.#json(response, 200, { auth: await this.refreshAuth(true) });
 			return;
 		}
 

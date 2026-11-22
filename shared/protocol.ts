@@ -194,6 +194,8 @@ export type UiEvent =
 	| { t: "dialog_closed"; sessionId: string; id: string }
 	| { t: "notice"; sessionId: string; level: NoticeLevel; text: string }
 	| { t: "projects"; projects: string[] }
+	/** Login state re-read from omp, before or without a conversation. */
+	| { t: "auth"; auth: BootInfo["auth"] }
 	| { t: "tool_policy"; sessionId: string; tool: string; decision: PolicyDecision }
 	| { t: "automations"; automations: Automation[] };
 

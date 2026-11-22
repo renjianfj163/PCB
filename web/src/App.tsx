@@ -114,6 +114,37 @@ export default function App() {
 		});
 	}, [guard]);
 
+	// `boot.auth` only fills while a conversation runs, so a shell with none open
+	// could not tell "logged out" from "not asked yet". Ask omp once, and again when
+	// the window regains focus — that is the moment the login console was closed.
+	const authAskedAt = useRef(0);
+	const authedRef = useRef(false);
+	authedRef.current = Boolean(state.boot?.auth.some(item => item.authenticated));
+	// The first-run hint waits for one real answer, so it cannot flash before omp
+	// has been asked whether anything is logged in.
+	const [authChecked, setAuthChecked] = useState(false);
+	const askAuth = useCallback(() => {
+		if (Date.now() - authAskedAt.current < 10_000) return;
+		authAskedAt.current = Date.now();
+		void api
+			.refreshAuth()
+			.catch(() => null)
+			.finally(() => setAuthChecked(true));
+	}, []);
+
+	useEffect(() => {
+		if (!state.boot || authedRef.current) return;
+		askAuth();
+	}, [state.boot, askAuth]);
+
+	useEffect(() => {
+		const onFocus = () => {
+			if (!authedRef.current) askAuth();
+		};
+		window.addEventListener("focus", onFocus);
+		return () => window.removeEventListener("focus", onFocus);
+	}, [askAuth]);
+
 	// A wider rail is only legal while the window can back it; shrink it back
 	// in when the window does, instead of letting the conversation collapse.
 	useEffect(() => {
@@ -642,7 +673,7 @@ export default function App() {
 				onPick={onPalettePick}
 			/>
 
-			{state.boot && !loginHintClosed && !(state.boot.auth ?? []).some(item => item.authenticated) ? (
+			{state.boot && authChecked && !loginHintClosed && !(state.boot.auth ?? []).some(item => item.authenticated) ? (
 				<LoginHint onLogin={() => void openLogin()} onDismiss={dismissLoginHint} />
 			) : null}
 

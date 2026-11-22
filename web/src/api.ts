@@ -178,6 +178,9 @@ export const api = {
 	/** Reads GitHub's latest release on the server; never throws for "unreadable". */
 	checkUpdate: () => json<UpdateCheck>("/api/update/check", { method: "POST" }),
 
+	/** Re-reads the login state from omp, without needing a conversation. */
+	refreshAuth: () => json<{ auth: BootInfo["auth"] }>("/api/auth/refresh", { method: "POST" }),
+
 	/** Downloads the release and starts the installer; `manual` means it shows its own first screen. */
 	installUpdate: () => json<{ ok: true; manual: boolean }>("/api/update/install", { method: "POST" }),
 
