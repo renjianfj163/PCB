@@ -39,9 +39,24 @@ LICENSE  NOTICE  node-LICENSE.txt
 
 ## 行为
 
-- 每用户安装，不要管理员：文件进 `%LOCALAPPDATA%\Programs\PCB`，开始菜单一项，卸载信息写在 `HKCU`。
-- `--silent` 静默安装；安装完会检查 WebView2 运行时，缺了就打开微软的下载页，而不是白屏。
-- 卸载：安装目录里的 `uninstall.exe`（约 6 KB），会先关掉这个目录里的窗口，再删快捷方式、注册表项和目录。
+- 第一屏先问装哪里：目录框（默认 `%LOCALAPPDATA%\Programs\PCB`）和「浏览」，「创建桌面快捷方式」与
+  「把 pcb 命令加进用户 PATH」两个勾（默认都勾上），然后才开始解压。
+- 目录规则：`Program Files` / `Program Files (x86)` 直接拒绝——每用户安装没有管理员权限。目标目录非空时，
+  只有已经是 PCB（`install-meta.txt` 与 `PCBWindow.exe` 都在）才允许覆盖；其它非空目录一律拒绝，并且一个
+  文件都不删。
+- 覆盖已有 PCB 前，先结束**这个目录里**的 `PCBWindow.exe`，再替换文件；升级回到 `install-meta.txt` /
+  注册表 `InstallLocation` 记下的目录，不会装回默认位置。
+- 每用户安装，不要管理员：文件进所选目录，开始菜单一项，卸载信息写在 `HKCU`。
+- 安装目录下建 `bin\`：`pcb.cmd` 启动 `..\PCBWindow.exe`，`omp.cmd` 把参数转给 `..\omp.exe`。
+  勾选 PATH 时只把 `<安装目录>\bin` 追加进 `HKCU\Environment\Path`（已有就不重复，并广播环境变量），
+  安装目录本身不进 PATH——旁边的 `node.exe` 会盖住系统的 Node。
+- 快捷方式指向 `PCBWindow.exe`，图标就是 exe 自己带的那枚：`window/build.ps1` 用 `/win32icon` 编进去。
+- `--silent [--dir <路径>] [--relaunch]`：静默安装；`--dir` 指定目录（不给就用默认），`--relaunch`
+  装完打开窗口。设置页的「下载并安装」用的就是 `--silent --dir <已安装目录> --relaunch`。
+- 安装完会检查 WebView2 运行时，缺了就打开微软的下载页，而不是白屏。
+- 卸载：安装目录里的 `uninstall.exe`（约 6 KB），先关掉这个目录里的窗口，再删开始菜单与桌面快捷方式、
+  用户 PATH 里的 `bin`、`HKCU` 卸载项和目录本身。`%USERPROFILE%\.pcb\` 与 omp 自己的会话在安装目录外面，
+  安装、升级、卸载都不碰它们。
 - 不签名：首次运行会有 SmartScreen 提示。
 
 ## 发布（自动）

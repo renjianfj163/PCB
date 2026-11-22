@@ -66,6 +66,35 @@ foreach ($needed in @($core, $winForms, $loader)) {
 	if (-not (Test-Path -LiteralPath $needed)) { throw "SDK 包里缺文件：$needed" }
 }
 
+# --- icon --------------------------------------------------------------------
+#
+# Explorer and the shortcuts draw an icon; the window itself draws its own. One
+# blue square with a white P, made once into window/.build/pcb.ico.
+
+$iconPath = Join-Path $build "pcb.ico"
+if (-not (Test-Path -LiteralPath $iconPath)) {
+	Write-Host "画窗口图标"
+	Add-Type -AssemblyName System.Drawing
+	$bitmap = New-Object System.Drawing.Bitmap 64, 64
+	$graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+	$graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+	$graphics.Clear([System.Drawing.Color]::FromArgb(255, 37, 99, 235))
+	$font = New-Object System.Drawing.Font("Segoe UI", 40, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Pixel)
+	$format = New-Object System.Drawing.StringFormat
+	$format.Alignment = [System.Drawing.StringAlignment]::Center
+	$format.LineAlignment = [System.Drawing.StringAlignment]::Center
+	$rect = New-Object System.Drawing.RectangleF 0, 0, 64, 64
+	$graphics.DrawString("P", $font, [System.Drawing.Brushes]::White, $rect, $format)
+	$graphics.Dispose()
+	$handle = $bitmap.GetHicon()
+	$icon = [System.Drawing.Icon]::FromHandle($handle)
+	$stream = [System.IO.File]::Create($iconPath)
+	$icon.Save($stream)
+	$stream.Close()
+	$icon.Dispose()
+	$bitmap.Dispose()
+}
+
 # --- compile ----------------------------------------------------------------
 
 $frameworkDir = Split-Path -Parent $csc
@@ -76,6 +105,7 @@ $argv = @(
 	"/platform:x64",
 	"/optimize+",
 	"/warn:4",
+	("/win32icon:" + $iconPath),
 	"/out:$exe"
 )
 foreach ($name in @("System.dll", "System.Core.dll", "System.Drawing.dll", "System.Windows.Forms.dll")) {

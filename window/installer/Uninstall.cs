@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
@@ -9,9 +10,12 @@ namespace PcbUninstall
 	/// <summary>
 	/// The uninstaller the installer drops into its own folder (about 15 KB, not a
 	/// second copy of the payload). It reads install-meta.txt next to itself, stops
-	/// the shell that belongs to this folder, removes the shortcut and the HKCU
-	/// uninstall entry, then hands the remaining folder to a detached cmd — a
-	/// running exe cannot delete its own directory.
+	/// the shell that belongs to this folder, removes both shortcuts, the bin entry
+	/// on the user PATH and the HKCU uninstall entry, then hands the remaining
+	/// folder to a detached cmd — a running exe cannot delete its own directory.
+	///
+	/// %USERPROFILE%\.pcb and omp's own sessions live outside the install folder and
+	/// are never touched here.
 	/// </summary>
 	internal static class Program
 	{
@@ -33,10 +37,16 @@ namespace PcbUninstall
 
 			StopShell(dir);
 
-			string shortcut = Path.Combine(
+			string startMenu = Path.Combine(
 				Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
 				"Microsoft", "Windows", "Start Menu", "Programs", appName + ".lnk");
-			try { if (File.Exists(shortcut)) File.Delete(shortcut); } catch { }
+			try { if (File.Exists(startMenu)) File.Delete(startMenu); } catch { }
+
+			string desktop = Path.Combine(
+				Environment.GetFolderPath(Environment.SpecialFolder.Desktop), appName + ".lnk");
+			try { if (File.Exists(desktop)) File.Delete(desktop); } catch { }
+
+			RemoveUserPath(Path.Combine(dir, "bin"));
 
 			string key = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\" + appName.Replace(" ", "-");
 			try { Registry.CurrentUser.DeleteSubKeyTree(key, false); } catch { }
@@ -49,6 +59,42 @@ namespace PcbUninstall
 
 			if (!silent) MessageBox.Show(appName + " 已卸载。", appName, MessageBoxButtons.OK, MessageBoxIcon.Information);
 		}
+
+		/// <summary>Drops exactly the bin\ entry the installer added; other PATH entries stay.</summary>
+		private static void RemoveUserPath(string binDir)
+		{
+			try
+			{
+				string current = Environment.GetEnvironmentVariable("Path", EnvironmentVariableTarget.User);
+				if (current == null) return;
+
+				bool found = false;
+				string next = "";
+				foreach (string part in current.Split(';'))
+				{
+					string trimmed = part.Trim();
+					if (trimmed.Length == 0) continue;
+					if (string.Equals(trimmed.TrimEnd('\\'), binDir.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase))
+					{
+						found = true;
+						continue;
+					}
+					next = next.Length == 0 ? trimmed : next + ";" + trimmed;
+				}
+				if (!found) return;
+
+				Environment.SetEnvironmentVariable("Path", next, EnvironmentVariableTarget.User);
+				UIntPtr ignored;
+				SendMessageTimeout(new IntPtr(0xffff), 0x1A, UIntPtr.Zero, "Environment", 0x0002, 5000, out ignored);
+			}
+			catch
+			{
+			}
+		}
+
+		[DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+		private static extern IntPtr SendMessageTimeout(
+			IntPtr hWnd, uint msg, UIntPtr wParam, string lParam, uint flags, uint timeout, out UIntPtr result);
 
 		private static string ImagePath(Process process)
 		{
