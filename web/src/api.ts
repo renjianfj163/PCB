@@ -11,6 +11,7 @@ import type {
 	ExecResult,
 	FilePreview,
 	FrameCheck,
+	InstallInfo,
 	ModelsInfo,
 	PageShot,
 	Phase,
@@ -21,6 +22,7 @@ import type {
 	SessionState,
 	SessionSummary,
 	ThinkingInfo,
+	UpdateCheck,
 } from "../../shared/protocol.ts";
 
 /**
@@ -169,4 +171,19 @@ export const api = {
 
 	runAutomation: (id: string) =>
 		json<{ session: SessionSummary; automation: Automation }>(`/api/automations/${id}/run`, { method: "POST" }),
+
+	/** Installed package or checkout, with the version each one reports. */
+	install: () => json<InstallInfo>("/api/install"),
+
+	/** Reads GitHub's latest release on the server; never throws for "unreadable". */
+	checkUpdate: () => json<UpdateCheck>("/api/update/check", { method: "POST" }),
+
+	/** Downloads the release and starts the installer; `manual` means it shows its own first screen. */
+	installUpdate: () => json<{ ok: true; manual: boolean }>("/api/update/install", { method: "POST" }),
+
+	/** Opens a console running `omp login`. */
+	login: () => json<{ ok: true }>("/api/login", { method: "POST" }),
+
+	/** Reveals %LOCALAPPDATA%\PCB\window.log in Explorer. */
+	openLog: () => json<{ ok: boolean; path: string }>("/api/log", { method: "POST" }),
 };

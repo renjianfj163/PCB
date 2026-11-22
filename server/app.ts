@@ -11,6 +11,7 @@ import { readBlob } from "./blobs.ts";
 import { runCommand } from "./exec-box.ts";
 import { clearRaw, rawLines, watchRaw } from "./raw.ts";
 import { openInSystemBrowser } from "./external.ts";
+import { checkUpdate, downloadAndRun, installInfo, openLog, openLogin } from "./install.ts";
 import { openIde } from "./vscode-desktop.ts";
 import { frameCheck } from "./frame-check.ts";
 import { pageShot } from "./screenshot.ts";
@@ -151,6 +152,8 @@ export interface AppDeps {
 	store: Store;
 	bin: string;
 	port: number;
+	/** The folder holding server/main.ts: a checkout, or the installer's own tree. */
+	root: string;
 	webRoot: string;
 	onLog?: (message: string) => void;
 }
@@ -307,6 +310,45 @@ export class App {
 				platform: process.platform,
 			};
 			this.#json(response, 200, boot);
+			return;
+		}
+
+		if (head === "install" && method === "GET") {
+			this.#json(response, 200, installInfo(this.#deps.root));
+			return;
+		}
+
+		if (head === "update" && id === "check" && method === "POST") {
+			this.#json(response, 200, await checkUpdate(this.#deps.root));
+			return;
+		}
+
+		// Downloading runs only after the page has shown the release and the user
+		// pressed the button; there is no background check and no background install.
+		if (head === "update" && id === "install" && method === "POST") {
+			const check = await checkUpdate(this.#deps.root);
+			if (!check.hasUpdate || !check.latest || !check.url) {
+				this.#json(response, 400, { error: "没有可安装的更新" });
+				return;
+			}
+			const result = await downloadAndRun(check.url, check.latest);
+			this.#json(response, 200, { ok: true, manual: result.manual });
+			return;
+		}
+
+		if (head === "login" && method === "POST") {
+			const result = openLogin(this.#deps.root, this.#deps.bin);
+			this.#json(response, result.ok ? 200 : 400, result.ok ? { ok: true } : { error: result.error });
+			return;
+		}
+
+		if (head === "log" && method === "POST") {
+			const result = openLog();
+			this.#json(
+				response,
+				result.ok ? 200 : 400,
+				result.ok ? { ok: true, path: result.path } : { error: "找不到窗口日志", path: result.path },
+			);
 			return;
 		}
 

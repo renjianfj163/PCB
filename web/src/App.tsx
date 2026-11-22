@@ -7,9 +7,11 @@ import { Automations } from "./components/Automations.tsx";
 import { Composer } from "./components/Composer.tsx";
 import { DialogLayer } from "./components/Dialogs.tsx";
 import { Home } from "./components/Home.tsx";
+import { LoginHint } from "./components/LoginHint.tsx";
 import { Palette, type PaletteItem } from "./components/Palette.tsx";
 import { RawLog } from "./components/RawLog.tsx";
 import { RightRail, type RailTab } from "./components/RightRail.tsx";
+import { Settings } from "./components/Settings.tsx";
 import { Sidebar } from "./components/Sidebar.tsx";
 import { Topbar } from "./components/Topbar.tsx";
 import { Transcript } from "./components/Transcript.tsx";
@@ -21,6 +23,7 @@ const RIGHT_PANEL_KEY = "pcb.rightPanel";
 const LEFT_PANEL_KEY = "pcb.leftPanel";
 const RAIL_WIDTH_KEY = "pcb.railW";
 const PROJECT_KEY = "pcb.project";
+const LOGIN_HINT_KEY = "pcb.loginHint";
 
 const RAIL_MIN = 260;
 const RAIL_SHARE = 0.8;
@@ -67,7 +70,7 @@ export default function App() {
 	const [state, dispatch] = useReducer(reducer, initialState);
 	const [error, setError] = useState<string | null>(null);
 	const [info, setInfo] = useState<string | null>(null);
-	const [view, setView] = useState<"home" | "automations">("home");
+	const [view, setView] = useState<"home" | "automations" | "settings">("home");
 	const [project, setProjectState] = useState<string | null>(() => window.localStorage.getItem(PROJECT_KEY));
 	// The selected folder survives a reload: it is the sidebar's current project.
 	const setProject = (cwd: string | null) => {
@@ -77,6 +80,10 @@ export default function App() {
 	};
 	const [paletteOpen, setPaletteOpen] = useState(false);
 	const [sending, setSending] = useState(false);
+	// The first-run login layer is dismissed once, not on every start.
+	const [loginHintClosed, setLoginHintClosed] = useState(
+		() => window.localStorage.getItem(LOGIN_HINT_KEY) === "closed",
+	);
 	// Bumping this remounts the blank page, so a new conversation starts on Plan.
 	const [homeEpoch, setHomeEpoch] = useState(0);
 	const [rightOpen, setRightOpen] = useState(initialRightOpen);
@@ -354,6 +361,25 @@ export default function App() {
 		setSidebarOpen(false);
 	};
 
+	const openSettings = () => {
+		dispatch({ type: "select", id: null });
+		setView("settings");
+		setRightOpen(false);
+		setSidebarOpen(false);
+	};
+
+	/** Login happens in omp's own console, never in a field on this page. */
+	const openLogin = () =>
+		guard(async () => {
+			await api.login();
+			setInfo(t("已经打开一个登录窗口，在那边完成 omp login。"));
+		});
+
+	const dismissLoginHint = () => {
+		setLoginHintClosed(true);
+		window.localStorage.setItem(LOGIN_HINT_KEY, "closed");
+	};
+
 	const automationHandlers = {
 		onCreate: (input: {
 			name: string;
@@ -421,6 +447,7 @@ export default function App() {
 					})
 				}
 				onOpenAutomations={openAutomations}
+				onOpenSettings={openSettings}
 				onCollapse={() => setLeftPanel(false)}
 				onModel={(provider, id) =>
 					guard(async () => {
@@ -548,6 +575,8 @@ export default function App() {
 					</>
 				) : view === "automations" ? (
 					<Automations automations={state.automations} projects={projects} {...automationHandlers} />
+				) : view === "settings" ? (
+					<Settings boot={state.boot} />
 				) : (
 					<Home
 						key={homeEpoch}
@@ -611,6 +640,10 @@ export default function App() {
 				onClose={() => setPaletteOpen(false)}
 				onPick={onPalettePick}
 			/>
+
+			{state.boot && !loginHintClosed && !(state.boot.auth ?? []).some(item => item.authenticated) ? (
+				<LoginHint onLogin={() => void openLogin()} onDismiss={dismissLoginHint} />
+			) : null}
 
 		</div>
 	);

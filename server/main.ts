@@ -19,6 +19,7 @@ const app = new App({
 	store,
 	bin,
 	port,
+	root: join(here, ".."),
 	webRoot: join(here, "..", "web", "dist"),
 	onLog: log,
 });

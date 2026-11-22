@@ -221,6 +221,29 @@ export interface BootInfo {
 	platform: string;
 }
 
+/** What this PCB is: the installed package, or a checkout run from source. */
+export interface InstallInfo {
+	installed: boolean;
+	/** The install folder when the package put this PCB there; null for a checkout. */
+	dir: string | null;
+	/** `install-meta.txt` when installed, `package.json` otherwise. */
+	version: string;
+	/** Always the checkout's own version, for comparison from the settings page. */
+	sourceVersion: string;
+	/** `<LOCALAPPDATA>\PCB\window.log`; the window writes here. */
+	logFile: string;
+}
+
+export interface UpdateCheck {
+	current: string;
+	latest: string | null;
+	url: string | null;
+	notes: string;
+	hasUpdate: boolean;
+	/** Set when GitHub could not be read; `latest` is null then. */
+	error?: string;
+}
+
 export interface CreateSessionBody {
 	cwd?: string;
 	name?: string;

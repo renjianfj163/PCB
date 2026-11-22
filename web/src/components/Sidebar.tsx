@@ -87,13 +87,14 @@ export function Sidebar({
 	onSelectSession,
 	onDeleteSession,
 	onOpenAutomations,
+	onOpenSettings,
 	onCollapse,
 	onModel,
 	onThinking,
 }: {
 	open: boolean;
 	collapsed: boolean;
-	activeView: "home" | "automations";
+	activeView: "home" | "automations" | "settings";
 	sessions: SessionSummary[];
 	activeId: string | null;
 	project: string | null;
@@ -110,6 +111,7 @@ export function Sidebar({
 	onSelectSession: (id: string) => void;
 	onDeleteSession: (id: string) => Promise<void>;
 	onOpenAutomations: () => void;
+	onOpenSettings: () => void;
 	onCollapse: () => void;
 	onModel: (provider: string, id: string) => Promise<void>;
 	onThinking: (level: string) => Promise<void>;
@@ -222,6 +224,17 @@ export function Sidebar({
 				</span>
 				Automations
 				{automations.length > 0 ? <span className="nav-badge">{automations.length}</span> : null}
+			</button>
+
+			<button
+				type="button"
+				className={`nav-row${activeView === "settings" ? " active" : ""}`}
+				onClick={onOpenSettings}
+			>
+				<span className="nav-icon" aria-hidden>
+					<IconGear />
+				</span>
+				{t("设置")}
 			</button>
 
 			<section className="nav-section nav-projects">
