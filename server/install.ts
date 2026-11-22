@@ -138,6 +138,16 @@ export async function downloadAndRun(url: string, version: string): Promise<{ ma
 }
 
 /**
+ * The argv that runs `exe <args>` in a console the user can see, through cmd's
+ * `start`. Never one long string: Node would quote it whole and escape the inner
+ * quotes as \" — cmd does not unescape them, and Windows ends up trying to start
+ * a program called `\`.
+ */
+export function consoleArgs(exe: string, rest: string[]): string[] {
+	return ["/d", "/c", "start", "", exe].concat(rest);
+}
+
+/**
  * Run `omp login` in a console the user can see. The server is a windowless node
  * process, so the console has to come from `cmd /c start`, not from spawn.
  */
@@ -150,7 +160,7 @@ export function openLogin(root: string, bin: string): { ok: boolean; error?: str
 		return { ok: false, error: "找不到 omp.exe" };
 	}
 	if (process.platform === "win32") {
-		spawn("cmd.exe", ["/c", `start "" "${omp}" login`], {
+		spawn("cmd.exe", consoleArgs(omp, ["login"]), {
 			detached: true,
 			stdio: "ignore",
 			windowsHide: false,
