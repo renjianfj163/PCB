@@ -4,6 +4,7 @@ import type {
 	Automation,
 	AutomationInput,
 	BootInfo,
+	CompactResult,
 	CreateSessionBody,
 	DialogAnswer,
 	DirListing,
@@ -62,6 +63,13 @@ export const api = {
 		}),
 
 	abort: (id: string) => json<{ ok: true }>(`/api/sessions/${id}/abort`, { method: "POST" }),
+
+	/** Ask omp to summarize the conversation and free context. */
+	compact: (id: string, customInstructions?: string) =>
+		json<CompactResult>(`/api/sessions/${id}/compact`, {
+			method: "POST",
+			body: JSON.stringify(customInstructions ? { customInstructions } : {}),
+		}),
 
 	/** Move the conversation leaf back to just before one user message; files stay as they are. */
 	rewind: (id: string, entryId: string) =>

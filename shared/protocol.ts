@@ -97,6 +97,12 @@ export interface RewindResult {
 	editorText?: string;
 }
 
+/** Outcome of `POST /api/sessions/:id/compact`. Counts are omp's, when it reported them. */
+export interface CompactResult {
+	tokensBefore?: number;
+	tokensAfter?: number;
+}
+
 export interface AskOption {
 	label: string;
 	description?: string;

@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import type { PromptImage } from "../../../shared/protocol.ts";
+import type { Phase, PromptImage } from "../../../shared/protocol.ts";
 import { AttachmentPicker, AttachmentTray, usePromptImages } from "./attachments.tsx";
 import { t } from "../i18n.ts";
+
+const HOME_NOTE: Record<Phase, string> = {
+	plan: "Enter 发送，Shift+Enter 换行。助手会先给计划，你同意后才动文件；跑命令仍会问你。",
+	build: "Enter 发送，Shift+Enter 换行。执行阶段会直接改文件；跑命令仍会问你。",
+	chat: "Enter 发送，Shift+Enter 换行。聊天阶段只回答问题，不改文件、不跑命令；需要动手时切到「执行」。",
+};
 
 function shortPath(path: string): string {
 	const parts = path.split(/[\\/]/).filter(Boolean);
@@ -19,10 +25,11 @@ export function Home({
 	project: string | null;
 	projects: string[];
 	busy: boolean;
-	onSend: (text: string, images: PromptImage[]) => Promise<void>;
+	onSend: (text: string, images: PromptImage[], phase: Phase) => Promise<void>;
 	onPickProject: () => Promise<void>;
 }) {
 	const [text, setText] = useState("");
+	const [phase, setPhase] = useState<Phase>("plan");
 	const picks = usePromptImages();
 	const input = useRef<HTMLTextAreaElement | null>(null);
 
@@ -35,7 +42,7 @@ export function Home({
 	const send = async () => {
 		if (!ready) return;
 		const body = text.trim();
-		await onSend(body, picks.images);
+		await onSend(body, picks.images, phase);
 		setText("");
 		picks.clear();
 	};
@@ -84,6 +91,19 @@ export function Home({
 								</button>
 							) : null}
 							<AttachmentPicker disabled={busy || picks.preparing} onFiles={picks.addFiles} />
+							<select
+								className="phase-select"
+								value={phase}
+								title={t("下一条消息使用的阶段")}
+								onChange={event => {
+									const value = event.target.value;
+									setPhase(value === "build" ? "build" : value === "chat" ? "chat" : "plan");
+								}}
+							>
+								<option value="plan">{t("规划")}</option>
+								<option value="build">{t("执行")}</option>
+								<option value="chat">{t("聊天")}</option>
+							</select>
 							<button type="button" className="primary" disabled={!ready} onClick={() => void send()}>
 								{busy ? t("启动中…") : t("发送")}
 							</button>
@@ -91,9 +111,7 @@ export function Home({
 					</div>
 				</div>
 
-				<p className="home-note">
-					{t("Enter 发送，Shift+Enter 换行。助手会先给计划，你同意后才动文件；跑命令仍会问你。")}
-				</p>
+				<p className="home-note">{t(HOME_NOTE[phase])}</p>
 			</div>
 		</div>
 	);

@@ -78,6 +78,13 @@ $owner.Close()
 $owner.Dispose()
 `;
 
+/** Keep a chosen phase. A missing one stays unset; anything else starts on plan. */
+function chosenPhase(value: unknown): Phase | undefined {
+	if (value === undefined) return undefined;
+	if (value === "plan" || value === "build" || value === "chat") return value;
+	return "plan";
+}
+
 function isSameLocalDay(a: Date, b: Date): boolean {
 	return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
@@ -586,7 +593,7 @@ export class App {
 					name: body.name,
 					extensions: body.extensions,
 					resumeSessionFile: body.resumeSessionFile,
-					phase: body.phase,
+					phase: chosenPhase(body.phase),
 				});
 				let initialImages: PromptImage[];
 				try {
@@ -669,6 +676,15 @@ export class App {
 				case "abort": {
 					await session.abort();
 					this.#json(response, 200, { ok: true });
+					return;
+				}
+				case "compact": {
+					if (method !== "POST") break;
+					const body = (await this.#readJson(request)) as { customInstructions?: unknown };
+					const instructions =
+						typeof body.customInstructions === "string" ? body.customInstructions.trim() : "";
+					const result = await session.compact(instructions || undefined);
+					this.#json(response, 200, result);
 					return;
 				}
 				case "phase": {

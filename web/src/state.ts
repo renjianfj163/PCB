@@ -72,7 +72,8 @@ export type Action =
 	| { type: "set_policies"; sessionId: string; policies: PolicyEvent[] }
 	| { type: "local_user"; sessionId: string; text: string; images?: PromptImage[]; at?: number }
 	| { type: "ui"; event: UiEvent }
-	| { type: "dismiss"; key: string };
+	| { type: "dismiss"; key: string }
+	| { type: "clear_notices" };
 
 export const initialState: AppState = {
 	boot: null,
@@ -238,6 +239,8 @@ export function reducer(state: AppState, action: Action): AppState {
 			};
 		case "dismiss":
 			return { ...state, notices: state.notices.filter(notice => notice.key !== action.key) };
+		case "clear_notices":
+			return state.notices.length === 0 ? state : { ...state, notices: [] };
 		case "ui": {
 			const event = action.event;
 			switch (event.t) {

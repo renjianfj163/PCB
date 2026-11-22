@@ -16,11 +16,13 @@ import { appendPolicy, loadPolicies, type StoredPolicy } from "./policies.ts";
 import { appendRaw } from "./raw.ts";
 import { RpcClient, type RpcFrame } from "./rpc/client.ts";
 import type { Store, SessionRecord } from "./store.ts";
+import { compactFailureText, compactionOutputNotice, parseCompactInvocation } from "../shared/compact.ts";
 import { leadingCommand } from "../shared/slash.ts";
 import type {
 	AgentMessage,
 	AskQuestion,
 	BootInfo,
+	CompactResult,
 	DialogAnswer,
 	DialogRequest,
 	ModelRef,
@@ -547,6 +549,24 @@ export class PcbSession {
 				}
 				return;
 			}
+			case "manual_compaction_start":
+			case "auto_compaction_start":
+				this.#state = { ...this.#state, compacting: true };
+				this.#deps.hub.broadcast({ t: "state", sessionId: this.record.id, state: this.#state });
+				this.#deps.hub.broadcast({ t: "frame", sessionId: this.record.id, frame });
+				return;
+			case "manual_compaction_end":
+			case "auto_compaction_end":
+				this.#deps.hub.broadcast({ t: "frame", sessionId: this.record.id, frame });
+				this.#scheduleRefresh({ messages: true });
+				return;
+			case "command_output": {
+				const text = typeof frame.text === "string" ? frame.text.trim() : "";
+				const notice = text ? compactionOutputNotice(text) : null;
+				if (notice) this.#notice(notice.level, notice.text);
+				this.#deps.hub.broadcast({ t: "frame", sessionId: this.record.id, frame });
+				return;
+			}
 			default:
 				this.#deps.hub.broadcast({ t: "frame", sessionId: this.record.id, frame });
 		}
@@ -808,16 +828,78 @@ export class PcbSession {
 		return this.#sendPrompt(text, images);
 	}
 
+	/**
+	 * Summarize the conversation so far. OMP aborts a live turn before compacting,
+	 * so this refuses while one is still streaming and asks the user to stop first.
+	 */
+	async compact(customInstructions?: string): Promise<CompactResult> {
+		if (!this.#started) await this.ready;
+		if (this.#state.streaming) throw new Error("这一轮还在跑，停下来再压缩");
+		if (this.#state.compacting) throw new Error("正在压缩上下文");
+		const client = this.#requireClient();
+		const before = this.#state.contextUsage?.tokens;
+		this.#state = { ...this.#state, compacting: true };
+		this.#deps.hub.broadcast({ t: "state", sessionId: this.record.id, state: this.#state });
+		const instructions = customInstructions?.trim();
+		try {
+			const data = await client.call<{ tokensBefore?: number }>({
+				type: "compact",
+				...(instructions ? { customInstructions: instructions } : {}),
+			});
+			await this.refreshState();
+			await this.refreshMessages();
+			const tokensBefore = typeof data?.tokensBefore === "number" ? data.tokensBefore : before;
+			const tokensAfter = this.#state.contextUsage?.tokens;
+			return {
+				...(typeof tokensBefore === "number" ? { tokensBefore } : {}),
+				...(typeof tokensAfter === "number" ? { tokensAfter } : {}),
+			};
+		} catch (error) {
+			// The call came back as a failure, so the optimistic flag must not stick
+			// if the follow-up state read itself fails.
+			this.#state = { ...this.#state, compacting: false };
+			this.#deps.hub.broadcast({ t: "state", sessionId: this.record.id, state: this.#state });
+			await this.refreshState();
+			throw new Error(compactFailureText((error as Error).message));
+		}
+	}
+
 	async #sendPrompt(text: string, images: PromptImage[] = []): Promise<{ agentInvoked: boolean; queued?: boolean }> {
 		// A new user message (or a queued follow-up) starts the browser over: the first call asks again.
 		this.#browserAllowed = false;
-		const client = this.#requireClient();
+		const invocation = parseCompactInvocation(text);
+		if (invocation) {
+			if ("error" in invocation) throw new Error(invocation.error);
+			if (images.length > 0) throw new Error("压缩不接收图片");
+			// Modes exist only on the slash command. The RPC `compact` call takes focus text.
+			if (invocation.mode) return this.#dispatchPrompt(text.trim(), []);
+			await this.compact(invocation.instructions);
+			return { agentInvoked: false };
+		}
 		const marker =
 			this.record.phase === "build" ? "「阶段：执行」" : this.record.phase === "chat" ? "「阶段：聊天」" : "「阶段：规划」";
-		const message = `${marker}\n${text}`;
 		// omp reads a slash command only at the very start of the prompt, so a command
 		// goes bare: the phase line would turn it back into ordinary text for the model.
-		if (leadingCommand(text, this.#commands)) return this.#dispatchPrompt(text.trim(), images);
+		if (leadingCommand(text, this.#commands)) return this.#sendCommand(text);
+		return this.#dispatchPrompt(`${marker}\n${text}`, images);
+	}
+
+	/**
+	 * A slash command goes to omp exactly as typed: no phase line (it would turn the
+	 * command back into prose), no pictures, and no queue rewrite — a command that
+	 * cannot run while a turn is streaming should say so rather than be queued as text.
+	 */
+	async #sendCommand(text: string): Promise<{ agentInvoked: boolean; queued?: boolean }> {
+		const client = this.#requireClient();
+		const response = await client.request({ type: "prompt", message: text.trim() });
+		if (response.success === false) throw new Error(response.error ?? "prompt failed");
+		this.#scheduleRefresh({});
+		const data = (response.data ?? {}) as { agentInvoked?: boolean };
+		return { agentInvoked: data.agentInvoked !== false };
+	}
+
+	async #dispatchPrompt(message: string, images: PromptImage[]): Promise<{ agentInvoked: boolean; queued?: boolean }> {
+		const client = this.#requireClient();
 		const pictures = images.map(image => ({ type: "image", mimeType: image.mimeType, data: image.data }));
 		const response = await client.request({
 			type: "prompt",

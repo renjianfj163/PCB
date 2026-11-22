@@ -144,6 +144,10 @@ const EN: Record<string, string> = {
 	"发送": "Send",
 	"Enter 发送，Shift+Enter 换行。助手会先给计划，你同意后才动文件；跑命令仍会问你。":
 		"Enter to send, Shift+Enter for a new line. The assistant plans first and only touches files once you agree; commands still ask you.",
+	"Enter 发送，Shift+Enter 换行。执行阶段会直接改文件；跑命令仍会问你。":
+		"Enter to send, Shift+Enter for a new line. Build edits files directly; commands still ask you.",
+	"Enter 发送，Shift+Enter 换行。聊天阶段只回答问题，不改文件、不跑命令；需要动手时切到「执行」。":
+		"Enter to send, Shift+Enter for a new line. Chat only answers questions — no files, no commands. Switch to Build to act.",
 	"先选一个项目文件夹": "Pick a project folder first",
 	"已导出：{s}": "Exported: {s}",
 	"这一轮还在跑，已排队，等它结束再发送。": "Still running — queued, it will be sent when this turn ends.",
@@ -157,6 +161,17 @@ const EN: Record<string, string> = {
 	"恢复中…": "Resuming…",
 	"说你想做什么…": "What should it do?",
 	"上下文 {n}%": "Context {n}%",
+	"压缩": "Compact",
+	"压缩中…": "Compacting…",
+	"正在压缩上下文…": "Compacting the conversation…",
+	"正在压缩上下文": "Already compacting",
+	"把目前的对话压成摘要，腾出上下文": "Summarize this conversation and free up context",
+	"这一轮还在跑，停下来再压缩": "This turn is still running — stop it before compacting",
+	"压缩不接收图片": "Compaction does not take images",
+	"snapcompact 只归档历史，不接受额外说明": "snapcompact archives history and does not take extra notes",
+	"这段对话还太短，压缩不了": "This conversation is still too short to compact",
+	"已压缩上下文": "Context compacted",
+	"已压缩上下文，从 {before} 收到 {after}": "Context compacted, from {before} down to {after}",
 	"已花费 {s}": "Spent {s}",
 	"下一条消息使用的阶段": "Phase for the next message",
 	"规划": "Plan",

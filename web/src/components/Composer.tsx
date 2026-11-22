@@ -20,6 +20,7 @@ export function Composer({
 	onDraftBlocked,
 	onSend,
 	onAbort,
+	onCompact,
 	onPhase,
 	onResume,
 }: {
@@ -38,6 +39,8 @@ export function Composer({
 	onDraftBlocked?: (text: string) => void;
 	onSend: (text: string, images: PromptImage[]) => Promise<void>;
 	onAbort: () => Promise<void>;
+	/** Summarize this conversation. Disabled while a turn or a compaction is already running. */
+	onCompact: () => Promise<void>;
 	/** Changes only the phase the next message carries — never sends anything. */
 	onPhase: (phase: Phase) => void;
 	onResume: () => Promise<void>;
@@ -46,6 +49,7 @@ export function Composer({
 	const picks = usePromptImages();
 	const [busy, setBusy] = useState(false);
 	const streaming = state?.streaming === true;
+	const compacting = state?.compacting === true;
 	const draftId = draft?.id ?? 0;
 
 	// A new draft arrives: fill an empty box, otherwise hand it back untouched.
@@ -108,7 +112,11 @@ export function Composer({
 				/>
 				<div className="composer-row">
 					<span className="composer-meta">
-						{state?.contextUsage ? t("上下文 {n}%", { n: state.contextUsage.percent.toFixed(0) }) : ""}
+						{compacting
+							? t("正在压缩上下文…")
+							: state?.contextUsage
+								? t("上下文 {n}%", { n: state.contextUsage.percent.toFixed(0) })
+								: ""}
 						{typeof state?.costUsd === "number" ? (
 							<span title={`${state.totalTokens ?? 0} tokens`}>
 								{state.contextUsage ? " · " : ""}{t("已花费 {s}", { s: money(state.costUsd) })}
@@ -116,6 +124,19 @@ export function Composer({
 						) : null}
 					</span>
 					<div className="composer-tools">
+						<button
+							type="button"
+							className="composer-compact"
+							disabled={disabled || streaming || compacting}
+							title={
+								streaming
+									? t("这一轮还在跑，停下来再压缩")
+									: t("把目前的对话压成摘要，腾出上下文")
+							}
+							onClick={() => void onCompact()}
+						>
+							{compacting ? t("压缩中…") : t("压缩")}
+						</button>
 						<AttachmentPicker disabled={disabled || picks.preparing} onFiles={picks.addFiles} />
 						<select
 							className="phase-select"

@@ -1362,6 +1362,19 @@ pre {
 	border-radius: 9px;
 }
 
+.composer-tools button.composer-compact {
+	padding: 0 10px;
+	font-size: 12px;
+	color: var(--muted);
+	background: transparent;
+	border-color: transparent;
+}
+
+.composer-tools button.composer-compact:hover:not(:disabled) {
+	background: var(--hover);
+	color: var(--fg);
+}
+
 /* ---------- right rail ---------- */
 
 .rail {
@@ -1779,6 +1792,10 @@ pre {
 	height: 32px;
 	padding: 0 10px;
 	font-size: 12.5px;
+}
+
+.home-actions .phase-select {
+	height: 32px;
 }
 
 .home-card textarea {

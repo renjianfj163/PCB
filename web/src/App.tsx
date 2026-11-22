@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
-import type { Automation, DialogAnswer, Phase, PromptImage, UiEvent } from "../../shared/protocol.ts";
+import { parseCompactInvocation } from "../../shared/compact.ts";
+import type { Automation, CompactResult, DialogAnswer, Phase, PromptImage, UiEvent } from "../../shared/protocol.ts";
 import { api } from "./api.ts";
 import { browserShots, changedFiles, planSegment, rewindNotice, stripPhaseMarker, terminalEntries } from "./adapters.ts";
 import { Automations } from "./components/Automations.tsx";
@@ -25,6 +26,16 @@ const RAIL_MIN = 260;
 const RAIL_SHARE = 0.8;
 /** The conversation column keeps at least this much before the rail takes the rest. */
 const CHAT_MIN = 360;
+
+function compactNotice(result: CompactResult): string {
+	if (typeof result.tokensBefore === "number" && typeof result.tokensAfter === "number") {
+		return t("已压缩上下文，从 {before} 收到 {after}", {
+			before: result.tokensBefore,
+			after: result.tokensAfter,
+		});
+	}
+	return t("已压缩上下文");
+}
 
 function clampRail(width: number): number {
 	// The sidebar is 256px open and 0 when collapsed; read it instead of assuming.
@@ -66,6 +77,8 @@ export default function App() {
 	};
 	const [paletteOpen, setPaletteOpen] = useState(false);
 	const [sending, setSending] = useState(false);
+	// Bumping this remounts the blank page, so a new conversation starts on Plan.
+	const [homeEpoch, setHomeEpoch] = useState(0);
 	const [rightOpen, setRightOpen] = useState(initialRightOpen);
 	const [rightTab, setRightTab] = useState<RailTab>("files");
 	const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -208,7 +221,9 @@ export default function App() {
 	};
 
 	const startNew = () => {
+		setHomeEpoch(epoch => epoch + 1);
 		dispatch({ type: "select", id: null });
+		dispatch({ type: "clear_notices" });
 		setView("home");
 		setSidebarOpen(false);
 	};
@@ -216,6 +231,7 @@ export default function App() {
 	const selectProject = (cwd: string) => {
 		setProject(cwd);
 		dispatch({ type: "select", id: null });
+		dispatch({ type: "clear_notices" });
 		setView("home");
 		setSidebarOpen(false);
 	};
@@ -227,6 +243,7 @@ export default function App() {
 			dispatch({ type: "set_projects", projects: result.projects });
 			setProject(result.cwd);
 			dispatch({ type: "select", id: null });
+			dispatch({ type: "clear_notices" });
 			setView("home");
 		});
 
@@ -238,7 +255,7 @@ export default function App() {
 		});
 
 	/** First message: creates the conversation in the chosen folder and sends it. */
-	const sendFromHome = async (text: string, images: PromptImage[]) => {
+	const sendFromHome = async (text: string, images: PromptImage[], phase: Phase) => {
 		if (!project) throw new Error(t("先选一个项目文件夹"));
 		setSending(true);
 		try {
@@ -247,12 +264,16 @@ export default function App() {
 				// The sidebar shows what the user asked, not the folder name.
 				name: sessionTitle(text),
 				extensions: false,
+				phase,
 				initialPrompt: text,
 				...(images.length > 0 ? { initialImages: images } : {}),
 			});
 			dispatch({ type: "ui", event: { t: "session", session: created } });
 			dispatch({ type: "select", id: created.id });
-			dispatch({ type: "local_user", sessionId: created.id, text, images });
+			// `/compact` is a command, not a line of the conversation.
+			if (!parseCompactInvocation(text) || images.length > 0) {
+				dispatch({ type: "local_user", sessionId: created.id, text, images });
+			}
 		} finally {
 			setSending(false);
 		}
@@ -487,9 +508,26 @@ export default function App() {
 							onPhase={phase => void setPhaseOnly(phase)}
 							onSend={(text, images) =>
 								guard(async () => {
+									const compact = parseCompactInvocation(text);
+									if (compact && "error" in compact) throw new Error(t(compact.error));
+									if (compact && images.length > 0) throw new Error(t("压缩不接收图片"));
+									if (compact && !compact.mode) {
+										setInfo(compactNotice(await api.compact(session.id, compact.instructions)));
+										return;
+									}
+									if (compact?.mode) {
+										// soft / remote / snapcompact / handoff only exist as the slash command.
+										await api.prompt(session.id, text);
+										return;
+									}
 									const result = await api.prompt(session.id, text, images);
 									dispatch({ type: "local_user", sessionId: session.id, text, images });
 									if (result.queued) setInfo(t("这一轮还在跑，已排队，等它结束再发送。"));
+								})
+							}
+							onCompact={() =>
+								guard(async () => {
+									setInfo(compactNotice(await api.compact(session.id)));
 								})
 							}
 							onAbort={() =>
@@ -512,10 +550,11 @@ export default function App() {
 					<Automations automations={state.automations} projects={projects} {...automationHandlers} />
 				) : (
 					<Home
+						key={homeEpoch}
 						project={project}
 						projects={projects}
 						busy={sending}
-						onSend={(text, images) => guard(() => sendFromHome(text, images))}
+						onSend={(text, images, phase) => guard(() => sendFromHome(text, images, phase))}
 						onPickProject={addProject}
 					/>
 				)}
