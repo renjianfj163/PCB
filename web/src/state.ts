@@ -15,7 +15,6 @@ import type {
 	SessionSummary,
 	UiEvent,
 } from "../../shared/protocol.ts";
-import { compactionOutputNotice } from "../../shared/compact.ts";
 import { stripAnsi } from "./adapters.ts";
 
 export interface ToolActivity {
@@ -136,10 +135,9 @@ function messageOf(value: unknown): AgentMessage | undefined {
 function applyFrame(state: AppState, sessionId: string, frame: Record<string, unknown>): AppState {
 	const type = String(frame.type ?? "");
 	if (type === "command_output") {
-		// A slash command answered outside the model; compaction results already arrive
-		// as notices from the server, so only the rest becomes a transcript row.
+		// Compaction already reaches the user as a notice from the server.
 		const text = stripAnsi(typeof frame.text === "string" ? frame.text : "").trim();
-		if (!text || compactionOutputNotice(text)) return state;
+		if (!text || /^Compaction (failed|complete)\b/.test(text)) return state;
 		const outputs = state.outputs[sessionId] ?? [];
 		return { ...state, outputs: { ...state.outputs, [sessionId]: [...outputs, text] } };
 	}
