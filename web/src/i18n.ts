@@ -147,6 +147,7 @@ const EN: Record<string, string> = {
 	"安装包已在后台启动，它会结束这个窗口并装回同一目录。":
 		"The installer started; it will close this window and upgrade the same folder.",
 	"登录状态": "Login status",
+	"已登录：{s}": "Logged in: {s}",
 	"还没有登录模型，现在发不出消息。": "No model is logged in yet, so nothing can be sent.",
 	"已经打开一个登录窗口，在那边完成 omp login。": "A login window is open — finish omp login there.",
 	"正在打开…": "Opening…",

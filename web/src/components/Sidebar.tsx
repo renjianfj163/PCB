@@ -88,6 +88,7 @@ export function Sidebar({
 	onDeleteSession,
 	onOpenAutomations,
 	onOpenSettings,
+	onLogin,
 	onCollapse,
 	onModel,
 	onThinking,
@@ -112,6 +113,8 @@ export function Sidebar({
 	onDeleteSession: (id: string) => Promise<void>;
 	onOpenAutomations: () => void;
 	onOpenSettings: () => void;
+	/** Opens an omp login console; the config card offers it when nothing is logged in. */
+	onLogin: () => void;
 	onCollapse: () => void;
 	onModel: (provider: string, id: string) => Promise<void>;
 	onThinking: (level: string) => Promise<void>;
@@ -123,6 +126,8 @@ export function Sidebar({
 	const configButtonRef = useRef<HTMLButtonElement>(null);
 	const locale = useLocale();
 	const ompRaw = useOmpRaw();
+	// Without a conversation there is no model catalog to list, only this answer.
+	const loggedIn = (boot?.auth ?? []).filter(item => item.authenticated);
 
 	const conversations = project ? sessions.filter(item => item.cwd === project) : [];
 
@@ -298,7 +303,21 @@ export function Sidebar({
 			<div className="sidebar-foot">
 				{configOpen ? (
 					<div className="config-card" ref={configRef} role="dialog" aria-label={t("配置")}>
-						<ModelPicker session={session} state={state} onModel={onModel} />
+						{session ? (
+							<ModelPicker session={session} state={state} onModel={onModel} />
+						) : (
+							<>
+								<div className="config-title">{t("模型")}</div>
+								<p className="config-note">
+									{loggedIn.length > 0
+										? t("已登录：{s}", { s: loggedIn.map(item => item.name || item.provider).join("、") })
+										: t("还没有登录模型，现在发不出消息。")}
+								</p>
+								<button type="button" className="config-action" onClick={onLogin}>
+									{t("登录模型")}
+								</button>
+							</>
+						)}
 						<ThinkingPicker session={session} state={state} onThinking={onThinking} />
 						<div className="config-title">{t("语言")}</div>
 						<div className="config-langs" role="group" aria-label={t("语言")}>

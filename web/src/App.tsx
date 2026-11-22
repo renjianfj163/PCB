@@ -448,6 +448,7 @@ export default function App() {
 				}
 				onOpenAutomations={openAutomations}
 				onOpenSettings={openSettings}
+				onLogin={() => void openLogin()}
 				onCollapse={() => setLeftPanel(false)}
 				onModel={(provider, id) =>
 					guard(async () => {

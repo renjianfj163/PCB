@@ -456,6 +456,27 @@ pre {
 	color: var(--dim);
 }
 
+/* No conversation: the card answers "who is logged in" instead of listing models. */
+.config-note {
+	margin: 0;
+	font-size: 12.5px;
+	line-height: 1.35;
+	color: var(--muted);
+}
+
+.config-action {
+	height: 28px;
+	border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+	border-radius: 7px;
+	background: var(--bg-col);
+	color: var(--fg);
+	font-size: 12px;
+}
+
+.config-action:hover:not(:disabled) {
+	background: var(--hover);
+}
+
 .config-select {
 	width: 100%;
 	height: 30px;
