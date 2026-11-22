@@ -122,6 +122,7 @@ export function Transcript({
 	turn,
 	live,
 	pending,
+	outputs,
 	tools,
 	state,
 	sessionAlive,
@@ -133,6 +134,8 @@ export function Transcript({
 	turn: AgentMessage[];
 	live: AgentMessage | null;
 	pending: PendingUser[];
+	/** What a slash command printed, in the order it arrived. */
+	outputs: string[];
 	tools: Record<string, ToolActivity>;
 	state: SessionState | undefined;
 	sessionAlive: boolean;
@@ -270,6 +273,13 @@ export function Transcript({
 			})}
 
 			{live ? <AssistantMessage message={live} tools={resolved} streaming /> : null}
+
+			{outputs.map((text, index) => (
+				<div className="message command-output" key={`output-${index}`}>
+					<div className="message-role">{t("命令输出")}</div>
+					<pre>{text}</pre>
+				</div>
+			))}
 
 			{all.length === 0 && !live && pending.length === 0 ? (
 				<div className="empty-state">

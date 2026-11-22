@@ -16,6 +16,7 @@ import { appendPolicy, loadPolicies, type StoredPolicy } from "./policies.ts";
 import { appendRaw } from "./raw.ts";
 import { RpcClient, type RpcFrame } from "./rpc/client.ts";
 import type { Store, SessionRecord } from "./store.ts";
+import { leadingCommand } from "../shared/slash.ts";
 import type {
 	AgentMessage,
 	AskQuestion,
@@ -232,6 +233,8 @@ export class PcbSession {
 	#refreshTimer: NodeJS.Timeout | undefined;
 	#closed = false;
 	#queuedPrompt: { text: string; images: PromptImage[] } | undefined;
+	/** Names omp admits as slash commands; empty until it answers. */
+	#commands = new Set<string>();
 	/** Set once the user allows the browser in this message; cleared by the next prompt or phase change. */
 	#browserAllowed = false;
 	#started = false;
@@ -389,6 +392,7 @@ export class PcbSession {
 		// Model/auth discovery waits on provider catalogs; never block the turn on it.
 		void this.#loadModels();
 		void this.#loadAuth();
+		void this.#loadCommands();
 		await Promise.allSettled([this.refreshState(), this.refreshMessages()]);
 		this.#status = this.#state.streaming ? "running" : "idle";
 		this.#broadcastSession();
@@ -463,6 +467,30 @@ export class PcbSession {
 		this.#broadcastSession();
 	}
 
+	/** `/name` entries, from a frame or from `get_available_commands`. */
+	#readCommands(list: unknown) {
+		if (!Array.isArray(list)) return;
+		for (const item of list) {
+			const name =
+				typeof item === "string"
+					? item
+					: item && typeof item === "object" && "name" in item && typeof item.name === "string"
+						? item.name
+						: "";
+			if (name) this.#commands.add(name);
+		}
+	}
+
+	/** Ask once at startup; the update frame omp sends by itself covers later changes. */
+	async #loadCommands() {
+		try {
+			const data = await this.#requireClient().call<{ commands?: unknown }>({ type: "get_available_commands" });
+			this.#readCommands(data?.commands);
+		} catch {
+			// An omp without the catalog keeps the shape check in leadingCommand().
+		}
+	}
+
 	#onFrame(frame: RpcFrame) {
 		switch (frame.type) {
 			case "extension_ui_request":
@@ -503,6 +531,11 @@ export class PcbSession {
 				// answers empty mid-turn, so mirror the message we just saw.
 				const message = asAgentMessage(frame.message);
 				if (message) this.#messages = insertByTimestamp(this.#messages, message);
+				this.#deps.hub.broadcast({ t: "frame", sessionId: this.record.id, frame });
+				return;
+			}
+			case "available_commands_update": {
+				this.#readCommands(frame.commands);
 				this.#deps.hub.broadcast({ t: "frame", sessionId: this.record.id, frame });
 				return;
 			}
@@ -782,6 +815,9 @@ export class PcbSession {
 		const marker =
 			this.record.phase === "build" ? "「阶段：执行」" : this.record.phase === "chat" ? "「阶段：聊天」" : "「阶段：规划」";
 		const message = `${marker}\n${text}`;
+		// omp reads a slash command only at the very start of the prompt, so a command
+		// goes bare: the phase line would turn it back into ordinary text for the model.
+		if (leadingCommand(text, this.#commands)) return this.#dispatchPrompt(text.trim(), images);
 		const pictures = images.map(image => ({ type: "image", mimeType: image.mimeType, data: image.data }));
 		const response = await client.request({
 			type: "prompt",

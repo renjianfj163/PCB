@@ -7,6 +7,7 @@ import {
 	planSegment,
 	promptImageSrc,
 	relativeTo,
+	stripAnsi,
 	terminalEntries,
 	toolCallsOf,
 	userText,
@@ -143,6 +144,11 @@ test("a persisted blob reference is read through the shell route", () => {
 
 test("a shell picture renders from its own base64", () => {
 	assert.equal(promptImageSrc({ mimeType: "image/jpeg", data: "AAAA" }), "data:image/jpeg;base64,AAAA");
+});
+
+test("command output loses its terminal colour codes", () => {
+	const painted = "Context window: 1048576 tokens\n  [\u001b[38;5;243m░░\u001b[39m\u001b[1m██\u001b[22m] 79% used";
+	assert.equal(stripAnsi(painted), "Context window: 1048576 tokens\n  [░░██] 79% used");
 });
 
 test("an echo typed mid-turn sits above the reply it caused", () => {

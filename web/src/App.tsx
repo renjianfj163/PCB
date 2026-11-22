@@ -457,6 +457,7 @@ export default function App() {
 							turn={turn}
 							live={state.live[session.id] ?? null}
 							pending={state.pending[session.id] ?? []}
+							outputs={state.outputs[session.id] ?? []}
 							tools={state.tools[session.id] ?? {}}
 							state={state.states[session.id]}
 							sessionAlive={session.alive}

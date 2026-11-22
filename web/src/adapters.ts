@@ -310,6 +310,12 @@ export function promptImageSrc(image: PromptImage): string {
 	return `data:${image.mimeType};base64,${image.data}`;
 }
 
+/** Terminal colours and cursor codes out of text omp printed for a command. */
+export function stripAnsi(text: string): string {
+	// eslint-disable-next-line no-control-regex
+	return text.replace(/\u001b\[[0-9;?]*[A-Za-z]/g, "");
+}
+
 /** One row of the conversation: a message omp reported, or the echo of one just sent. */
 export type TranscriptRow = { kind: "message"; message: AgentMessage } | { kind: "pending"; entry: PendingUser };
 

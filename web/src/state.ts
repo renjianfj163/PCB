@@ -15,6 +15,8 @@ import type {
 	SessionSummary,
 	UiEvent,
 } from "../../shared/protocol.ts";
+import { compactionOutputNotice } from "../../shared/compact.ts";
+import { stripAnsi } from "./adapters.ts";
 
 export interface ToolActivity {
 	name: string;
@@ -55,6 +57,8 @@ export interface AppState {
 	/** Assistant and tool messages of the turn in flight, in arrival order. */
 	turn: Record<string, AgentMessage[]>;
 	pending: Record<string, PendingUser[]>;
+	/** What a slash command printed (`/context`, `/usage`, …), newest last. */
+	outputs: Record<string, string[]>;
 	tools: Record<string, Record<string, ToolActivity>>;
 	dialogs: Record<string, DialogRequest[]>;
 	/** Allow/deny decisions in arrival order, per session. */
@@ -81,6 +85,7 @@ export const initialState: AppState = {
 	live: {},
 	turn: {},
 	pending: {},
+	outputs: {},
 	tools: {},
 	dialogs: {},
 	policies: {},
@@ -130,6 +135,14 @@ function messageOf(value: unknown): AgentMessage | undefined {
 
 function applyFrame(state: AppState, sessionId: string, frame: Record<string, unknown>): AppState {
 	const type = String(frame.type ?? "");
+	if (type === "command_output") {
+		// A slash command answered outside the model; compaction results already arrive
+		// as notices from the server, so only the rest becomes a transcript row.
+		const text = stripAnsi(typeof frame.text === "string" ? frame.text : "").trim();
+		if (!text || compactionOutputNotice(text)) return state;
+		const outputs = state.outputs[sessionId] ?? [];
+		return { ...state, outputs: { ...state.outputs, [sessionId]: [...outputs, text] } };
+	}
 	if (type === "agent_start") {
 		return {
 			...state,
