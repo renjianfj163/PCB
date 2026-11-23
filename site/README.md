@@ -106,8 +106,8 @@ cd site && node server.mjs
 正文 `#edeef0`、次要 `#969ca6`、强调 `#5b8cff`（只用于主按钮、链接、章节眉与编号）；没有第二套浅色主题，
 因为产品本身就是深色桌面应用。字体 `-apple-system, "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "PingFang SC", "Noto Sans SC", system-ui`。
 
-顺序是：Hero（LOCAL AI PRODUCT WORKSPACE + 主口号 + 三个入口 + 五阶段轨 + 三个属性）→ 本机窗口里的真实截图 →
+顺序是：Hero（LOCAL AI PRODUCT WORKSPACE + 主口号 + 三个入口 + 五阶段轨 + 三个属性）→ Candy Crush 动图 →
 工作方式（Chat / Plan / Build / Review 四步，Review 标为 Build 环节）→ IDE + OMP →
-一个 PCB 的对照表 → 产品旅程（五阶段横向轨，后两段规划中）→ 三项路线图 → 本地边界 →
+产品旅程（五阶段横向轨，后两段规划中）→ 三项路线图 →
 下载（写死真实版本卡片 + 其他版本）→ FAQ（每条都有完整回答）→ 收起的「报告问题」→ 关于与许可。
 1280、900 与 390 三个宽度都要看过；`document.documentElement.scrollWidth` 不应超过 `clientWidth`。
