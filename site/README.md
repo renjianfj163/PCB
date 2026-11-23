@@ -102,8 +102,8 @@ cd site && node server.mjs
 
 ## 页面
 
-深色文档 + 桌面软件的克制风格：底色 `#08090b`、卡片 `#101216`、细边 `rgba(255,255,255,.09)`、
-正文 `#edeef0`、次要 `#969ca6`、强调 `#5b8cff`（只用于主按钮、链接、章节眉与编号）；没有第二套浅色主题，
+深色文档 + 桌面软件的克制风格：底色 `#0b0d12`、卡片 `#171c25`、细边 `rgba(255,255,255,.09)`、
+正文 `#f1f3f6`、次要 `#a0a9b8`、强调 `#6d96ff`（只用于主按钮、链接、章节眉与编号）；没有第二套浅色主题，
 因为产品本身就是深色桌面应用。字体 `-apple-system, "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "PingFang SC", "Noto Sans SC", system-ui`。
 
 顺序是：Hero → Candy Crush 动图 →

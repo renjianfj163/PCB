@@ -1,18 +1,18 @@
 /* PCB 产品站：桌面软件的克制风格——深色、细边、单一强调色。零依赖。 */
 
 :root {
-	--bg: #08090b;
-	--bg-soft: #0c0e11;
-	--card: #101216;
-	--card-2: #14171c;
+	--bg: #0b0d12;
+	--bg-soft: #11151c;
+	--card: #171c25;
+	--card-2: #1b212b;
 	--border: rgba(255, 255, 255, 0.09);
 	--border-strong: rgba(255, 255, 255, 0.16);
-	--fg: #edeef0;
-	--fg-soft: #c7cbd1;
-	--muted: #969ca6;
-	--accent: #5b8cff;
-	--accent-ink: #eaf0ff;
-	--accent-soft: rgba(91, 140, 255, 0.12);
+	--fg: #f1f3f6;
+	--fg-soft: #c5ccd7;
+	--muted: #a0a9b8;
+	--accent: #6d96ff;
+	--accent-ink: #ffffff;
+	--accent-soft: rgba(109, 150, 255, 0.12);
 	--ok-soft: rgba(64, 192, 123, 0.12);
 	--ok-border: rgba(64, 192, 123, 0.35);
 	--warn-soft: rgba(255, 138, 122, 0.12);
