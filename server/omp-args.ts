@@ -8,9 +8,6 @@
 
 import { existsSync } from "node:fs";
 
-/** The omp-ckpt host extension: checkpointing and the review server live there. */
-export const DEFAULT_CKPT_HOST = "D:\\Developer\\zed_omp\\host\\omp-host.ts";
-
 export interface LaunchRecord {
 	cwd: string;
 	extensions: boolean;
@@ -18,10 +15,15 @@ export interface LaunchRecord {
 	phase: string;
 }
 
-/** The host file to load, or null when it is not on this machine (a normal state, not an error). */
+/**
+ * The omp-ckpt host to load, or null when this machine has none.
+ * Only `PCB_OMP_CKPT_HOST` names it. A missing file is normal: the session
+ * still starts, just without the review server.
+ */
 export function ckptHost(env: NodeJS.ProcessEnv = process.env): string | null {
-	const configured = env.PCB_OMP_CKPT_HOST?.trim() || DEFAULT_CKPT_HOST;
-	return existsSync(configured) ? configured : null;
+	const configured = env.PCB_OMP_CKPT_HOST?.trim();
+	if (!configured || !existsSync(configured)) return null;
+	return configured;
 }
 
 /** Everything omp needs to behave like a PCB session, in one testable list. */

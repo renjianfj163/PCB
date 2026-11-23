@@ -4,6 +4,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { userInfo } from "node:os";
 import { extname, join, normalize, resolve } from "node:path";
 import type { Hub } from "./hub.ts";
 import { readPromptImages } from "./attachments.ts";
@@ -18,8 +19,10 @@ import { frameCheck } from "./frame-check.ts";
 import { pageShot } from "./screenshot.ts";
 import { PathRefused, listDirectory, readPreview } from "./project-files.ts";
 import { PcbSession, RewindRefused } from "./session.ts";
-import type { Store, SessionRecord } from "./store.ts";
+import type { Store, ShellChoice, SessionRecord } from "./store.ts";
 import { THINKING_LEVELS } from "../shared/protocol.ts";
+import { pathKey } from "../shared/paths.ts";
+import { overlayChoice, queryShell } from "./shell.ts";
 import type {
 	Automation,
 	AutomationInput,
@@ -30,6 +33,7 @@ import type {
 	Phase,
 	PromptImage,
 	SessionSummary,
+	ShellSettings,
 	ThinkingInfo,
 	ThinkingLevel,
 	UiEvent,
@@ -148,6 +152,15 @@ function clockOf(date: Date): string {
 	return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
+/** The OS account. A failure here must not take down /api/boot. */
+function localAccount(): string {
+	try {
+		return userInfo().username.trim();
+	} catch {
+		return "";
+	}
+}
+
 export interface AppDeps {
 	hub: Hub;
 	store: Store;
@@ -168,6 +181,9 @@ export class App {
 	#ompVersion = "unknown";
 	#scheduler: NodeJS.Timeout | undefined;
 	#picking = false;
+	/** omp's model list for a shell with no conversation; one run, kept for the process. */
+	#shell: ShellSettings | null = null;
+	#shellQuery: Promise<ShellSettings | null> | null = null;
 
 	constructor(deps: AppDeps) {
 		this.#deps = deps;
@@ -209,6 +225,47 @@ export class App {
 	}
 
 	/**
+	 * omp's model list for a shell with no conversation. One `--no-session` run,
+	 * cached for the process; concurrent callers share it. A failure is not
+	 * cached, so a later ask can try again.
+	 */
+	#shellBase(): Promise<ShellSettings | null> {
+		if (this.#shell) return Promise.resolve(this.#shell);
+		if (this.#shellQuery) return this.#shellQuery;
+		// `lastCwd` is where the user last worked; a request's path is not ours to trust.
+		const cwd = this.#deps.store.lastCwd ?? this.#deps.root;
+		const query: Promise<ShellSettings | null> = queryShell(this.#deps.bin, cwd, this.#deps.onLog)
+			.then(snapshot => {
+				this.#shell = snapshot.settings;
+				return this.#shell;
+			})
+			.catch(error => {
+				this.#deps.onLog?.(`shell query failed: ${(error as Error).message}`);
+				return null;
+			})
+			.finally(() => {
+				if (this.#shellQuery === query) this.#shellQuery = null;
+			});
+		this.#shellQuery = query;
+		return query;
+	}
+
+	/** omp's defaults with the saved choice on top: what the pickers show. */
+	async #shellSettings(): Promise<ShellSettings> {
+		const base = await this.#shellBase();
+		return overlayChoice(
+			base ?? { models: [], current: null, levels: [], thinking: null },
+			this.#deps.store.choice,
+		);
+	}
+
+	/** Cached values only: saving a choice never starts omp. */
+	#savedShellSettings(): ShellSettings {
+		const base = this.#shell ?? { models: [], current: null, levels: [], thinking: null };
+		return overlayChoice(base, this.#deps.store.choice);
+	}
+
+	/**
 	 * Daily automations only fire while this process is running; missed days are
 	 * skipped. Ticks land just after each minute boundary so every `HH:mm` is
 	 * observed exactly once instead of drifting with the process start time.
@@ -239,13 +296,17 @@ export class App {
 		}
 	}
 
-	/** Summaries for stored sessions, live or not. */
+	/** Summaries for stored sessions, live or not; only for folders still listed. */
 	#allSummaries(): SessionSummary[] {
-		const live = new Map<string, SessionSummary>(
-			Array.from(this.#sessions.values(), session => [session.id, session.summary()] as const),
-		);
+		const visible = new Set(this.#deps.store.projects.map(pathKey));
+		const live = new Map<string, SessionSummary>();
+		for (const session of this.#sessions.values()) {
+			const summary = session.summary();
+			if (visible.has(pathKey(summary.cwd))) live.set(summary.id, summary);
+		}
 		const summaries: SessionSummary[] = [];
 		for (const record of this.#deps.store.sessions) {
+			if (!visible.has(pathKey(record.cwd))) continue;
 			summaries.push(live.get(record.id) ?? this.#dormantSummary(record));
 			live.delete(record.id);
 		}
@@ -334,6 +395,7 @@ export class App {
 				automations: this.#deps.store.automations,
 				defaultCwd: process.cwd(),
 				ompVersion: this.#ompVersion,
+				user: localAccount(),
 				auth: this.#auth,
 				platform: process.platform,
 			};
@@ -344,6 +406,45 @@ export class App {
 		if (head === "auth" && id === "refresh" && method === "POST") {
 			this.#json(response, 200, { auth: await this.refreshAuth(true) });
 			return;
+		}
+
+		// The pickers above the composer's first screen: omp's model list, its
+		// default, and the thinking levels — with no conversation to hang them on.
+		if (head === "shell" && id === undefined) {
+			if (method === "GET") {
+				this.#json(response, 200, await this.#shellSettings());
+				return;
+			}
+			if (method === "POST") {
+				const body = (await this.#readJson(request)) as {
+					model?: { provider?: unknown; id?: unknown };
+					thinking?: unknown;
+				};
+				const patch: ShellChoice = {};
+				if (body.model !== undefined) {
+					const provider = body.model?.provider;
+					const modelId = body.model?.id;
+					if (typeof provider !== "string" || typeof modelId !== "string" || !provider || !modelId) {
+						this.#json(response, 400, { error: "模型格式不对" });
+						return;
+					}
+					patch.model = { provider, id: modelId };
+				}
+				if (body.thinking !== undefined) {
+					if (
+						typeof body.thinking !== "string" ||
+						!(THINKING_LEVELS as readonly string[]).includes(body.thinking)
+					) {
+						this.#json(response, 400, { error: "没有这个思考等级" });
+						return;
+					}
+					patch.thinking = body.thinking;
+				}
+				this.#deps.store.setChoice(patch);
+				// Never starts omp: this answers from the cache the GET filled.
+				this.#json(response, 200, this.#savedShellSettings());
+				return;
+			}
 		}
 
 		if (head === "install" && method === "GET") {
@@ -559,7 +660,11 @@ export class App {
 				}
 				this.#deps.store.addProject(cwd);
 				this.#broadcastProjects();
-				this.#json(response, 200, { cwd, projects: this.#deps.store.projects });
+				this.#json(response, 200, {
+					cwd,
+					projects: this.#deps.store.projects,
+					sessions: this.#allSummaries(),
+				});
 				return;
 			}
 
@@ -573,7 +678,7 @@ export class App {
 				}
 				this.#deps.store.addProject(cwd);
 				this.#broadcastProjects();
-				this.#json(response, 200, { projects: this.#deps.store.projects });
+				this.#json(response, 200, { projects: this.#deps.store.projects, sessions: this.#allSummaries() });
 				return;
 			}
 
@@ -584,8 +689,18 @@ export class App {
 					return;
 				}
 				this.#deps.store.removeProject(body.cwd);
+				// Nothing may start work in a folder the user just removed: its
+				// automations pause first, then the scheduler and the card both stop.
+				const key = pathKey(body.cwd);
+				const paused = this.#deps.store.automations.filter(
+					item => item.enabled && pathKey(item.cwd) === key,
+				);
+				for (const automation of paused) {
+					this.#deps.store.upsertAutomation({ ...automation, enabled: false, updatedAt: Date.now() });
+				}
+				if (paused.length > 0) this.#broadcastAutomations();
 				this.#broadcastProjects();
-				this.#json(response, 200, { projects: this.#deps.store.projects });
+				this.#json(response, 200, { projects: this.#deps.store.projects, sessions: this.#allSummaries() });
 				return;
 			}
 
@@ -677,11 +792,13 @@ export class App {
 					this.#json(response, 400, { error: (error as Error).message });
 					return;
 				}
-				this.#deps.store.addProject(cwd);
+				this.#deps.store.ensureProject(cwd);
 				const session = this.#spawn(record);
 				const first = body.initialPrompt?.trim() ?? "";
 				if (first || initialImages.length > 0) session.queuePrompt(first, initialImages);
-				this.#deps.hub.broadcast({ t: "session", session: session.summary() });
+				if (!this.#deps.store.isDismissed(cwd)) {
+					this.#deps.hub.broadcast({ t: "session", session: session.summary() });
+				}
 				this.#json(response, 201, { session: session.summary() });
 				return;
 			}
@@ -944,6 +1061,9 @@ export class App {
 	}
 
 	async #runAutomation(automation: Automation): Promise<PcbSession> {
+		if (this.#deps.store.isDismissed(automation.cwd)) {
+			throw new Error("这个项目已退出项目清单，先重新添加再运行");
+		}
 		const problem = this.#projectProblem(automation.cwd);
 		if (problem) throw new Error(problem);
 		const record = PcbSession.create(automation.cwd, {
@@ -986,7 +1106,11 @@ export class App {
 	}
 
 	#broadcastProjects() {
-		this.#deps.hub.broadcast({ t: "projects", projects: this.#deps.store.projects });
+		this.#deps.hub.broadcast({
+			t: "projects",
+			projects: this.#deps.store.projects,
+			sessions: this.#allSummaries(),
+		});
 	}
 
 	#broadcastAutomations() {

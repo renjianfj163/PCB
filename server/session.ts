@@ -18,22 +18,23 @@ import { RpcClient, type RpcFrame } from "./rpc/client.ts";
 import type { Store, SessionRecord } from "./store.ts";
 import { compactFailureText, compactionOutputNotice, parseCompactInvocation } from "../shared/compact.ts";
 import { leadingCommand } from "../shared/slash.ts";
-import type {
-	AgentMessage,
-	AskQuestion,
-	BootInfo,
-	CompactResult,
-	DialogAnswer,
-	DialogRequest,
-	ModelRef,
-	Phase,
-	PolicyDecision,
-	PromptImage,
-	RewindResult,
-	SessionState,
-	SessionStatus,
-	SessionSummary,
-	ThinkingLevel,
+import {
+	THINKING_LEVELS,
+	type AgentMessage,
+	type AskQuestion,
+	type BootInfo,
+	type CompactResult,
+	type DialogAnswer,
+	type DialogRequest,
+	type ModelRef,
+	type Phase,
+	type PolicyDecision,
+	type PromptImage,
+	type RewindResult,
+	type SessionState,
+	type SessionStatus,
+	type SessionSummary,
+	type ThinkingLevel,
 } from "../shared/protocol.ts";
 
 export interface SessionDeps {
@@ -335,6 +336,12 @@ export class PcbSession {
 	#broadcastSession() {
 		this.record.updatedAt = Date.now();
 		this.#deps.store.upsertSession(this.record);
+		this.#emitSession();
+	}
+
+	/** A summary reaches the browser only while its folder is still in the list. */
+	#emitSession() {
+		if (this.#deps.store.isDismissed(this.record.cwd)) return;
 		this.#deps.hub.broadcast({ t: "session", session: this.summary() });
 	}
 
@@ -412,6 +419,7 @@ export class PcbSession {
 		if (this.#messages.length === 0 && this.record.sessionFile) void this.#probeHistory();
 
 		this.#started = true;
+		if (!this.record.sessionFile) await this.#applyChoice();
 		const queued = this.#queuedPrompt;
 		if (queued) {
 			this.#queuedPrompt = undefined;
@@ -446,7 +454,7 @@ export class PcbSession {
 		try {
 			const data = await client.call<{ models: RpcModelInfo[] }>({ type: "get_available_models" });
 			this.#models = (data?.models ?? []).map(m => ({ provider: m.provider, id: m.id, name: m.name }));
-			this.#deps.hub.broadcast({ t: "session", session: this.summary() });
+			this.#emitSession();
 		} catch (error) {
 			this.#deps.onLog?.(`[${this.record.id}] models: ${(error as Error).message}`);
 		}
@@ -956,6 +964,26 @@ export class PcbSession {
 					? "已切换到聊天阶段：只回答问题，不改文件、不跑命令。"
 					: "已切换到执行阶段。";
 		this.#notice("info", text);
+	}
+
+	/** A new conversation starts on the model and effort the gear card last showed. */
+	async #applyChoice(): Promise<void> {
+		const choice = this.#deps.store.choice;
+		if (!choice) return;
+		if (choice.model?.provider && choice.model.id) {
+			try {
+				await this.setModel(choice.model.provider, choice.model.id);
+			} catch (error) {
+				this.#deps.onLog?.(`[${this.record.id}] choice model: ${(error as Error).message}`);
+			}
+		}
+		if (choice.thinking && (THINKING_LEVELS as readonly string[]).includes(choice.thinking)) {
+			try {
+				await this.setThinkingLevel(choice.thinking as ThinkingLevel);
+			} catch (error) {
+				this.#deps.onLog?.(`[${this.record.id}] choice thinking: ${(error as Error).message}`);
+			}
+		}
 	}
 
 	async setModel(provider: string, modelId: string): Promise<void> {

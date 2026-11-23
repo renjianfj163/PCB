@@ -52,8 +52,8 @@ npm run dev          # 服务端 :7777，界面 :5173（/api 代理到 7777）
 
 环境变量：`PCB_PORT`（默认 7777）、`PCB_HOST`（默认 127.0.0.1）、`PCB_OMP`（默认 `omp`）、
 `PCB_PROXY`（覆盖系统代理检测，`off` / `none` / 空表示不用代理）、`PCB_CHROME`（指定截图用的浏览器路径）、
-`PCB_OMP_CKPT_HOST`（替换默认的 omp-ckpt 宿主扩展路径，见下）、`PCB_VSCODE`（本机 `code` 命令）、
-`PCB_CKPT_VSIX`（omp-ckpt 扩展包，见下）。
+`PCB_OMP_CKPT_HOST`（omp-ckpt 宿主文件；不设或文件不存在时不加载，会话照常）、`PCB_VSCODE`（本机 `code` 命令）、
+`PCB_CKPT_VSIX`（omp-ckpt 扩展包；不设则「IDE」只打开编辑器）。
 
 ## 打开就能说
 
@@ -68,8 +68,8 @@ npm run dev          # 服务端 :7777，界面 :5173（/api 代理到 7777）
 
 | 区域 | 内容 |
 | --- | --- |
-| 左栏 256px | PCB 与 omp 版本、New、Search（Ctrl K）、Projects（可展开、当前项高亮）、添加项目、Automations、当前项目的对话列表。右上角图标可整栏收起（记在 `localStorage["pcb.leftPanel"]`），收起后中间列占满，顶栏左侧出现展开按钮；宽度 < 768px 时变成抽屉，顶栏左侧按钮打开。 |
-| 中间列 | 顶栏 48px（会话名 + 模型下拉 + 右栏开关/恢复/IDE/刷新图标按钮），下面是对话区；底部是浮在列内的白色输入卡片（`min(720px, 列宽-48px)`，距底 24px），卡片左下角一行小字显示上下文与花费，右下角是「规划 / 执行 / 聊天」下拉和发送/停止。 |
+| 左栏 256px | PCB 与 omp 版本、New、Search（Ctrl K）、Projects（可展开、当前项高亮）、添加项目、Automations、当前项目的对话列表；左下角齿轮打开「设置」页（版本、更新、模型登录、语言、调试、安装位置、日志）。右上角图标可整栏收起（记在 `localStorage["pcb.leftPanel"]`），收起后中间列占满，顶栏左侧出现展开按钮；宽度 < 768px 时变成抽屉，顶栏左侧按钮打开。 |
+| 中间列 | 顶栏 48px（会话名与路径 + 右栏开关/恢复/IDE/刷新图标按钮），下面是对话区；底部是浮在列内的白色输入卡片（`min(720px, 列宽-48px)`，距底 24px）：第一行输入框；第二行左边「上下文 N% · 已花费 $x」，中间是「模型 ▾」控件（点开是模型列表 + 思考档位，改的是当前会话，同时记成下一次新对话的选择），右边「压缩 / 图片 / 规划 / 发送」。窄列时这一行的按钮整体折到下一行，不会挤压。 |
 | 右栏 默认 400px | 顶部胶囊分段「文件 / 计划 / 终端 / 浏览器」+ 收起按钮。折叠状态记在 `localStorage["pcb.rightPanel"]`，宽度 < 1024px 默认收起。与中间列之间有一条 6px 拖拽条，可左右拉动改两栏比例（存 `localStorage["pcb.railW"]`，范围 320–600px）。 |
 
 阶段只在下拉里切换，切换只影响下一条消息，不会自动发送；批准仍然只有右栏的「按这个做」。
@@ -82,13 +82,14 @@ npm run dev          # 服务端 :7777，界面 :5173（/api 代理到 7777）
 `PCB_VSCODE`（可以指向其中任意一个），然后已安装的 VS Code（稳定版，再 Insiders），然后已安装的
 Cursor，最后是 PATH 里的 `code` 或 `cursor`。两边都在时用 VS Code，避免 Cursor 自带的 `code` 把它挡住。
 
-omp 仍是 PCB 已经拉起的那个进程。按钮做两件事：把 omp-ckpt 的 vsix（`PCB_CKPT_VSIX`，默认
-`D:\Developer\zed_omp\omp-ckpt-0.1.0.vsix`）在这个 PCB 进程里装进该编辑器一次，然后执行
+omp 仍是 PCB 已经拉起的那个进程。按钮做两件事：若设置了 `PCB_CKPT_VSIX` 且文件存在，把那个 vsix
+在这个 PCB 进程里装进该编辑器一次，然后执行
 `code <会话目录>` 或 `cursor <会话目录>`。扩展里的对话连回 PCB，审查连 omp 宿主在 `127.0.0.1` 上的服务。
 装扩展失败也照样打开窗口。两个都找不到时只回一行「本机没有 VS Code 或 Cursor」。
 `/api/sessions/:id/export` 仍在，只是顶栏不再调用它。
 
-左下角配置卡里还有一个调试开关「显示 omp 原文」（`localStorage["pcb.ompRaw"]`，缺省关）。开着时，
+左下角的齿轮打开「设置」页：版本、更新、模型登录、语言、调试、安装位置与日志都在那一页。设置页里的调试开关
+「显示 omp 原文」（`localStorage["pcb.ompRaw"]`，缺省关）开着时，
 中间列底部多一块 180px 的等宽记录，逐行显示**当前会话** omp 子进程的 stdout / stderr 原文：
 每行是 `时:分:秒` + 流名 + 原文，单行超 2048 字符截断、大段 base64 / `data:` 换成短占位。
 它走自己的一条 SSE（`GET /api/raw`），不进 `/api/events`：第一个窗口连上才开始记，
@@ -132,8 +133,8 @@ omp 仍是 PCB 已经拉起的那个进程。按钮做两件事：把 omp-ckpt �
 | Automations | 自动化页（不塞进对话流）。 |
 | 对话 | 当前项目下的会话；删除只清 PCB 索引并关掉进程，不删项目文件。 |
 
-启动 omp 时比「模式 + cwd + 审批 + 系统提示」只多带一个扩展：`-e <omp-host.ts>`（默认
-`D:\Developer\zed_omp\host\omp-host.ts`，`PCB_OMP_CKPT_HOST` 可换）。`--no-extensions` 关的是扩展**发现**，
+启动 omp 时比「模式 + cwd + 审批 + 系统提示」只多带一个扩展：`-e <omp-host.ts>`（只在
+`PCB_OMP_CKPT_HOST` 指向一个存在的文件时带上）。`--no-extensions` 关的是扩展**发现**，
 不挡这条显式路径，所以用户装的其它 omp 扩展照旧不加载。那个宿主的 checkpoint 与 review 服务跑在 omp 进程里，
 VS Code 的 omp-ckpt 扩展只是连上来，不另外拉 omp；宿主文件不存在时就不带这个 `-e`，会话照常启动。
 
@@ -202,7 +203,7 @@ web/
 - `GET /api/projects/listing?cwd=&path=` → `{ path, entries, truncated }`（只读、懒加载）
 - `GET /api/projects/file?cwd=&path=` → `{ path, size, kind, text? }`（`kind` 为 `text` / `binary` / `too_large`）
 - `GET /api/blob?ref=blob:sha256:<hash>` → 图片字节（只认 64 位十六进制哈希，16 MB 上限，读 `~/.omp/agent/blobs`）
-- `POST /api/projects`、`DELETE /api/projects`（body 带 `cwd`，只动清单）
+- `POST /api/projects`（添加）、`DELETE /api/projects`（退出项目：body 带 `cwd`，只动清单；该路径记入 `dismissed`，会话索引保留但不再出现，指向它的自动化同时暂停，重新添加同一路径后会话原样回来）
 - `GET/POST /api/automations`、`PATCH /api/automations/:id`（启停/改时间）、`DELETE /api/automations/:id`、`POST /api/automations/:id/run`
 - 其余沿用 `/api/sessions/...`；新增类型都在 `shared/protocol.ts`，浏览器只走 `web/src/api.ts`
 - 所有接口只认本机 Host；写操作（POST/DELETE/PATCH）额外要求同源 `Origin` 和 `X-PCB-Request: 1` 头，防止别的网页驱动这个壳

@@ -21,6 +21,7 @@ import type {
 	ShellKind,
 	SessionState,
 	SessionSummary,
+	ShellSettings,
 	ThinkingInfo,
 	UpdateCheck,
 } from "../../shared/protocol.ts";
@@ -96,6 +97,12 @@ export const api = {
 
 	thinking: (id: string) => json<ThinkingInfo>(`/api/sessions/${id}/thinking`),
 
+	/** Model and thinking for the gear card when no conversation is open. */
+	shell: () => json<ShellSettings>("/api/shell"),
+
+	setShell: (patch: { model?: { provider: string; id: string }; thinking?: string }) =>
+		json<ShellSettings>("/api/shell", { method: "POST", body: JSON.stringify(patch) }),
+
 	setThinking: (id: string, level: string) =>
 		json<{ level: string }>(`/api/sessions/${id}/thinking`, {
 			method: "POST",
@@ -120,13 +127,22 @@ export const api = {
 
 	/** Opens the Windows folder dialog on the server. */
 	pickProject: () =>
-		json<{ cwd?: string; cancelled?: boolean; projects: string[] }>("/api/projects/pick", { method: "POST" }),
+		json<{ cwd?: string; cancelled?: boolean; projects: string[]; sessions: SessionSummary[] }>(
+			"/api/projects/pick",
+			{ method: "POST" },
+		),
 
 	addProject: (cwd: string) =>
-		json<{ projects: string[] }>("/api/projects", { method: "POST", body: JSON.stringify({ cwd }) }),
+		json<{ projects: string[]; sessions: SessionSummary[] }>("/api/projects", {
+			method: "POST",
+			body: JSON.stringify({ cwd }),
+		}),
 
 	removeProject: (cwd: string) =>
-		json<{ projects: string[] }>("/api/projects", { method: "DELETE", body: JSON.stringify({ cwd }) }),
+		json<{ projects: string[]; sessions: SessionSummary[] }>("/api/projects", {
+			method: "DELETE",
+			body: JSON.stringify({ cwd }),
+		}),
 
 	/** One folder of the project tree; `path` is relative to `cwd`. */
 	listing: (cwd: string, path: string) =>

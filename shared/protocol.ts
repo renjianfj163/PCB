@@ -193,7 +193,7 @@ export type UiEvent =
 	| { t: "dialog"; sessionId: string; request: DialogRequest }
 	| { t: "dialog_closed"; sessionId: string; id: string }
 	| { t: "notice"; sessionId: string; level: NoticeLevel; text: string }
-	| { t: "projects"; projects: string[] }
+	| { t: "projects"; projects: string[]; sessions: SessionSummary[] }
 	/** Login state re-read from omp, before or without a conversation. */
 	| { t: "auth"; auth: BootInfo["auth"] }
 	| { t: "tool_policy"; sessionId: string; tool: string; decision: PolicyDecision }
@@ -220,6 +220,8 @@ export interface BootInfo {
 	automations: Automation[];
 	defaultCwd: string;
 	ompVersion: string;
+	/** The OS account this window is running as. There is no separate PCB login. */
+	user: string;
 	auth: { provider: string; name: string; authenticated: boolean }[];
 	/** Gating for the terminal's shell choice: PowerShell only exists on Windows. */
 	platform: string;
@@ -273,6 +275,17 @@ export type ThinkingLevel = (typeof THINKING_LEVELS)[number];
 export interface ThinkingInfo {
 	levels: string[];
 	current?: string | null;
+}
+
+/**
+ * The gear card's choices before any conversation exists: omp's own model list,
+ * its default model, and the thinking levels it accepts. No session, no state.
+ */
+export interface ShellSettings {
+	models: Array<ModelRef & { name?: string }>;
+	current: ModelRef | null;
+	levels: string[];
+	thinking: string | null;
 }
 
 /** One row of the project file tree (paths are relative to the project root). */

@@ -22,7 +22,8 @@ curl -s -H 'x-pcb-request: 1' http://127.0.0.1:7777/api/sessions | head -c 400
 | --- | --- | --- |
 | GET | `/api/boot` | 启动信息：版本、项目、当前会话摘要 |
 | GET | `/api/events` | SSE 流，见下 |
-| GET / POST / DELETE | `/api/projects` | 列出项目 / 添加项目 / 只从清单里移除（body 带 `cwd`，不动磁盘） |
+| GET / POST | `/api/shell` | 没有会话时的模型与思考档位。GET：跑一次 `omp --no-session` 取模型列表、默认模型与档位（进程内缓存，并发合并；cwd 用 `lastCwd`，失败也回 200，只带已有选择），再用 `~/.pcb/state.json` 的 `choice` 盖上。POST：`{model?: {provider, id}, thinking?}`，`thinking` 必须属于 `THINKING_LEVELS`，只写 choice 并返回盖过后的同一结构，不启动 omp |
+| GET / POST / DELETE | `/api/projects` | 列出项目 / 添加项目 / 退出项目（body 带 `cwd`，不动磁盘）。退出后该路径记入 `state.json` 的 `dismissed`：会话索引保留但不再出现在清单、Ctrl+K 与 `/api/sessions` 里，指向它的自动化同时暂停；重新添加同一路径（大小写、分隔符不同也算同一个路径）会话就回来。三个写接口都返回 `{projects, sessions}` |
 | GET | `/api/projects/listing?cwd=&path=` | 目录列举：`{path, entries, truncated}`，只读、懒加载 |
 | GET | `/api/projects/file?cwd=&path=` | 文件预览：`{path, size, kind, text?}`，`kind` 为 `text` / `binary` / `too_large` |
 | POST | `/api/projects/pick` | 打开 Windows 文件夹对话框：`{cwd}` 或 `{cancelled: true}` |
@@ -62,6 +63,7 @@ curl -s -H 'x-pcb-request: 1' http://127.0.0.1:7777/api/sessions | head -c 400
 | `state` | `{sessionId, state}`：`streaming`、阶段、花费等 |
 | `dialog` / `dialog_closed` | 一张要你点的卡片出现 / 消失 |
 | `session` / `session_removed` | 会话增删 |
+| `projects` | `{projects, sessions}`：项目清单变化（添加或退出），会话快照随之更新 |
 
 只订阅自己会话的 `sessionId`，是客户端的事——服务端把所有人的帧都广播在这一条流上。
 

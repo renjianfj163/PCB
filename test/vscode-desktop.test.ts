@@ -94,6 +94,17 @@ test("the extension is installed once, then later clicks only open the folder", 
 	assert.equal(calls.filter(args => args[0] === fake.cwd).length, 2);
 });
 
+test("without PCB_CKPT_VSIX the folder still opens and nothing is installed", async () => {
+	const fake = fakeCode("code");
+	const manager = createIdeManager({ env: { ...fake.env, PCB_CKPT_VSIX: "" } });
+
+	const result = await manager.open(fake.cwd);
+	assert.equal(result.ok, true, result.reason);
+	const calls = invocations(fake.log);
+	assert.equal(calls.some(args => args.includes("--install-extension")), false);
+	assert.ok(calls.some(args => args[0] === fake.cwd));
+});
+
 test("a failed extension install still opens the folder", async () => {
 	const fake = fakeCode("code", { failInstall: true });
 	const manager = createIdeManager({ env: fake.env });
@@ -127,6 +138,7 @@ test("Cursor's code is opened when desktop VS Code is not installed", async () =
 		env: {
 			...process.env,
 			PCB_VSCODE: "",
+			PCB_CKPT_VSIX: "",
 			LOCALAPPDATA: join(dir, "empty-local"),
 			ProgramFiles: join(dir, "empty-pf"),
 			"ProgramFiles(x86)": join(dir, "empty-pf86"),

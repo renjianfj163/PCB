@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { parseCompactInvocation } from "../../shared/compact.ts";
-import type { Automation, CompactResult, DialogAnswer, Phase, PromptImage, UiEvent } from "../../shared/protocol.ts";
+import { pathKey } from "../../shared/paths.ts";
+import { loggedInProviders } from "../../shared/providers.ts";
+import type { Automation, CompactResult, DialogAnswer, Phase, PromptImage, ShellSettings, UiEvent } from "../../shared/protocol.ts";
 import { api } from "./api.ts";
 import { browserShots, changedFiles, planSegment, rewindNotice, stripPhaseMarker, terminalEntries } from "./adapters.ts";
 import { Automations } from "./components/Automations.tsx";
@@ -119,7 +121,7 @@ export default function App() {
 	// the window regains focus — that is the moment the login console was closed.
 	const authAskedAt = useRef(0);
 	const authedRef = useRef(false);
-	authedRef.current = Boolean(state.boot?.auth.some(item => item.authenticated));
+	authedRef.current = loggedInProviders(state.boot?.auth).length > 0;
 	// The first-run hint waits for one real answer, so it cannot flash before omp
 	// has been asked whether anything is logged in.
 	const [authChecked, setAuthChecked] = useState(false);
@@ -183,13 +185,44 @@ export default function App() {
 
 	useEffect(() => {
 		if (!state.boot || !project) return;
-		if (!state.boot.projects.includes(project)) setProject(null);
+		if (!state.boot.projects.some(item => pathKey(item) === pathKey(project))) setProject(null);
 	}, [state.boot, project]);
+
+	// The first screen's pickers: omp's model list costs a `--no-session` run, so
+	// nothing waits for it — the selects stay disabled until an answer lands.
+	const [shell, setShell] = useState<ShellSettings | null>(null);
+	useEffect(() => {
+		let cancelled = false;
+		let attempt = 0;
+		let timer: number | undefined;
+		const load = async () => {
+			try {
+				const settings = await api.shell();
+				if (cancelled) return;
+				setShell(settings);
+				// An empty list usually means omp is still discovering providers.
+				if (settings.models.length === 0 && attempt < 4) {
+					attempt++;
+					timer = window.setTimeout(() => void load(), 1500);
+				}
+			} catch {
+				// keep the last answer; the pickers stay disabled meanwhile
+			}
+		};
+		void load();
+		return () => {
+			cancelled = true;
+			if (timer !== undefined) window.clearTimeout(timer);
+		};
+	}, []);
 
 	const [resuming, setResuming] = useState<string | null>(null);
 	const activeId = state.activeId;
 	const session = state.sessions.find(item => item.id === activeId) ?? null;
 	const projects = state.boot?.projects ?? [];
+	const providers = loggedInProviders(state.boot?.auth).map(item => item.provider);
+	// The list's own spelling wins, so a session recorded as `d:\dev` selects `D:\Dev`.
+	const visibleProject = (cwd: string) => projects.find(item => pathKey(item) === pathKey(cwd)) ?? null;
 
 	const aliveNow = session?.alive ?? false;
 
@@ -252,7 +285,7 @@ export default function App() {
 
 	const openSession = (id: string) => {
 		const target = state.sessions.find(item => item.id === id);
-		if (target) setProject(target.cwd);
+		if (target) setProject(visibleProject(target.cwd) ?? target.cwd);
 		dispatch({ type: "select", id });
 		setView("home");
 		setSidebarOpen(false);
@@ -278,8 +311,8 @@ export default function App() {
 		guard(async () => {
 			const result = await api.pickProject();
 			if (result.cancelled || !result.cwd) return;
-			dispatch({ type: "set_projects", projects: result.projects });
-			setProject(result.cwd);
+			dispatch({ type: "set_projects", projects: result.projects, sessions: result.sessions });
+			setProject(visibleProject(result.cwd) ?? result.cwd);
 			dispatch({ type: "select", id: null });
 			dispatch({ type: "clear_notices" });
 			setView("home");
@@ -288,8 +321,18 @@ export default function App() {
 	const removeProject = (cwd: string) =>
 		guard(async () => {
 			const result = await api.removeProject(cwd);
-			dispatch({ type: "set_projects", projects: result.projects });
-			if (project === cwd) setProject(null);
+			dispatch({ type: "set_projects", projects: result.projects, sessions: result.sessions });
+			if (project === null || pathKey(project) !== pathKey(cwd)) return;
+			setProject(null);
+			dispatch({ type: "select", id: null });
+			dispatch({ type: "clear_notices" });
+			setView("home");
+		});
+
+	/** A picker on the first screen: saved server-side, echoed back for display. */
+	const pickShell = (patch: { model?: { provider: string; id: string }; thinking?: string }) =>
+		guard(async () => {
+			setShell(await api.setShell(patch));
 		});
 
 	/** First message: creates the conversation in the chosen folder and sends it. */
@@ -427,7 +470,7 @@ export default function App() {
 			guard(async () => {
 				const { session: created } = await api.runAutomation(id);
 				dispatch({ type: "ui", event: { t: "session", session: created } });
-				setProject(created.cwd);
+				setProject(visibleProject(created.cwd) ?? created.cwd);
 				dispatch({ type: "select", id: created.id });
 				setView("home");
 			}),
@@ -464,8 +507,6 @@ export default function App() {
 				projects={projects}
 				automations={state.automations}
 				boot={state.boot}
-				session={session}
-				state={session ? state.states[session.id] : undefined}
 				onNew={startNew}
 				onSearch={() => setPaletteOpen(true)}
 				onSelectProject={selectProject}
@@ -479,18 +520,7 @@ export default function App() {
 				}
 				onOpenAutomations={openAutomations}
 				onOpenSettings={openSettings}
-				onLogin={() => void openLogin()}
 				onCollapse={() => setLeftPanel(false)}
-				onModel={(provider, id) =>
-					guard(async () => {
-						if (session) await api.setModel(session.id, provider, id);
-					})
-				}
-				onThinking={level =>
-					guard(async () => {
-						if (session) await api.setThinking(session.id, level);
-					})
-				}
 			/>
 
 			<main className="chat">
@@ -552,6 +582,21 @@ export default function App() {
 						<Composer
 							phase={session.phase}
 							state={state.states[session.id]}
+							session={session}
+							providers={providers}
+							onModel={(provider, id) =>
+								guard(async () => {
+									await api.setModel(session.id, provider, id);
+									// The first screen shows the same saved choice.
+									setShell(await api.setShell({ model: { provider, id } }));
+								})
+							}
+							onThinking={level =>
+								guard(async () => {
+									await api.setThinking(session.id, level);
+									setShell(await api.setShell({ thinking: level }));
+								})
+							}
 							disabled={!session.alive}
 							resuming={resuming === session.id}
 							draft={draft}
@@ -613,10 +658,11 @@ export default function App() {
 					<Home
 						key={homeEpoch}
 						project={project}
-						projects={projects}
+						shell={shell}
+						providers={providers}
 						busy={sending}
+						onShell={pickShell}
 						onSend={(text, images, phase) => guard(() => sendFromHome(text, images, phase))}
-						onPickProject={addProject}
 					/>
 				)}
 
@@ -673,7 +719,7 @@ export default function App() {
 				onPick={onPalettePick}
 			/>
 
-			{state.boot && authChecked && !loginHintClosed && !(state.boot.auth ?? []).some(item => item.authenticated) ? (
+			{state.boot && authChecked && !loginHintClosed && loggedInProviders(state.boot.auth).length === 0 ? (
 				<LoginHint onLogin={() => void openLogin()} onDismiss={dismissLoginHint} />
 			) : null}
 

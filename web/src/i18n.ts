@@ -125,10 +125,9 @@ const EN: Record<string, string> = {
 	"未选择": "None",
 	"等待选择…": "Waiting…",
 	"添加项目": "Add project",
-	"从清单移除（不删磁盘文件）": "Remove from list (files stay on disk)",
+	"退出项目（对话保留，重新添加后回来）": "Exit project (conversations stay; add it back to restore them)",
 	"还没有项目文件夹，点右上角的 + 添加。": "No project folders yet — use + to add one.",
 	"这个项目还没有对话。": "No conversations here yet.",
-	"配置": "Settings",
 	"设置": "Settings",
 	"版本": "Version",
 	"更新": "Updates",
@@ -147,7 +146,8 @@ const EN: Record<string, string> = {
 	"安装包已在后台启动，它会结束这个窗口并装回同一目录。":
 		"The installer started; it will close this window and upgrade the same folder.",
 	"登录状态": "Login status",
-	"已登录：{s}": "Logged in: {s}",
+	"已登录": "Logged in",
+	"本地": "This computer",
 	"还没有登录模型，现在发不出消息。": "No model is logged in yet, so nothing can be sent.",
 	"已经打开一个登录窗口，在那边完成 omp login。": "A login window is open — finish omp login there.",
 	"正在打开…": "Opening…",
@@ -166,6 +166,7 @@ const EN: Record<string, string> = {
 	"稍后": "Later",
 	"调试": "Debug",
 	"模型": "Model",
+	"模型与思考等级": "Model and thinking",
 	"语言": "Language",
 	"显示 omp 原文": "Show omp raw output",
 	"原文": "Raw output",
@@ -174,7 +175,7 @@ const EN: Record<string, string> = {
 	// ---- home ----
 	"想做什么？": "What do you want to do?",
 	"说说你想让电脑帮你做什么…": "Tell the computer what you want…",
-	"先在左侧选一个项目，或点「添加项目」": "Pick a project on the left, or add one",
+	"先在左侧选一个项目": "Pick a project on the left",
 	"启动中…": "Starting…",
 	"发送": "Send",
 	"Enter 发送，Shift+Enter 换行。助手会先给计划，你同意后才动文件；跑命令仍会问你。":

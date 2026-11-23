@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import type { BootInfo, InstallInfo, UpdateCheck } from "../../../shared/protocol.ts";
+import { loggedInProviders } from "../../../shared/providers.ts";
 import { api } from "../api.ts";
-import { t } from "../i18n.ts";
+import { setLocale, t, useLocale } from "../i18n.ts";
+import { setOmpRaw, useOmpRaw } from "../raw.ts";
 
 /**
  * Settings holds only what the package needs: which version runs, whether GitHub
@@ -9,6 +11,8 @@ import { t } from "../i18n.ts";
  * one log file the window writes. Nothing here changes project files.
  */
 export function Settings({ boot }: { boot: BootInfo | null }) {
+	const locale = useLocale();
+	const ompRaw = useOmpRaw();
 	const [install, setInstall] = useState<InstallInfo | null>(null);
 	const [check, setCheck] = useState<UpdateCheck | null>(null);
 	const [note, setNote] = useState<string | null>(null);
@@ -42,7 +46,7 @@ export function Settings({ boot }: { boot: BootInfo | null }) {
 		}
 	};
 
-	const loggedIn = (boot?.auth ?? []).filter(item => item.authenticated);
+	const loggedIn = loggedInProviders(boot?.auth);
 
 	return (
 		<div className="settings">
@@ -118,9 +122,15 @@ export function Settings({ boot }: { boot: BootInfo | null }) {
 				<dl>
 					<dt>{t("登录状态")}</dt>
 					<dd>
-						{loggedIn.length > 0
-							? loggedIn.map(item => item.name || item.provider).join("、")
-							: t("还没有登录模型，现在发不出消息。")}
+						{loggedIn.length > 0 ? (
+							<ul className="auth-names">
+								{loggedIn.map(item => (
+									<li key={`${item.provider}\0${item.name}`}>{item.name || item.provider}</li>
+								))}
+							</ul>
+						) : (
+							t("还没有登录模型，现在发不出消息。")
+						)}
 					</dd>
 				</dl>
 				<div className="actions">
@@ -137,6 +147,41 @@ export function Settings({ boot }: { boot: BootInfo | null }) {
 						{busy === "login" ? t("正在打开…") : loggedIn.length > 0 ? t("登录其它模型") : t("登录模型")}
 					</button>
 				</div>
+			</section>
+
+			<section>
+				<h2>{t("语言")}</h2>
+				<div className="config-langs" role="group" aria-label={t("语言")}>
+					<button
+						type="button"
+						className={locale === "zh" ? "active" : undefined}
+						aria-pressed={locale === "zh"}
+						onClick={() => setLocale("zh")}
+					>
+						中文
+					</button>
+					<button
+						type="button"
+						className={locale === "en" ? "active" : undefined}
+						aria-pressed={locale === "en"}
+						onClick={() => setLocale("en")}
+					>
+						English
+					</button>
+				</div>
+			</section>
+
+			<section>
+				<h2>{t("调试")}</h2>
+				<button
+					type="button"
+					className={`config-switch${ompRaw ? " active" : ""}`}
+					aria-pressed={ompRaw}
+					onClick={() => setOmpRaw(!ompRaw)}
+				>
+					<span>{t("显示 omp 原文")}</span>
+					<span className="config-switch-dot" aria-hidden />
+				</button>
 			</section>
 
 			<section>

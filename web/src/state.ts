@@ -68,7 +68,7 @@ export interface AppState {
 export type Action =
 	| { type: "boot"; boot: BootInfo }
 	| { type: "select"; id: string | null }
-	| { type: "set_projects"; projects: string[] }
+	| { type: "set_projects"; projects: string[]; sessions: SessionSummary[] }
 	| { type: "set_policies"; sessionId: string; policies: PolicyEvent[] }
 	| { type: "local_user"; sessionId: string; text: string; images?: PromptImage[]; at?: number }
 	| { type: "ui"; event: UiEvent }
@@ -208,6 +208,19 @@ function applyFrame(state: AppState, sessionId: string, frame: Record<string, un
 	return state;
 }
 
+/**
+ * A projects frame carries the rows and the conversations that belong to them:
+ * removing a folder hides its sessions too, and the open one cannot stay open.
+ */
+function applyProjects(state: AppState, projects: string[], sessions: SessionSummary[]): AppState {
+	return {
+		...state,
+		sessions,
+		activeId: sessions.some(item => item.id === state.activeId) ? state.activeId : null,
+		boot: state.boot === null ? state.boot : { ...state.boot, projects },
+	};
+}
+
 export function reducer(state: AppState, action: Action): AppState {
 	switch (action.type) {
 		case "boot":
@@ -222,10 +235,7 @@ export function reducer(state: AppState, action: Action): AppState {
 		case "set_policies":
 			return { ...state, policies: { ...state.policies, [action.sessionId]: action.policies } };
 		case "set_projects":
-			return {
-				...state,
-				boot: state.boot === null ? state.boot : { ...state.boot, projects: action.projects },
-			};
+			return applyProjects(state, action.projects, action.sessions);
 		case "local_user":
 			return {
 				...state,
@@ -251,10 +261,7 @@ export function reducer(state: AppState, action: Action): AppState {
 					// replayed right after this frame.
 					return { ...state, sessions: event.sessions, dialogs: {} };
 				case "projects":
-					return {
-						...state,
-						boot: state.boot === null ? state.boot : { ...state.boot, projects: event.projects },
-					};
+					return applyProjects(state, event.projects, event.sessions);
 				case "auth":
 					return {
 						...state,

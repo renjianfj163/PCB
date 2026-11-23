@@ -58,9 +58,9 @@ npm run verify       # 类型 + 37 条测试
 | `PCB_OMP` | `omp` | 启动会话用的可执行文件名 |
 | `PCB_PROXY` | 自动探测 | 截图与网页预检用的代理；`off` / `none` / 空表示不用 |
 | `PCB_CHROME` | 自动找 | 截图用的浏览器路径 |
-| `PCB_OMP_CKPT_HOST` | `D:\Developer\zed_omp\host\omp-host.ts` | omp-ckpt 宿主扩展；文件不存在时只是没有审查服务，会话照常 |
+| `PCB_OMP_CKPT_HOST` | 不设 | omp-ckpt 宿主文件。不设或文件不存在时不加载，会话照常，只是没有审查服务 |
 | `PCB_VSCODE` | 自动找 | 「IDE」按钮用的桌面版 VS Code 或 Cursor 命令 |
-| `PCB_CKPT_VSIX` | `D:\Developer\zed_omp\omp-ckpt-0.1.0.vsix` | 「IDE」按钮装进编辑器的扩展包 |
+| `PCB_CKPT_VSIX` | 不设 | 「IDE」按钮装进编辑器的 omp-ckpt 扩展包。不设则只打开编辑器 |
 
 ## 装完先确认这两件事
 

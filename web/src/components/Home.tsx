@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import type { Phase, PromptImage } from "../../../shared/protocol.ts";
+import type { Phase, PromptImage, ShellSettings } from "../../../shared/protocol.ts";
 import { AttachmentPicker, AttachmentTray, usePromptImages } from "./attachments.tsx";
+import { ShellMenu } from "./ShellMenu.tsx";
 import { t } from "../i18n.ts";
 
 const HOME_NOTE: Record<Phase, string> = {
@@ -17,16 +18,20 @@ function shortPath(path: string): string {
 /** First screen: one question, one box. Sends only once a project folder is chosen. */
 export function Home({
 	project,
-	projects,
+	shell,
+	providers,
 	busy,
+	onShell,
 	onSend,
-	onPickProject,
 }: {
 	project: string | null;
-	projects: string[];
+	/** omp's model list and the saved choice; null until the first answer arrives. */
+	shell: ShellSettings | null;
+	/** Providers omp reports as logged in; only their models can be picked. */
+	providers: string[];
 	busy: boolean;
+	onShell: (patch: { model?: { provider: string; id: string }; thinking?: string }) => Promise<void>;
 	onSend: (text: string, images: PromptImage[], phase: Phase) => Promise<void>;
-	onPickProject: () => Promise<void>;
 }) {
 	const [text, setText] = useState("");
 	const [phase, setPhase] = useState<Phase>("plan");
@@ -81,15 +86,11 @@ export function Home({
 									<span title={project}>{shortPath(project)}</span>
 								</>
 							) : (
-								<span className="project-missing">{t("先在左侧选一个项目，或点「添加项目」")}</span>
+								<span className="project-missing">{t("先在左侧选一个项目")}</span>
 							)}
 						</div>
+						<ShellMenu settings={shell} providers={providers} onChange={onShell} />
 						<div className="home-actions">
-							{!project && projects.length === 0 ? (
-								<button type="button" className="secondary" onClick={() => void onPickProject()}>
-									{t("添加项目")}
-								</button>
-							) : null}
 							<AttachmentPicker disabled={busy || picks.preparing} onFiles={picks.addFiles} />
 							<select
 								className="phase-select"

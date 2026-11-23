@@ -14,7 +14,6 @@ import { delimiter, join } from "node:path";
 /** Shown when this machine has neither desktop VS Code nor Cursor. */
 export const NO_CODE = "本机没有 VS Code 或 Cursor";
 
-const DEFAULT_VSIX = "D:\\Developer\\zed_omp\\omp-ckpt-0.1.0.vsix";
 const OPEN_TIMEOUT_MS = 30_000;
 const INSTALL_TIMEOUT_MS = 120_000;
 
@@ -187,12 +186,13 @@ function lastLine(text: string): string {
 
 export function createIdeManager(options: { env?: NodeJS.ProcessEnv } = {}): IdeManager {
 	const env = options.env ?? process.env;
-	const vsix = env.PCB_CKPT_VSIX?.trim() || DEFAULT_VSIX;
+	// No baked-in package path. Without PCB_CKPT_VSIX the editor still opens.
+	const vsix = env.PCB_CKPT_VSIX?.trim() ?? "";
 	let installed = false;
 	let tail: Promise<unknown> = Promise.resolve();
 
 	async function install(file: string) {
-		if (installed || !existsSync(vsix)) {
+		if (installed || !vsix || !existsSync(vsix)) {
 			installed = true;
 			return;
 		}

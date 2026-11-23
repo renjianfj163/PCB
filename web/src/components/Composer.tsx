@@ -1,6 +1,16 @@
 import { useEffect, useState } from "react";
-import type { Phase, PromptImage, SessionState } from "../../../shared/protocol.ts";
+import type {
+	ModelsInfo,
+	Phase,
+	PromptImage,
+	SessionState,
+	SessionSummary,
+	ShellSettings,
+	ThinkingInfo,
+} from "../../../shared/protocol.ts";
 import { AttachmentPicker, AttachmentTray, usePromptImages } from "./attachments.tsx";
+import { ShellMenu } from "./ShellMenu.tsx";
+import { api } from "../api.ts";
 import { t } from "../i18n.ts";
 
 /** Small amounts need the extra digits to move at all. */
@@ -13,6 +23,7 @@ function money(usd: number): string {
 export function Composer({
 	phase,
 	state,
+	session,
 	disabled,
 	resuming,
 	textAreaRef,
@@ -23,9 +34,16 @@ export function Composer({
 	onCompact,
 	onPhase,
 	onResume,
+	onModel,
+	onThinking,
+	providers,
 }: {
 	phase: Phase;
 	state: SessionState | undefined;
+	/** The open conversation: the pickers under the row read and write it. */
+	session: SessionSummary;
+	/** Providers omp says are logged in; the menu lists only their models. */
+	providers: string[];
 	disabled: boolean;
 	/** A resume is in flight for this conversation. */
 	resuming: boolean;
@@ -44,6 +62,8 @@ export function Composer({
 	/** Changes only the phase the next message carries — never sends anything. */
 	onPhase: (phase: Phase) => void;
 	onResume: () => Promise<void>;
+	onModel: (provider: string, id: string) => Promise<void>;
+	onThinking: (level: string) => Promise<void>;
 }) {
 	const [text, setText] = useState("");
 	const picks = usePromptImages();
@@ -51,6 +71,57 @@ export function Composer({
 	const streaming = state?.streaming === true;
 	const compacting = state?.compacting === true;
 	const draftId = draft?.id ?? 0;
+
+	// The menu needs this conversation's own catalog: omp answers per run.
+	const [models, setModels] = useState<ModelsInfo["models"]>([]);
+	const [thinkingInfo, setThinkingInfo] = useState<ThinkingInfo | null>(null);
+	useEffect(() => {
+		let cancelled = false;
+		let attempt = 0;
+		let timer: number | undefined;
+		const load = async () => {
+			try {
+				const data = await api.models(session.id);
+				if (cancelled) return;
+				setModels(data.models);
+				// Provider catalog discovery runs in the background on the server.
+				if (data.models.length === 0 && attempt < 8) {
+					attempt++;
+					timer = window.setTimeout(() => void load(), 1500);
+				}
+			} catch {
+				// keep the previous list
+			}
+		};
+		void load();
+		return () => {
+			cancelled = true;
+			if (timer !== undefined) window.clearTimeout(timer);
+		};
+	}, [session.id, session.status, session.updatedAt]);
+
+	useEffect(() => {
+		let cancelled = false;
+		void (async () => {
+			try {
+				const info = await api.thinking(session.id);
+				if (!cancelled) setThinkingInfo(info);
+			} catch {
+				// keep what the session state already reports
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [session.id, session.status, state?.model?.id, state?.model?.provider]);
+
+	/** What the menu shows: this conversation's model and effort, in omp's lists. */
+	const shell: ShellSettings = {
+		models,
+		current: state?.model ?? session.model ?? null,
+		levels: thinkingInfo?.levels ?? [],
+		thinking: state?.thinkingLevel ?? thinkingInfo?.current ?? null,
+	};
 
 	// A new draft arrives: fill an empty box, otherwise hand it back untouched.
 	useEffect(() => {
@@ -123,6 +194,16 @@ export function Composer({
 							</span>
 						) : null}
 					</span>
+					<ShellMenu
+						settings={shell}
+						providers={providers}
+						disabled={!session.alive}
+						onChange={patch =>
+							patch.model
+								? onModel(patch.model.provider, patch.model.id)
+								: onThinking(patch.thinking ?? "")
+						}
+					/>
 					<div className="composer-tools">
 						<button
 							type="button"

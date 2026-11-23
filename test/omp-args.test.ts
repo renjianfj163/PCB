@@ -5,8 +5,8 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { ckptHost, launchArgs } from "../server/omp-args.ts";
 
-const record = { cwd: "D:\\Developer\\zed_omp", extensions: false, phase: "build" };
-const HOST = "D:\\Developer\\zed_omp\\host\\omp-host.ts";
+const record = { cwd: "C:\\work\\app", extensions: false, phase: "build" };
+const HOST = "C:\\ckpt\\omp-host.ts";
 
 const flags = (args: string[], flag: string) => args.filter(arg => arg === flag).length;
 
@@ -39,11 +39,11 @@ test("extensions on means no --no-extensions, and the host still loads once", ()
 	assert.equal(flags(args, "-e"), 1);
 });
 
-test("PCB_OMP_CKPT_HOST overrides the default path", () => {
+test("PCB_OMP_CKPT_HOST is used only when that file exists", () => {
+	assert.equal(ckptHost({}), null, "nothing is loaded when the variable is unset");
+	assert.equal(ckptHost({ PCB_OMP_CKPT_HOST: "   " }), null);
 	assert.equal(ckptHost({ PCB_OMP_CKPT_HOST: "C:\\nope\\host.ts" }), null, "a missing file never blocks a session");
 
-	// The default only counts when that file is actually on this machine, so the
-	// contract is "the configured path wins when it exists" — never its value.
 	const dir = mkdtempSync(join(tmpdir(), "pcb-ckpt-host-"));
 	const host = join(dir, "omp-host.ts");
 	writeFileSync(host, "// host\n");

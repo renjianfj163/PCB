@@ -435,52 +435,22 @@ pre {
 	white-space: nowrap;
 }
 
-.config-card {
-	position: absolute;
-	left: 8px;
-	right: 8px;
-	bottom: calc(100% + 6px);
-	z-index: 20;
+/* One provider per line, so a narrow card breaks between names. */
+.auth-names {
+	margin: 0;
+	padding: 0;
+	list-style: none;
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
-	padding: 10px;
-	background: var(--bg-panel);
-	border: 1px solid var(--border);
-	border-radius: 10px;
-	box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
+	gap: 2px;
 }
 
-.config-title {
-	font-size: 11.5px;
-	color: var(--dim);
-}
-
-/* No conversation: the card answers "who is logged in" instead of listing models. */
-.config-note {
-	margin: 0;
+.auth-names li {
 	font-size: 12.5px;
 	line-height: 1.35;
-	color: var(--muted);
-}
-
-.config-action {
-	height: 28px;
-	border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
-	border-radius: 7px;
-	background: var(--bg-col);
 	color: var(--fg);
-	font-size: 12px;
-}
-
-.config-action:hover:not(:disabled) {
-	background: var(--hover);
-}
-
-.config-select {
-	width: 100%;
-	height: 30px;
-	font-size: 12.5px;
+	overflow-wrap: break-word;
+	word-break: normal;
 }
 
 /* Language: two choices, both always visible — no dropdown to hide it. */
@@ -1344,6 +1314,30 @@ pre {
 	padding: 0 2px;
 }
 
+/* The model/thinking control rides in the tools row; the meta text yields first. */
+.composer-row .shell-menu-root {
+	min-width: 0;
+}
+
+.composer-row .shell-trigger {
+	max-width: 170px;
+}
+
+/* A narrow column keeps every button whole: the tools drop to their own line. */
+.composer-row {
+	flex-wrap: wrap;
+	row-gap: 6px;
+}
+
+.composer-tools {
+	margin-left: auto;
+}
+
+.composer-tools > * {
+	flex: 0 0 auto;
+	white-space: nowrap;
+}
+
 .composer-meta {
 	flex: 1;
 	min-width: 0;
@@ -1839,10 +1833,12 @@ pre {
 	color: var(--dim);
 }
 
+/* Three zones: the folder (truncates first), the model/thinking control, the actions. */
 .home-card-foot {
-	display: flex;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
 	align-items: center;
-	gap: 12px;
+	gap: 10px;
 	border-top: 1px solid var(--border);
 	padding-top: 8px;
 }
@@ -1854,7 +1850,6 @@ pre {
 	font-size: 12px;
 	color: var(--muted);
 	min-width: 0;
-	flex: 1;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -1875,6 +1870,13 @@ pre {
 .home-actions {
 	display: flex;
 	gap: 6px;
+	justify-self: end;
+	white-space: nowrap;
+}
+
+/* Shrink the folder hint, never the buttons: a wrapped 发送 reads as broken. */
+.home-actions > * {
+	flex: 0 0 auto;
 }
 
 .home-note {
@@ -1882,6 +1884,177 @@ pre {
 	font-size: 12px;
 	color: var(--dim);
 	text-align: center;
+}
+
+/* One control for model + thinking: the pair it saved, then both lists. */
+.shell-menu-root {
+	position: relative;
+	min-width: 0;
+}
+
+.shell-trigger {
+	height: 28px;
+	max-width: 190px;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 0 8px;
+	border: 1px solid var(--border);
+	border-radius: 7px;
+	background: var(--bg-col);
+	color: var(--fg);
+	font-size: 12px;
+	white-space: nowrap;
+}
+
+.shell-trigger:disabled {
+	color: var(--muted);
+}
+
+.shell-trigger-model {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.shell-trigger-caret {
+	flex: 0 0 auto;
+	font-size: 10px;
+	color: var(--muted);
+}
+
+.shell-menu {
+	position: absolute;
+	top: calc(100% + 6px);
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 30;
+	width: 300px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 8px;
+	background: var(--bg-panel);
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
+}
+
+/* Not enough room below the card: hang the panel above the trigger instead. */
+.shell-menu[data-side="up"] {
+	top: auto;
+	bottom: calc(100% + 6px);
+}
+
+.shell-group {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+
+.shell-menu-title {
+	padding: 2px 6px;
+	font-size: 11.5px;
+	color: var(--dim);
+}
+
+/* Long model lists scroll; the thinking row stays visible under them. */
+.shell-models {
+	max-height: 150px;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+}
+
+.shell-option {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	width: 100%;
+	height: 26px;
+	padding: 0 6px;
+	border: none;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--fg);
+	font-size: 12.5px;
+	text-align: left;
+}
+
+.shell-option:hover,
+.shell-option:focus-visible {
+	background: var(--hover);
+}
+
+.shell-option.active {
+	color: var(--accent);
+}
+
+.shell-option-check {
+	flex: 0 0 10px;
+	font-size: 11px;
+}
+
+.shell-option-name {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.shell-option-note {
+	flex: 0 0 auto;
+	font-size: 11px;
+	color: var(--dim);
+}
+
+.shell-levels {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	padding: 2px 4px 4px;
+}
+
+.shell-level {
+	height: 26px;
+	padding: 0 12px;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	background: var(--bg-col);
+	color: var(--muted);
+	font-size: 12px;
+}
+
+.shell-level.active {
+	border-color: var(--accent);
+	color: var(--fg);
+}
+
+.shell-empty {
+	margin: 0;
+	padding: 2px 6px;
+	font-size: 12px;
+	color: var(--dim);
+}
+
+/* Narrow: the folder gets its own line, the control and actions share the next. */
+@media (max-width: 640px) {
+	.home-card-foot {
+		grid-template-columns: minmax(0, 1fr) auto;
+	}
+
+	.home-project {
+		grid-column: 1 / -1;
+	}
+
+	/* Anchored to the control's left edge so a 300px panel cannot leave the window. */
+	.shell-menu {
+		left: 0;
+		transform: none;
+		width: min(300px, calc(100vw - 48px));
+	}
 }
 
 /* ---------- automations (middle column) ---------- */
@@ -3304,6 +3477,11 @@ body.resizing {
 	word-break: break-all;
 }
 
+.settings .auth-names,
+.settings .auth-names li {
+	word-break: normal;
+}
+
 .settings .mono {
 	font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
 }
@@ -3314,6 +3492,24 @@ body.resizing {
 	align-items: center;
 	flex-wrap: wrap;
 	margin-top: 12px;
+}
+
+/* Language and the debug switch moved here from the gear popover: keep them
+   button-sized instead of stretching across the section. */
+.settings .config-langs {
+	width: max-content;
+	max-width: 100%;
+}
+
+.settings .config-langs button {
+	flex: 0 0 auto;
+	padding: 0 14px;
+}
+
+.settings .config-switch {
+	width: max-content;
+	max-width: 100%;
+	gap: 22px;
 }
 
 .settings .note {

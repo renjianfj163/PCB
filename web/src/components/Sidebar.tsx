@@ -1,10 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import type { Automation, BootInfo, SessionState, SessionSummary } from "../../../shared/protocol.ts";
+import { useState } from "react";
+import type { Automation, BootInfo, SessionSummary } from "../../../shared/protocol.ts";
 import { baseName, shortPath } from "../paths.ts";
-import { setLocale, t, useLocale } from "../i18n.ts";
-import { setOmpRaw, useOmpRaw } from "../raw.ts";
-import { ModelPicker } from "./ModelPicker.tsx";
-import { ThinkingPicker } from "./ThinkingPicker.tsx";
+import { pathKey } from "../../../shared/paths.ts";
+import { t } from "../i18n.ts";
 
 function IconPlus() {
 	return (
@@ -77,8 +75,6 @@ export function Sidebar({
 	projects,
 	automations,
 	boot,
-	session,
-	state,
 	onNew,
 	onSearch,
 	onSelectProject,
@@ -88,10 +84,7 @@ export function Sidebar({
 	onDeleteSession,
 	onOpenAutomations,
 	onOpenSettings,
-	onLogin,
 	onCollapse,
-	onModel,
-	onThinking,
 }: {
 	open: boolean;
 	collapsed: boolean;
@@ -102,8 +95,6 @@ export function Sidebar({
 	projects: string[];
 	automations: Automation[];
 	boot: BootInfo | null;
-	session: SessionSummary | null;
-	state: SessionState | undefined;
 	onNew: () => void;
 	onSearch: () => void;
 	onSelectProject: (cwd: string) => void;
@@ -113,44 +104,14 @@ export function Sidebar({
 	onDeleteSession: (id: string) => Promise<void>;
 	onOpenAutomations: () => void;
 	onOpenSettings: () => void;
-	/** Opens an omp login console; the config card offers it when nothing is logged in. */
-	onLogin: () => void;
 	onCollapse: () => void;
-	onModel: (provider: string, id: string) => Promise<void>;
-	onThinking: (level: string) => Promise<void>;
 }) {
 	const [projectsOpen, setProjectsOpen] = useState(false);
-	const [configOpen, setConfigOpen] = useState(false);
 	const [picking, setPicking] = useState(false);
-	const configRef = useRef<HTMLDivElement>(null);
-	const configButtonRef = useRef<HTMLButtonElement>(null);
-	const locale = useLocale();
-	const ompRaw = useOmpRaw();
-	// Without a conversation there is no model catalog to list, only this answer.
-	const loggedIn = (boot?.auth ?? []).filter(item => item.authenticated);
+	const account = boot?.user?.trim() ?? "";
+	const initial = account ? [...account][0]!.toLocaleUpperCase() : "";
 
-	const conversations = project ? sessions.filter(item => item.cwd === project) : [];
-
-	useEffect(() => {
-		if (!configOpen) return;
-		const onKey = (event: KeyboardEvent) => {
-			if (event.key === "Escape") setConfigOpen(false);
-		};
-		// Gear stays out of this check so its own click can still toggle closed.
-		const onPointer = (event: PointerEvent) => {
-			const target = event.target;
-			if (!(target instanceof Node)) return;
-			if (configRef.current?.contains(target)) return;
-			if (configButtonRef.current?.contains(target)) return;
-			setConfigOpen(false);
-		};
-		window.addEventListener("keydown", onKey);
-		window.addEventListener("pointerdown", onPointer);
-		return () => {
-			window.removeEventListener("keydown", onKey);
-			window.removeEventListener("pointerdown", onPointer);
-		};
-	}, [configOpen]);
+	const conversations = project ? sessions.filter(item => pathKey(item.cwd) === pathKey(project)) : [];
 
 	const addProject = async () => {
 		setPicking(true);
@@ -231,17 +192,6 @@ export function Sidebar({
 				{automations.length > 0 ? <span className="nav-badge">{automations.length}</span> : null}
 			</button>
 
-			<button
-				type="button"
-				className={`nav-row${activeView === "settings" ? " active" : ""}`}
-				onClick={onOpenSettings}
-			>
-				<span className="nav-icon" aria-hidden>
-					<IconGear />
-				</span>
-				{t("设置")}
-			</button>
-
 			<section className="nav-section nav-projects">
 				<div className="nav-project-row">
 					<button
@@ -273,7 +223,11 @@ export function Sidebar({
 					<div className="project-list">
 						{projects.map(cwd => (
 							<div key={cwd} className="project-entry">
-								<div className={`project-option${cwd === project ? " active" : ""}`}>
+								<div
+									className={`project-option${
+										project !== null && pathKey(cwd) === pathKey(project) ? " active" : ""
+									}`}
+								>
 									<button
 										type="button"
 										className="project-option-main"
@@ -286,13 +240,15 @@ export function Sidebar({
 									<button
 										type="button"
 										className="row-delete"
-										title={t("从清单移除（不删磁盘文件）")}
+										title={t("退出项目（对话保留，重新添加后回来）")}
 										onClick={() => void onRemoveProject(cwd)}
 									>
 										×
 									</button>
 								</div>
-								{cwd === project ? <div className="project-sessions">{renderConversations()}</div> : null}
+								{project !== null && pathKey(cwd) === pathKey(project) ? (
+									<div className="project-sessions">{renderConversations()}</div>
+								) : null}
 							</div>
 						))}
 						{projects.length === 0 ? <p className="sidebar-empty">{t("还没有项目文件夹，点右上角的 + 添加。")}</p> : null}
@@ -301,69 +257,19 @@ export function Sidebar({
 			</section>
 
 			<div className="sidebar-foot">
-				{configOpen ? (
-					<div className="config-card" ref={configRef} role="dialog" aria-label={t("配置")}>
-						{session ? (
-							<ModelPicker session={session} state={state} onModel={onModel} />
-						) : (
-							<>
-								<div className="config-title">{t("模型")}</div>
-								<p className="config-note">
-									{loggedIn.length > 0
-										? t("已登录：{s}", { s: loggedIn.map(item => item.name || item.provider).join("、") })
-										: t("还没有登录模型，现在发不出消息。")}
-								</p>
-								{loggedIn.length === 0 ? (
-									<button type="button" className="config-action" onClick={onLogin}>
-										{t("登录模型")}
-									</button>
-								) : null}
-							</>
-						)}
-						<ThinkingPicker session={session} state={state} onThinking={onThinking} />
-						<div className="config-title">{t("语言")}</div>
-						<div className="config-langs" role="group" aria-label={t("语言")}>
-							<button
-								type="button"
-								className={locale === "zh" ? "active" : undefined}
-								aria-pressed={locale === "zh"}
-								onClick={() => setLocale("zh")}
-							>
-								中文
-							</button>
-							<button
-								type="button"
-								className={locale === "en" ? "active" : undefined}
-								aria-pressed={locale === "en"}
-								onClick={() => setLocale("en")}
-							>
-								English
-							</button>
-						</div>
-						<div className="config-title">{t("调试")}</div>
-						<button
-							type="button"
-							className={`config-switch${ompRaw ? " active" : ""}`}
-							aria-pressed={ompRaw}
-							onClick={() => setOmpRaw(!ompRaw)}
-						>
-							<span>{t("显示 omp 原文")}</span>
-							<span className="config-switch-dot" aria-hidden />
-						</button>
-					</div>
-				) : null}
 				<div className="user-row">
 					<span className="avatar" aria-hidden>
-						J
+						{initial || "·"}
 					</span>
-					<span className="user-name">Jian Ren</span>
+					<span className="user-name" title={account}>
+						{account || t("本地")}
+					</span>
 					<button
 						type="button"
-						ref={configButtonRef}
-						className={`icon-btn${configOpen ? " on" : ""}`}
-						title={t("配置")}
-						aria-expanded={configOpen}
-						onClick={() => setConfigOpen(open => !open)}
+						className={`icon-btn${activeView === "settings" ? " on" : ""}`}
+						title={t("设置")}
+						aria-pressed={activeView === "settings"}
+						onClick={onOpenSettings}
 					>
 						<IconGear />
 					</button>
