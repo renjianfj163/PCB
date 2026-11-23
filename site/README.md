@@ -84,7 +84,7 @@ cd site && node server.mjs
 - 普通用户留在界面里，用自然语言走 Chat / Plan / Build / Review。
 - 开发者可以打开本机已安装的桌面版 VS Code 或 Cursor。
 - OMP 在首页就写明：每个会话是本机的 OMP RPC 子进程，PCB 没有第二套 Agent。
-- 产品演示 Skill、社交推广、支付接口使用「规划中」标记，不写成已经提供。
+- 产品演示工具、社交推广、支付功能使用「未来计划」标记，不写成已经提供。
 
 下载区只给一个 Windows 安装包。已经是 `PCB-<版本>-windows-x64.exe` 时用它；旧发布若还有 Desktop 和 Developer 两个文件，页面只留 Developer 那一个。构建说明见 `window/installer/README.md`。
 
@@ -97,8 +97,8 @@ cd site && node server.mjs
 - 字典缺 key 时先用中文兜底，再用 key 本名——宁可露出 key，也不静默丢一句话。
 - 两个字典必须同 key 同数量；页面上只剩一处中文固定文本：语言切换里的「中文」。
 - 产品旅程里的阶段名：英文页用 `Chat / Plan / Build / Promote / Monetize`，中文页把 `对话 / 规划 / 实现 / 推广 / 变现`
-  放在 `journey.*` 里。状态永远是 `可用 / 规划中`（英文 `Available / Coming next`），
-  前三个阶段可用，后两个是规划。首屏不再重复这条五阶段轨。
+  放在 `journey.*` 里。状态是 `现在可用 / 未来计划`（英文 `Available / Coming Next`），
+  前三个阶段可用，后两个是未来计划。首屏不再重复这条五阶段轨。
 
 ## 页面
 
@@ -107,8 +107,8 @@ cd site && node server.mjs
 因为产品本身就是深色桌面应用。字体 `-apple-system, "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "PingFang SC", "Noto Sans SC", system-ui`。
 
 顺序是：Hero → Candy Crush 动图 →
-工作方式（Chat / Plan / Build / Review 四步，Review 标为 Build 环节）→
-产品旅程（五阶段横向轨，后两段规划中）→ 三项路线图 →
-下载 → FAQ → 收起的「报告问题」→ 关于与许可。
+工作方式（Chat / Plan / Build / Review 四步）→
+产品旅程（五阶段横向轨，后两段为未来计划）→ 三项路线图 →
+下载 → FAQ（含反馈入口）→ 关于与许可。
 顶栏把页内链接和「文档 / GitHub」分成两组。
 1280、900 与 390 三个宽度都要看过；`document.documentElement.scrollWidth` 不应超过 `clientWidth`。

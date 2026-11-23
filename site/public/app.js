@@ -29,8 +29,8 @@ const base = {};
 
 function t(key, vars) {
 	let text = dict[key];
-	if (!text) text = base[key];
-	if (!text) text = key;
+	if (text == null) text = base[key];
+	if (text == null) text = key;
 	if (!vars) return text;
 	return text.replace(/\{(\w+)\}/g, (whole, name) =>
 		Object.hasOwn(vars, name) ? String(vars[name]) : whole,

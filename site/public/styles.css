@@ -218,7 +218,21 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
 
 /* ------------------------------------------------------------ app window */
 
-.hero-visual { margin: 24px 0 0; }
+.hero-visual { margin: 56px 0 0; }
+
+.demo-kicker {
+	margin: 0 0 10px;
+	font-family: var(--mono);
+	font-size: 12px;
+	letter-spacing: .06em;
+	color: var(--muted);
+}
+	margin: 0 0 18px;
+	font-size: clamp(22px, 2.2vw, 28px);
+	line-height: 1.35;
+	letter-spacing: -0.02em;
+	font-weight: 620;
+}
 
 .frame {
 	border: 1px solid var(--border-strong);
@@ -372,6 +386,17 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
 }
 
 .stages .stage-review { background: var(--bg-soft); }
+.stage-tag:empty { display: none; }
+
+.examples {
+	margin: 8px 0 0;
+	padding-left: 1.15em;
+	color: var(--muted);
+	font-size: 14px;
+}
+.examples li { margin: 3px 0; }
+
+.stages .stage > p { margin: 10px 0 0; font-size: 14px; color: var(--muted); }
 
 .quad {
 	list-style: none;
@@ -515,6 +540,9 @@ table.compare .mark.opt { color: var(--muted); }
 .road header { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
 .road h3 { margin: 0; font-size: 16px; font-weight: 620; letter-spacing: -0.01em; }
 .road p { margin: 0; font-size: 14px; color: var(--muted); }
+.road p + p { margin-top: 10px; }
+.road ul { margin: 10px 0 0; padding-left: 1.15em; color: var(--muted); font-size: 14px; }
+.road ul li { margin: 3px 0; }
 .road p.road-goal {
 	margin: 16px 0 0;
 	padding-top: 12px;
@@ -657,6 +685,8 @@ details.notes pre {
 .faq summary::before { content: "+"; font-family: var(--mono); color: var(--accent); }
 .faq details[open] summary::before { content: "−"; }
 .faq p { margin: 0 0 16px 24px; font-size: 14px; color: var(--muted); }
+.faq ul { margin: 0 0 16px 42px; padding: 0; color: var(--muted); font-size: 14px; }
+.faq li { margin: 4px 0; }
 
 .ask-card { position: sticky; top: 84px; }
 .ask-card h3 { margin: 0 0 12px; font-size: 15px; font-weight: 620; }
@@ -734,6 +764,7 @@ textarea:focus, input:focus, select:focus {
 .about { max-width: 52ch; }
 .about h3 { margin: 0 0 10px; font-size: 15px; font-weight: 620; }
 .about p { margin: 0 0 8px; font-size: 13.5px; color: var(--muted); }
+.about .about-line { color: var(--fg); font-weight: 620; margin-top: 12px; }
 
 .foot-links { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; align-self: end; }
 .foot-links span { color: var(--muted); }
