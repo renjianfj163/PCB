@@ -3,7 +3,6 @@
 	"meta.desc": "PCB is an AI coding tool for people with no programming background. Turn an idea into a product, then take it onto the internet to promote and earn from it. Open source, MIT.",
 
 	"nav.work": "How it works",
-	"nav.ide": "IDE",
 	"nav.path": "Product journey",
 	"nav.roadmap": "Roadmap",
 	"nav.download": "Download",
@@ -19,18 +18,9 @@
 	"hero.cta.download": "Download PCB",
 	"hero.cta.github": "View on GitHub",
 	"hero.cta.docs": "Documentation",
-	"hero.flow.label": "Five product stages",
-	"hero.chip.local": "Local First",
-	"hero.chip.mit": "Open Source · MIT",
-	"hero.chip.win": "Windows",
 	"hero.alt": "Animation titled Candy Crush in one sentence: ask in one sentence, approve the plan, then a playable match-3 appears in the window",
 	"hero.visual.caption": "Pick a project and ask for Candy Crush in one sentence. PCB shows a plan first. After you approve it, the files are written and a playable match-3 appears in the same window.",
 
-	"stage.chat": "Explore ideas",
-	"stage.plan": "Plan & design",
-	"stage.build": "Build products",
-	"stage.promote": "Demo & share",
-	"stage.monetize": "Sell & grow",
 	"state.on": "Available",
 	"state.next": "Coming next",
 
@@ -56,11 +46,6 @@
 	"work.review.d": "Look at the actual file changes, then accept them or restore the previous state.",
 	"work.review.badge": "Part of Build",
 	"work.note": "Review is the checking step inside the Build workflow. It is not a separate AI engine standing beside Chat, Plan and Build.",
-
-	"ide.eyebrow": "IDE · OMP",
-	"ide.title": "A Better Way to Build with AI.",
-	"ide.lead": "For deeper development, PCB opens the desktop VS Code or Cursor already installed on your machine.",
-	"ide.lead2": "In the editor you already know, OMP covers writing code, AI edits and reviewing the result.",
 
 	"path.eyebrow": "PRODUCT JOURNEY",
 	"path.title": "From Ideas to Products. From Products to Market.",

@@ -3,7 +3,6 @@
 	"meta.desc": "PCB 是写给没有任何编程基础的人的 AI 编程工具。用它实现想法、做成产品，再走向互联网上的推广和收益。开源，MIT。",
 
 	"nav.work": "工作方式",
-	"nav.ide": "IDE",
 	"nav.path": "产品旅程",
 	"nav.roadmap": "路线图",
 	"nav.download": "下载",
@@ -19,18 +18,9 @@
 	"hero.cta.download": "下载 PCB",
 	"hero.cta.github": "查看 GitHub",
 	"hero.cta.docs": "产品文档",
-	"hero.flow.label": "五个产品阶段",
-	"hero.chip.local": "Local First",
-	"hero.chip.mit": "Open Source · MIT",
-	"hero.chip.win": "Windows",
 	"hero.alt": "动图 Candy Crush in one sentence：用一句话说明玩法，同意计划后，窗口里出现可玩的三消",
 	"hero.visual.caption": "先选定项目，用一句话说明要做 Candy Crush。PCB 先给出计划，你同意之后才写文件，可玩的三消就出现在同一个窗口里。",
 
-	"stage.chat": "对话",
-	"stage.plan": "规划",
-	"stage.build": "实现",
-	"stage.promote": "推广",
-	"stage.monetize": "变现",
 	"state.on": "可用",
 	"state.next": "规划中",
 
@@ -56,11 +46,6 @@
 	"work.review.d": "查看实际文件变化，根据需要接受修改或恢复之前的状态。",
 	"work.review.badge": "Build 环节",
 	"work.note": "Review 是 Build 工作流程中的审查环节，不是与 Chat、Plan、Build 并列的另一套 AI 引擎。",
-
-	"ide.eyebrow": "IDE · OMP",
-	"ide.title": "不只是使用 AI，更是与 AI 一起开发。",
-	"ide.lead": "对于需要深入开发的用户，PCB 可以直接打开本机已有的桌面版 VS Code 或 Cursor。",
-	"ide.lead2": "在熟悉的 IDE 中，结合 OMP，完成代码编写、AI 修改和结果检查。",
 
 	"path.eyebrow": "PRODUCT JOURNEY",
 	"path.title": "从创意到产品，从产品到市场。",

@@ -96,9 +96,9 @@ cd site && node server.mjs
   `<html lang>`、`<title>`、`<meta name="description">`、`og:title`、`og:description` 也跟着变。
 - 字典缺 key 时先用中文兜底，再用 key 本名——宁可露出 key，也不静默丢一句话。
 - 两个字典必须同 key 同数量；页面上只剩一处中文固定文本：语言切换里的「中文」。
-- 阶段名的写法：英文页用 `Chat / Plan / Build / Promote / Monetize`，中文页把 `对话 / 规划 / 实现 / 推广 / 变现`
-  放在副标题里（`stage.*`、`journey.*`）。状态永远是 `可用 / 规划中`（英文 `Available / Coming next`），
-  前三个阶段可用，后两个是规划。
+- 产品旅程里的阶段名：英文页用 `Chat / Plan / Build / Promote / Monetize`，中文页把 `对话 / 规划 / 实现 / 推广 / 变现`
+  放在 `journey.*` 里。状态永远是 `可用 / 规划中`（英文 `Available / Coming next`），
+  前三个阶段可用，后两个是规划。首屏不再重复这条五阶段轨。
 
 ## 页面
 
@@ -106,8 +106,9 @@ cd site && node server.mjs
 正文 `#edeef0`、次要 `#969ca6`、强调 `#5b8cff`（只用于主按钮、链接、章节眉与编号）；没有第二套浅色主题，
 因为产品本身就是深色桌面应用。字体 `-apple-system, "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "PingFang SC", "Noto Sans SC", system-ui`。
 
-顺序是：Hero（LOCAL AI PRODUCT WORKSPACE + 主口号 + 三个入口 + 五阶段轨 + 三个属性）→ Candy Crush 动图 →
-工作方式（Chat / Plan / Build / Review 四步，Review 标为 Build 环节）→ IDE + OMP →
+顺序是：Hero → Candy Crush 动图 →
+工作方式（Chat / Plan / Build / Review 四步，Review 标为 Build 环节）→
 产品旅程（五阶段横向轨，后两段规划中）→ 三项路线图 →
-下载（写死真实版本卡片 + 其他版本）→ FAQ（每条都有完整回答）→ 收起的「报告问题」→ 关于与许可。
+下载 → FAQ → 收起的「报告问题」→ 关于与许可。
+顶栏把页内链接和「文档 / GitHub」分成两组。
 1280、900 与 390 三个宽度都要看过；`document.documentElement.scrollWidth` 不应超过 `clientWidth`。
