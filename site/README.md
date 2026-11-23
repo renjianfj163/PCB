@@ -1,7 +1,7 @@
 # PCB 网站（site/）
 
 PCB 的开源项目门面：一页两语（中文 / English）。一个软件包，不区分日常版和编程版。
-已经能用的写成事实：界面、Oh My Pi（OMP）、OMP-ckpt。演示、发布、支付标成规划中。
+已经能用的写成事实：界面、Oh My Pi（OMP）。演示、发布、支付标成规划中。页面不介绍 OMP-ckpt。
 只做两件事：介绍、给版本下载；问题入口直接指向 GitHub 的表单。
 
 **公网版本是纯静态页**：只发 `public/` 这一套文件，没有自己的接口、没有密钥、没有服务端进程。
@@ -36,7 +36,8 @@ PCB 的开源项目门面：一页两语（中文 / English）。一个软件包
 | `public/styles.css` | 全部样式；深色，无外部字体 |
 | `public/app.js` | 读字典、套用 key、读 GitHub 版本列表并渲染 |
 | `public/i18n/zh.json`、`en.json` | 两种语言的字典（key 必须一致） |
-| `public/shots/app.png` | 首屏截图：1440×900 的 PCB 实拍，页面只裁掉底部一小条渲染重叠 |
+| `public/shots/candy.gif` | 首屏动图：第一帧是 Candy Crush in one sentence，后面演示用一句话做出三消。源画面在 `storyboard/` |
+| `public/shots/app.png` | 旧的首屏静图，页面不再使用 |
 | `server.mjs` | **本机预览用**，公网不部署。见下 |
 
 ## 本机预览
@@ -81,7 +82,7 @@ cd site && node server.mjs
 页面按一个 PCB 来写，不再把安装包说成日常版和编程版。改文案前先读 `docs/install.md`：
 
 - 普通用户留在界面里，用自然语言走 Chat / Plan / Build / Review。
-- 开发者可以打开本机已安装的桌面版 VS Code 或 Cursor，并用 OMP-ckpt 检查和恢复修改。
+- 开发者可以打开本机已安装的桌面版 VS Code 或 Cursor。
 - OMP 在首页就写明：每个会话是本机的 OMP RPC 子进程，PCB 没有第二套 Agent。
 - 产品演示 Skill、社交推广、支付接口使用「规划中」标记，不写成已经提供。
 
@@ -106,7 +107,7 @@ cd site && node server.mjs
 因为产品本身就是深色桌面应用。字体 `-apple-system, "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "PingFang SC", "Noto Sans SC", system-ui`。
 
 顺序是：Hero（LOCAL AI PRODUCT WORKSPACE + 主口号 + 三个入口 + 五阶段轨 + 三个属性）→ 本机窗口里的真实截图 →
-工作方式（Chat / Plan / Build / Review 四步，Review 标为 Build 环节）→ IDE + OMP + OMP-ckpt（五项能力）→
+工作方式（Chat / Plan / Build / Review 四步，Review 标为 Build 环节）→ IDE + OMP →
 一个 PCB 的对照表 → 产品旅程（五阶段横向轨，后两段规划中）→ 三项路线图 → 本地边界 →
 下载（写死真实版本卡片 + 其他版本）→ FAQ（每条都有完整回答）→ 收起的「报告问题」→ 关于与许可。
 1280、900 与 390 三个宽度都要看过；`document.documentElement.scrollWidth` 不应超过 `clientWidth`。

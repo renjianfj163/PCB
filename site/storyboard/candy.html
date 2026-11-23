@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Candy Crush in one sentence</title>
+<style>
+	:root {
+		--bg: #f4f4f5;
+		--panel: #fff;
+		--sunken: #f1f1f3;
+		--line: #e6e6e8;
+		--line-strong: #d9d9dd;
+		--fg: #1c1c1f;
+		--muted: #6b6b70;
+		--dim: #9296a0;
+		--hover: #f3f3f4;
+		--accent: #2f6fed;
+		--warn: #9a6700;
+		--ok: #1a7f37;
+	}
+	* { box-sizing: border-box; }
+	html, body {
+		margin: 0;
+		width: 1280px;
+		height: 720px;
+		overflow: hidden;
+		background: var(--bg);
+		color: var(--fg);
+		font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+	}
+	.app { display: flex; width: 1280px; height: 720px; }
+	.side {
+		width: 232px;
+		flex: none;
+		background: var(--panel);
+		border-right: 1px solid var(--line);
+		display: flex;
+		flex-direction: column;
+		padding: 14px 12px;
+	}
+	.brand { display: flex; align-items: baseline; gap: 8px; margin: 2px 8px 16px; }
+	.brand b { font-size: 15px; letter-spacing: .02em; }
+	.brand span { color: var(--dim); font-size: 12px; }
+	.nav {
+		display: flex; align-items: center; gap: 8px;
+		height: 34px; padding: 0 10px; border-radius: 8px;
+		color: var(--fg); font-size: 13.5px;
+	}
+	.nav kbd {
+		margin-left: auto; border: 1px solid var(--line-strong); border-radius: 5px;
+		padding: 1px 5px; color: var(--dim); font-size: 11px; font-family: inherit;
+	}
+	.proj {
+		margin-top: 18px; display: flex; align-items: center; gap: 6px;
+		padding: 0 10px; height: 34px; font-size: 13.5px;
+	}
+	.proj .name { color: var(--muted); }
+	.proj .val { margin-left: auto; color: var(--muted); }
+	.plus {
+		width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--line-strong);
+		display: grid; place-items: center; color: var(--muted); font-size: 14px; background: #fff;
+	}
+	body[data-scene="1"] .plus { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 3px rgba(47,111,237,.18); }
+	.folder { margin: 0 8px; padding: 8px 10px; border-radius: 8px; background: var(--sunken); }
+	.folder b { display: block; font-size: 13px; font-weight: 600; }
+	.folder span { color: var(--dim); font-size: 11px; }
+	body[data-scene="0"] .folder, body[data-scene="1"] .folder { display: none; }
+	.main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--bg); }
+	.top {
+		height: 46px; display: flex; align-items: center; padding: 0 18px;
+		border-bottom: 1px solid var(--line); background: var(--panel); font-size: 13.5px;
+	}
+	.stage { flex: 1; position: relative; }
+	.home, .thread, .play { position: absolute; inset: 0; display: none; }
+	.home { flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+	.home h2 { margin: 0 0 16px; font-size: 22px; font-weight: 600; }
+	.card {
+		width: min(640px, 92%); background: #fff; border: 1px solid var(--line);
+		border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,.06); padding: 14px 14px 10px;
+	}
+	.card p { margin: 0; min-height: 72px; font-size: 14.5px; line-height: 1.6; padding: 4px; }
+	.typed { display: none; }
+	.picked, .after { display: none; }
+	.card p .ghost { color: var(--dim); }
+	.card p .caret { display: inline-block; width: 1px; height: 15px; background: var(--fg); margin-left: 1px; vertical-align: -2px; }
+	.foot {
+		display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--line);
+		margin-top: 8px; padding-top: 8px;
+	}
+	.hint { font-size: 12.5px; color: var(--warn); }
+	.hint.ok { color: var(--muted); }
+	.hint.ok i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-right: 6px; }
+	.send {
+		margin-left: auto; height: 32px; padding: 0 14px; border: 0; border-radius: 8px;
+		background: #d7e2fb; color: #fff; font-size: 13.5px;
+	}
+	.send.on { background: var(--accent); }
+	.note { margin: 14px 0 0; color: var(--dim); font-size: 12px; text-align: center; }
+	.thread { display: none; padding: 28px 36px; }
+	.bubble {
+		margin-left: auto; max-width: 460px; background: #fff; border: 1px solid var(--line);
+		border-radius: 14px; padding: 12px 14px; font-size: 14.5px; line-height: 1.6;
+		box-shadow: 0 6px 16px rgba(0,0,0,.04);
+	}
+	.reply { margin-top: 16px; max-width: 520px; color: var(--fg); font-size: 14.5px; line-height: 1.65; }
+	.reply b { font-weight: 600; }
+	.play { display: none; padding: 22px 28px 18px; }
+	.tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+	.tabs span {
+		height: 28px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--line);
+		background: #fff; color: var(--muted); font-size: 12.5px; display: grid; place-items: center;
+	}
+	.tabs span.on { color: var(--fg); border-color: #c9d7f5; background: #f3f7ff; }
+	.board-wrap {
+		background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 16px 16px 12px;
+		box-shadow: 0 8px 24px rgba(0,0,0,.05);
+	}
+	.score { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; font-size: 13px; color: var(--muted); }
+	.score strong { color: var(--fg); font-size: 20px; font-weight: 650; }
+	.score em { font-style: normal; color: var(--ok); font-weight: 650; }
+	.grid { display: grid; grid-template-columns: repeat(7, 42px); gap: 8px; justify-content: center; }
+	.gem { width: 42px; height: 42px; border-radius: 50%; }
+	.gem.pop { box-shadow: 0 0 0 3px #fff, 0 0 0 5px #ff5a6a; }
+	.gem.gone { background: transparent !important; box-shadow: none; }
+	.rail { width: 300px; flex: none; background: var(--panel); border-left: 1px solid var(--line); display: none; flex-direction: column; }
+	.rail h3 { margin: 0; padding: 16px 16px 8px; font-size: 13px; letter-spacing: .08em; color: var(--dim); font-weight: 600; }
+	.plan { margin: 0; padding: 0 16px; list-style: none; }
+	.plan li { padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; line-height: 1.45; }
+	.plan li span { color: var(--dim); margin-right: 6px; }
+	.go {
+		margin: 16px; height: 36px; border: 0; border-radius: 9px; background: var(--accent); color: #fff; font-size: 14px;
+	}
+	body[data-scene="6"] .go { box-shadow: 0 0 0 4px rgba(47,111,237,.2); }
+	.files { margin: 0; padding: 0 16px; list-style: none; }
+	.files li { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+	.files li em { font-style: normal; color: var(--ok); font-size: 12px; }
+	.cursor {
+		position: absolute; width: 14px; height: 18px; z-index: 5;
+		background: #1c1c1f;
+		clip-path: polygon(0 0, 0 16px, 4px 12px, 7px 18px, 9px 17px, 6px 11px, 12px 11px);
+		display: none;
+	}
+	.title {
+		display: none; position: absolute; inset: 0; z-index: 6;
+		background: #f4f4f5;
+		align-items: center; justify-content: center;
+	}
+	.title-card { text-align: center; }
+	.title-card p { margin: 0 0 12px; letter-spacing: .22em; font-size: 12px; color: var(--accent); }
+	.title-card h1 { margin: 0; font-size: 48px; font-weight: 640; letter-spacing: -0.03em; }
+
+	body[data-scene="0"] .title { display: flex; }
+	body[data-scene="0"] .home,
+	body[data-scene="1"] .home,
+	body[data-scene="2"] .home,
+	body[data-scene="3"] .home,
+	body[data-scene="4"] .home { display: flex; }
+	body[data-scene="5"] .thread,
+	body[data-scene="6"] .thread { display: block; }
+	body[data-scene="7"] .play.files-view,
+	body[data-scene="8"] .play.game,
+	body[data-scene="9"] .play.game { display: block; }
+	body[data-scene="6"] .rail.plan-rail,
+	body[data-scene="7"] .rail.file-rail,
+	body[data-scene="8"] .rail.file-rail,
+	body[data-scene="9"] .rail.file-rail { display: flex; }
+	body[data-scene="1"] .cursor.add,
+	body[data-scene="4"] .cursor.sendc,
+	body[data-scene="6"] .cursor.goc { display: block; }
+	body[data-scene="3"] .partial,
+	body[data-scene="4"] .full { display: inline; }
+	body[data-scene="3"] .placeholder,
+	body[data-scene="4"] .placeholder { display: none; }
+	body[data-scene="2"] .picked,
+	body[data-scene="3"] .picked,
+	body[data-scene="4"] .picked,
+	body[data-scene="5"] .picked,
+	body[data-scene="6"] .picked,
+	body[data-scene="7"] .picked,
+	body[data-scene="8"] .picked,
+	body[data-scene="9"] .picked { display: inline; }
+	body[data-scene="2"] .need,
+	body[data-scene="3"] .need,
+	body[data-scene="4"] .need,
+	body[data-scene="5"] .need,
+	body[data-scene="6"] .need,
+	body[data-scene="7"] .need,
+	body[data-scene="8"] .need,
+	body[data-scene="9"] .need { display: none; }
+	body[data-scene="2"] .folder,
+	body[data-scene="3"] .folder,
+	body[data-scene="4"] .folder,
+	body[data-scene="5"] .folder,
+	body[data-scene="6"] .folder,
+	body[data-scene="7"] .folder,
+	body[data-scene="8"] .folder,
+	body[data-scene="9"] .folder { display: block; }
+	body[data-scene="4"] .send { background: var(--accent); }
+	body[data-scene="9"] .before { display: none; }
+	body[data-scene="9"] .after { display: inline; }
+	body[data-scene="9"] .gem.pop { box-shadow: none; background: transparent !important; }
+</style>
+</head>
+<body>
+	<div class="app">
+		<aside class="side">
+			<div class="brand"><b>PCB</b><span>omp/19.0.1</span></div>
+			<div class="nav">+ &nbsp;New</div>
+			<div class="nav">⌕ &nbsp;Search <kbd>Ctrl K</kbd></div>
+			<div class="nav">◷ &nbsp;Automations</div>
+			<div class="proj">
+				<span>Project</span>
+				<span class="val need">未选择</span>
+				<span class="val picked">candy-crush</span>
+				<span class="plus">+</span>
+			</div>
+			<div class="folder"><b>candy-crush</b><span>D:\play\candy-crush</span></div>
+		</aside>
+		<section class="main">
+			<div class="top">新对话</div>
+			<div class="stage">
+				<div class="home">
+					<h2>想做什么？</h2>
+					<div class="card">
+						<p>
+							<span class="placeholder ghost">说说你想让电脑帮你做什么…</span>
+							<span class="typed partial">帮我做一个网页版 Candy Crush：<i class="caret"></i></span>
+							<span class="typed full">帮我做一个网页版 Candy Crush：交换相邻糖果，三个一样就消除并计分。<i class="caret"></i></span>
+						</p>
+						<div class="foot">
+							<span class="hint need">先在左侧选一个项目，或点「添加项目」</span>
+							<span class="hint ok picked"><i></i>candy-crush</span>
+							<button class="send" type="button">发送</button>
+						</div>
+					</div>
+					<p class="note">Enter 发送。助手会先给计划，你同意后才动文件。</p>
+				</div>
+				<div class="thread">
+					<div class="bubble">帮我做一个网页版 Candy Crush：交换相邻糖果，三个一样就消除并计分。</div>
+					<div class="reply">先把做法写成计划。你点「按这个做」之后，我才在 candy-crush 里写文件。</div>
+				</div>
+				<div class="play files-view">
+					<div class="tabs"><span class="on">index.html</span><span>style.css</span><span>game.js</span></div>
+					<div class="board-wrap">
+						<div class="reply" style="margin:0">正在把三消写进项目：页面、样式，以及交换、消除和计分。</div>
+					</div>
+				</div>
+				<div class="play game">
+					<div class="tabs"><span>index.html</span><span>game.js</span><span class="on">预览</span></div>
+					<div class="board-wrap">
+						<div class="score"><span>Candy Crush</span><span>分数 <strong class="before">0</strong><strong class="after">120</strong> <em class="after">+120</em></span></div>
+						<div class="grid" id="grid"></div>
+					</div>
+				</div>
+			</div>
+		</section>
+		<aside class="rail plan-rail">
+			<h3>计划</h3>
+			<ol class="plan">
+				<li><span>01</span>画出 8×8 的彩色棋盘</li>
+				<li><span>02</span>只能交换相邻的两颗糖果</li>
+				<li><span>03</span>三个相同就消除并计分</li>
+				<li><span>04</span>空位由上方的糖果落下补上</li>
+			</ol>
+			<button class="go" type="button">按这个做</button>
+		</aside>
+		<aside class="rail file-rail">
+			<h3>文件</h3>
+			<ul class="files">
+				<li>index.html <em>已写入</em></li>
+				<li>style.css <em>已写入</em></li>
+				<li>game.js <em>已写入</em></li>
+			</ul>
+		</aside>
+	</div>
+	<div class="cursor add" style="left:196px;top:168px"></div>
+	<div class="cursor sendc" style="left:1048px;top:430px"></div>
+	<div class="cursor goc" style="left:1096px;top:236px"></div>
+	<div class="title"><div class="title-card"><p>PCB</p><h1>Candy Crush in one sentence</h1></div></div>
+	<script>
+		const scene = new URLSearchParams(location.search).get("scene") || "0";
+		document.body.dataset.scene = scene;
+		const colors = ["#ff5a6a", "#ffc53d", "#3dcc7a", "#4c8dff", "#b07cff"];
+		const map = [
+			0,1,2,3,4,1,0,
+			2,3,0,1,2,4,3,
+			1,0,0,0,3,2,1,
+			4,2,1,3,0,1,4,
+			3,4,2,1,4,0,2,
+			1,0,3,4,2,3,0
+		];
+		const grid = document.getElementById("grid");
+		map.forEach((c, i) => {
+			const gem = document.createElement("i");
+			gem.className = "gem" + ((i === 15 || i === 16 || i === 17) ? " pop" : "");
+			gem.style.background = colors[c];
+			grid.appendChild(gem);
+		});
+	</script>
+</body>
+</html>

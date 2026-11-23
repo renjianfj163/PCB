@@ -40,13 +40,13 @@ const FACTS = {
 	phases:
 		"Chat talks and does not edit. Plan reads the project and writes a plan. Build runs after the user approves that plan. Review is where each change can be accepted or restored. Commands are confirmed before they run. The single strong gate is the 'Do this' button.",
 	packs:
-		"There is one PCB package. It does not contain VS Code. People who do not write code stay in the interface. People who want an editor install desktop VS Code or Cursor themselves; the IDE button opens that local editor and OMP-ckpt can review the edits. Product demos, social publishing and payments are planned and not available.",
+		"There is one PCB package. It does not contain VS Code. People who do not write code stay in the interface. People who want an editor install desktop VS Code or Cursor themselves; the IDE button opens that local editor. Product demos, social publishing and payments are planned and not available.",
 	window:
 		"PCB opens in one window: not a browser with an address bar, but a WebView2 shell with only the app name and minimize/maximize/close. The page inside is still http://127.0.0.1:7777. Closing the window can leave the service in the tray, because a daily scheduled task lives in that process; a missed run is not caught up.",
 	keys:
 		"Model keys stay on the machine and are configured with 'omp login'. This site never receives, stores or forwards a key, and there is no sign-up.",
 	review:
-		"Before a turn, omp-ckpt checkpoints the folder; after it, each change can be accepted or reverted hunk by hunk. The review server runs inside omp, not on this website.",
+		"After a turn, file changes can be reviewed on the user's own machine. This website does not store or restore the project.",
 	scope:
 		"This website only introduces PCB, offers the Windows download and files a GitHub issue for you. It does not write code for you and does not run PCB.",
 };

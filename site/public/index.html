@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PCB — 从对话到产品，从创意到价值</title>
-<meta name="description" content="PCB 是一个基于 Oh My Pi 构建和扩展的本地 AI 工作平台，覆盖对话、规划、实现，并向产品推广与商业化延伸。开源，MIT。">
+<title>PCB — 写给不会写代码的人。从对话到产品，从创意到价值</title>
+<meta name="description" content="PCB 是写给没有任何编程基础的人的 AI 编程工具。用它实现想法、做成产品，再走向互联网上的推广和收益。开源，MIT。">
 <meta name="theme-color" content="#08090b">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="PCB">
-<meta property="og:title" content="PCB — 从对话到产品，从创意到价值">
-<meta property="og:description" content="PCB 是一个基于 Oh My Pi 构建和扩展的本地 AI 工作平台，覆盖对话、规划、实现，并向产品推广与商业化延伸。开源，MIT。">
+<meta property="og:title" content="PCB — 写给不会写代码的人。从对话到产品，从创意到价值">
+<meta property="og:description" content="PCB 是写给没有任何编程基础的人的 AI 编程工具。用它实现想法、做成产品，再走向互联网上的推广和收益。开源，MIT。">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="/styles.css">
 <link rel="alternate" hreflang="zh-CN" href="?lang=zh">
@@ -44,10 +44,10 @@
 
   <section class="hero">
     <p class="eyebrow" data-i18n="hero.eyebrow">LOCAL AI PRODUCT WORKSPACE</p>
-    <h1 data-i18n="hero.title">从对话到产品，从创意到价值。</h1>
-    <p class="tagline" data-i18n="hero.tagline">From Conversation to Product. From Ideas to Value.</p>
-    <p class="lead" data-i18n="hero.lead">PCB 是一个基于 Oh My Pi 构建和扩展的本地 AI 工作平台。</p>
-    <p class="lead" data-i18n="hero.lead2">通过自然语言交流、任务规划和本地执行，让 AI 帮助你把想法变成软件产品。无论你是否熟悉代码，都可以从 PCB 开始；需要深入开发时，还可以打开 VS Code 或 Cursor，结合 OMP-ckpt 继续工作。</p>
+    <h1 data-i18n="hero.title">写给不会写代码的人。从对话到产品，从创意到价值。</h1>
+    <p class="tagline" data-i18n="hero.tagline">Coding for Dummy. From Conversation to Product. From Ideas to Value.</p>
+    <p class="lead" data-i18n="hero.lead">PCB 是写给没有任何编程基础的人的 AI 编程工具。</p>
+    <p class="lead" data-i18n="hero.lead2">你可以用它实现自己的想法，把产品做出来，再走向互联网上的推广和收益。</p>
 
     <p class="cta">
       <a class="btn primary" href="#download" data-i18n="hero.cta.download">下载 PCB</a>
@@ -104,9 +104,9 @@
         <span class="frame-name">PCB</span>
         <span class="frame-actions" aria-hidden="true"><i></i><i></i><i></i></span>
       </div>
-      <img src="/shots/app.png" alt="PCB 的三栏界面：左侧项目与对话，中间规划内容，右侧文件与执行结果" data-i18n-alt="hero.alt" width="1440" height="900" loading="lazy">
+      <img src="/shots/candy.gif" alt="动图 Candy Crush in one sentence：用一句话说明玩法，同意计划后，窗口里出现可玩的三消" data-i18n-alt="hero.alt" width="1280" height="720">
     </div>
-    <figcaption data-i18n="hero.visual.caption">PCB 工作空间：项目、对话、计划与文件修改在同一处</figcaption>
+    <figcaption data-i18n="hero.visual.caption">先选定项目，用一句话说明要做 Candy Crush。PCB 先给出计划，你同意之后才写文件，可玩的三消就出现在同一个窗口里。</figcaption>
   </figure>
 
   <section class="block" id="work">
@@ -157,39 +157,10 @@
 
   <section class="block" id="ide">
     <div class="block-head">
-      <p class="eyebrow" data-i18n="ide.eyebrow">IDE · OMP · OMP-CKPT</p>
+      <p class="eyebrow" data-i18n="ide.eyebrow">IDE · OMP</p>
       <h2 data-i18n="ide.title">不只是使用 AI，更是与 AI 一起开发。</h2>
       <p class="lead" data-i18n="ide.lead">对于需要深入开发的用户，PCB 可以直接打开本机已有的桌面版 VS Code 或 Cursor。</p>
-      <p class="lead" data-i18n="ide.lead2">在熟悉的 IDE 中，结合 OMP 和 OMP-ckpt，完成代码编写、AI 修改、差异检查和项目恢复。</p>
-    </div>
-
-    <div class="ckpt">
-      <p class="eyebrow tight" data-i18n="ckpt.eyebrow">OMP-CKPT</p>
-      <h3 data-i18n="ckpt.title">让 AI 修改代码的每一步，都更容易检查和恢复。</h3>
-      <p data-i18n="ckpt.lead">AI 可以快速修改大量代码，但开发者需要知道项目发生了什么变化，并在修改不符合预期时保留恢复的能力。OMP-ckpt 为 OMP 辅助开发提供检查点管理。</p>
-      <ul class="features">
-        <li>
-          <h3 data-i18n="ckpt.1.t">Checkpoints · 检查点</h3>
-          <p data-i18n="ckpt.1.d">在开发过程中的关键节点保存项目状态，为后续恢复提供依据。</p>
-        </li>
-        <li>
-          <h3 data-i18n="ckpt.2.t">Project History · 项目状态记录</h3>
-          <p data-i18n="ckpt.2.d">保留不同开发阶段的检查点，帮助开发者管理连续修改过程。</p>
-        </li>
-        <li>
-          <h3 data-i18n="ckpt.3.t">Restore · 状态恢复</h3>
-          <p data-i18n="ckpt.3.d">当 AI 修改导致问题时，可以利用之前保存的检查点恢复项目状态。</p>
-        </li>
-        <li>
-          <h3 data-i18n="ckpt.4.t">Non-Git Project Support · 非 Git 项目</h3>
-          <p data-i18n="ckpt.4.d">不要求用户必须先建立 Git 仓库，也可以使用检查点机制。</p>
-        </li>
-        <li>
-          <h3 data-i18n="ckpt.5.t">IDE Workflow · IDE 协同</h3>
-          <p data-i18n="ckpt.5.d">与 VS Code、Cursor 等桌面开发环境配合，让开发者在熟悉的 IDE 中检查 AI 的修改结果。</p>
-        </li>
-      </ul>
-      <p class="note" data-i18n="ckpt.note">OMP-ckpt 是项目状态保护与恢复工具，不是 Git 的替代品，也不是另一个 AI Agent。检查点的实现方式、恢复粒度和文件排除规则以当前代码为准。</p>
+      <p class="lead" data-i18n="ide.lead2">在熟悉的 IDE 中，结合 OMP，完成代码编写、AI 修改和结果检查。</p>
     </div>
   </section>
 
@@ -239,11 +210,6 @@
             <td class="mark opt" data-i18n="who.opt">可选</td>
             <td class="mark opt" data-i18n="who.opt">可选</td>
           </tr>
-          <tr>
-            <td data-i18n="who.r7">OMP-ckpt</td>
-            <td class="mark opt" data-i18n="who.opt">可选</td>
-            <td class="mark opt" data-i18n="who.opt">可选</td>
-          </tr>
         </tbody>
       </table>
     </div>
@@ -279,7 +245,7 @@
         </div>
         <h3>Build</h3>
         <p class="journey-sub" data-i18n="journey.build">实现 · Build Products</p>
-        <p data-i18n="journey.build.d">借助 OMP、IDE 和 OMP-ckpt，完成软件开发与项目实现。</p>
+        <p data-i18n="journey.build.d">借助 OMP 和 IDE，完成软件开发与项目实现。</p>
       </li>
       <li data-status="next">
         <div class="journey-head">
@@ -342,7 +308,7 @@
       <h2 data-i18n="sec.title">你的项目在本地，控制权始终在你手中。</h2>
       <p class="lead" data-i18n="sec.lead">PCB 将 AI 工作环境放在用户自己的电脑上。PCB 负责交互和安全控制，OMP 负责 AI 工作。</p>
     </div>
-    <div class="grid auto five">
+    <div class="grid auto four">
       <article class="card feature">
         <h3 data-i18n="sec.engine.t">Local AI Engine</h3>
         <p data-i18n="sec.engine.d">OMP 作为本机子进程运行，负责对话、计划和文件操作。</p>
@@ -354,10 +320,6 @@
       <article class="card feature">
         <h3 data-i18n="sec.auth.t">User Authorization</h3>
         <p data-i18n="sec.auth.d">计划执行需要用户明确批准，受保护的命令需要额外确认。</p>
-      </article>
-      <article class="card feature">
-        <h3 data-i18n="sec.file.t">Project Recovery</h3>
-        <p data-i18n="sec.file.d">通过 OMP-ckpt 检查点机制，为项目修改提供恢复能力。</p>
       </article>
       <article class="card feature">
         <h3 data-i18n="sec.ide.t">Your Development Environment</h3>
@@ -430,10 +392,6 @@
         <p data-i18n="faq.a2">OMP 是 AI 执行引擎，负责对话、计划和文件修改。PCB 提供更友好的图形界面、工作流程和安全控制。PCB 不重新实现一套 Agent。</p>
       </details>
       <details>
-        <summary data-i18n="faq.q3">OMP-ckpt 做什么？</summary>
-        <p data-i18n="faq.a3">OMP-ckpt 为 AI 辅助开发提供检查点管理和项目状态恢复能力，帮助开发者查看和管理 AI 连续修改项目带来的变化。</p>
-      </details>
-      <details>
         <summary data-i18n="faq.q4">一定要安装 VS Code 或 Cursor 吗？</summary>
         <p data-i18n="faq.a4">不需要。PCB 可以独立使用。需要深入开发时，可以选择打开本机已有的 VS Code 或 Cursor。</p>
       </details>
@@ -443,7 +401,7 @@
       </details>
       <details>
         <summary data-i18n="faq.q6">修改出错怎么办？</summary>
-        <p data-i18n="faq.a6">可以通过 OMP-ckpt 检查点恢复之前保存的项目状态。重要项目仍建议同时使用 Git 等版本控制工具。</p>
+        <p data-i18n="faq.a6">重要项目建议使用 Git 等版本控制工具，以便在修改不符合预期时恢复之前的状态。</p>
       </details>
       <details>
         <summary data-i18n="faq.q7">项目文件会上传到 PCB 的网站吗？</summary>
