@@ -14,7 +14,7 @@ FRAMES = ROOT / "frames"
 CHROME = Path(r"C:\Program Files\Google\Chrome\Application\chrome.exe")
 SCENES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 # hundredths of a second, matching the beats of the story
-DELAYS = [200, 90, 110, 50, 90, 130, 180, 110, 100, 150]
+DELAYS = [200, 90, 110, 50, 90, 130, 180, 100, 160, 220]
 
 
 def main() -> None:
@@ -48,18 +48,27 @@ def main() -> None:
 	finally:
 		server.shutdown()
 
-	images = [Image.open(FRAMES / f"{scene}.png").convert("RGB") for scene in SCENES]
-	palette = images[0].quantize(colors=128, method=Image.Quantize.MEDIANCUT)
-	frames = [im.quantize(palette=palette, dither=Image.Dither.NONE) for im in images]
+	# One palette sampled from every frame. Pillow would repaint later frames
+	# with the title card's greys and turn the candies muddy.
+	listing = FRAMES / "frames.txt"
+	lines = ["ffconcat version 1.0"]
+	for scene, delay in zip(SCENES, DELAYS):
+		lines.append(f"file '{scene}.png'")
+		lines.append(f"duration {delay / 100:.2f}")
+	lines.append(f"file '{SCENES[-1]}.png'")
+	listing.write_text("\n".join(lines) + "\n", encoding="utf-8")
+	palette = FRAMES / "palette.png"
 	gif = OUT / "candy.gif"
-	frames[0].save(
-		gif,
-		save_all=True,
-		append_images=frames[1:],
-		duration=[d * 10 for d in DELAYS],
-		loop=0,
-		optimize=True,
-		disposal=2,
+	subprocess.run(
+		["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(listing),
+		 "-vf", "palettegen=stats_mode=full:max_colors=256", str(palette)],
+		check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+	)
+	subprocess.run(
+		["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(listing), "-i", str(palette),
+		 "-lavfi", "[0:v][1:v]paletteuse=dither=floyd_steinberg:diff_mode=rectangle",
+		 "-loop", "0", str(gif)],
+		check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
 	)
 	print(f"{gif} {gif.stat().st_size}")
 

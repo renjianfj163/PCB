@@ -105,6 +105,8 @@
 	.reply { margin-top: 16px; max-width: 520px; color: var(--fg); font-size: 14.5px; line-height: 1.65; }
 	.reply b { font-weight: 600; }
 	.play { display: none; padding: 22px 28px 18px; }
+	.play.game { padding: 0; align-items: center; justify-content: center; background: #f7f7f8; }
+	.play.game img { height: 100%; width: auto; max-width: 100%; object-fit: contain; display: block; }
 	.tabs { display: flex; gap: 6px; margin-bottom: 12px; }
 	.tabs span {
 		height: 28px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--line);
@@ -157,13 +159,11 @@
 	body[data-scene="4"] .home { display: flex; }
 	body[data-scene="5"] .thread,
 	body[data-scene="6"] .thread { display: block; }
-	body[data-scene="7"] .play.files-view,
+	body[data-scene="7"] .play.files-view { display: block; }
 	body[data-scene="8"] .play.game,
-	body[data-scene="9"] .play.game { display: block; }
+	body[data-scene="9"] .play.game { display: flex; }
 	body[data-scene="6"] .rail.plan-rail,
-	body[data-scene="7"] .rail.file-rail,
-	body[data-scene="8"] .rail.file-rail,
-	body[data-scene="9"] .rail.file-rail { display: flex; }
+	body[data-scene="7"] .rail.file-rail { display: flex; }
 	body[data-scene="1"] .cursor.add,
 	body[data-scene="4"] .cursor.sendc,
 	body[data-scene="6"] .cursor.goc { display: block; }
@@ -246,11 +246,7 @@
 					</div>
 				</div>
 				<div class="play game">
-					<div class="tabs"><span>index.html</span><span>game.js</span><span class="on">预览</span></div>
-					<div class="board-wrap">
-						<div class="score"><span>Candy Crush</span><span>分数 <strong class="before">0</strong><strong class="after">120</strong> <em class="after">+120</em></span></div>
-						<div class="grid" id="grid"></div>
-					</div>
+					<img src="candy-live.png" alt="zhanmingedu.com/candy 的糖果三消">
 				</div>
 			</div>
 		</section>
@@ -278,24 +274,7 @@
 	<div class="cursor goc" style="left:1096px;top:236px"></div>
 	<div class="title"><div class="title-card"><p>PCB</p><h1>Candy Crush in one sentence</h1></div></div>
 	<script>
-		const scene = new URLSearchParams(location.search).get("scene") || "0";
-		document.body.dataset.scene = scene;
-		const colors = ["#ff5a6a", "#ffc53d", "#3dcc7a", "#4c8dff", "#b07cff"];
-		const map = [
-			0,1,2,3,4,1,0,
-			2,3,0,1,2,4,3,
-			1,0,0,0,3,2,1,
-			4,2,1,3,0,1,4,
-			3,4,2,1,4,0,2,
-			1,0,3,4,2,3,0
-		];
-		const grid = document.getElementById("grid");
-		map.forEach((c, i) => {
-			const gem = document.createElement("i");
-			gem.className = "gem" + ((i === 15 || i === 16 || i === 17) ? " pop" : "");
-			gem.style.background = colors[c];
-			grid.appendChild(gem);
-		});
+		document.body.dataset.scene = new URLSearchParams(location.search).get("scene") || "0";
 	</script>
 </body>
 </html>
