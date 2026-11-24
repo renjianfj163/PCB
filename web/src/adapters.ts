@@ -4,7 +4,7 @@
  * each rail page.
  */
 
-import type { AgentMessage, PolicyDecision, PromptImage } from "../../shared/protocol.ts";
+import type { AgentMessage, Phase, PolicyDecision, PromptImage } from "../../shared/protocol.ts";
 import { TOOL_LABELS } from "./labels.ts";
 import type { PolicyEvent, PendingUser, ToolActivity } from "./state.ts";
 
@@ -18,11 +18,17 @@ export const WRITE_TOOLS: Record<string, true> = {
 };
 
 /** The phase marker `session.prompt` puts in front of every user message. */
-export const PHASE_MARKERS: Record<string, "plan" | "build" | "chat"> = {
+export const PHASE_MARKERS: Record<string, Phase> = {
 	"「阶段：规划」": "plan",
+	"「阶段：深规划」": "deepplan",
 	"「阶段：执行」": "build",
 	"「阶段：聊天」": "chat",
 };
+
+/** Both read-only planning phases share the rail's plan page. */
+export function isPlanPhase(phase: Phase | null): boolean {
+	return phase === "plan" || phase === "deepplan";
+}
 
 export interface ToolCall {
 	id: string;
@@ -58,7 +64,7 @@ export function textBlocks(message: AgentMessage): string[] {
 		.filter(text => text.trim().length > 0);
 }
 
-export function phaseOf(message: AgentMessage): "plan" | "build" | "chat" | null {
+export function phaseOf(message: AgentMessage): Phase | null {
 	if (message.role !== "user") return null;
 	const text = textBlocks(message).join("\n").trimStart();
 	for (const [marker, phase] of Object.entries(PHASE_MARKERS)) {
@@ -124,7 +130,7 @@ export function planSegment(messages: AgentMessage[]): AgentMessage[] {
 	let last = -1;
 	for (let index = turns.length - 1; index >= 0; index--) {
 		const head = turns[index]?.[0];
-		if (head && phaseOf(head) === "plan") {
+		if (head && isPlanPhase(phaseOf(head))) {
 			last = index;
 			break;
 		}
@@ -133,7 +139,7 @@ export function planSegment(messages: AgentMessage[]): AgentMessage[] {
 	let first = last;
 	while (first > 0) {
 		const head = turns[first - 1]?.[0];
-		if (!head || phaseOf(head) !== "plan") break;
+		if (!head || !isPlanPhase(phaseOf(head))) break;
 		first--;
 	}
 	return turns.slice(first, last + 1).flat();

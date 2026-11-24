@@ -20,7 +20,7 @@ import { pageShot } from "./screenshot.ts";
 import { PathRefused, listDirectory, readPreview } from "./project-files.ts";
 import { PcbSession, RewindRefused } from "./session.ts";
 import type { Store, ShellChoice, SessionRecord } from "./store.ts";
-import { THINKING_LEVELS } from "../shared/protocol.ts";
+import { THINKING_LEVELS, asPhase } from "../shared/protocol.ts";
 import { pathKey } from "../shared/paths.ts";
 import { overlayChoice, queryShell } from "./shell.ts";
 import type {
@@ -87,8 +87,7 @@ $owner.Dispose()
 /** Keep a chosen phase. A missing one stays unset; anything else starts on plan. */
 function chosenPhase(value: unknown): Phase | undefined {
 	if (value === undefined) return undefined;
-	if (value === "plan" || value === "build" || value === "chat") return value;
-	return "plan";
+	return asPhase(value) ?? "plan";
 }
 
 function isSameLocalDay(a: Date, b: Date): boolean {
@@ -880,13 +879,14 @@ export class App {
 					return;
 				}
 				case "phase": {
-					const body = (await this.#readJson(request)) as { phase?: Phase };
-					if (body.phase !== "plan" && body.phase !== "build" && body.phase !== "chat") {
-						this.#json(response, 400, { error: "phase 必须是 plan、build 或 chat" });
+					const body = (await this.#readJson(request)) as { phase?: unknown };
+					const phase = asPhase(body.phase);
+					if (!phase) {
+						this.#json(response, 400, { error: "phase 必须是 plan、deepplan、build 或 chat" });
 						return;
 					}
-					await session.setPhase(body.phase);
-					this.#json(response, 200, { phase: body.phase });
+					await session.setPhase(phase);
+					this.#json(response, 200, { phase });
 					return;
 				}
 				case "dialog": {

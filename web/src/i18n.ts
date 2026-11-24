@@ -184,6 +184,8 @@ const EN: Record<string, string> = {
 		"Enter to send, Shift+Enter for a new line. Build edits files directly; commands still ask you.",
 	"Enter 发送，Shift+Enter 换行。聊天阶段只回答问题，不改文件、不跑命令；需要动手时切到「执行」。":
 		"Enter to send, Shift+Enter for a new line. Chat only answers questions — no files, no commands. Switch to Build to act.",
+	"Enter 发送，Shift+Enter 换行。助手会先一轮轮问清（每题带推荐答案，回答「全部按推荐」即照单收下），问完才给计划；只读，不改文件。":
+		"Enter to send, Shift+Enter for a new line. The assistant interviews you round by round (each question carries a recommendation; answer 「全部按推荐」 to accept them all) and writes the plan only once nothing is open. Read-only.",
 	"先选一个项目文件夹": "Pick a project folder first",
 	"已导出：{s}": "Exported: {s}",
 	"这一轮还在跑，已排队，等它结束再发送。": "Still running — queued, it will be sent when this turn ends.",
@@ -291,6 +293,13 @@ const EN: Record<string, string> = {
 	"「按这个做」会切到执行阶段；写文件自动进行，跑命令仍会问你。":
 		"“Do this” switches to Build: writes go ahead, commands still ask you.",
 	"等助手写出计划后才能批准。": "Approve once the assistant has written the plan.",
+	"确认没有开放的问题后，点「按这个做」进执行阶段。":
+		"Once nothing is open, review the plan and hit 「按这个做」 to build.",
+	"回答这一轮的问题；问题问完，助手才会写计划。":
+		"Answer this round's questions; the plan comes once nothing is open.",
+	"深规划": "Deep plan",
+	"已切换到深规划阶段：先问清再出计划，只读，不改文件。":
+		"Now in deep plan: settle the questions first, then the plan. Read-only.",
 
 	// ---- rail: terminal ----
 	"自动放行": "Auto-allowed",

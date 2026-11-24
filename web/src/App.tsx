@@ -4,7 +4,15 @@ import { pathKey } from "../../shared/paths.ts";
 import { loggedInProviders } from "../../shared/providers.ts";
 import type { Automation, CompactResult, DialogAnswer, Phase, PromptImage, ShellSettings, UiEvent } from "../../shared/protocol.ts";
 import { api } from "./api.ts";
-import { browserShots, changedFiles, planSegment, rewindNotice, stripPhaseMarker, terminalEntries } from "./adapters.ts";
+import {
+	browserShots,
+	changedFiles,
+	isPlanPhase,
+	planSegment,
+	rewindNotice,
+	stripPhaseMarker,
+	terminalEntries,
+} from "./adapters.ts";
 import { Automations } from "./components/Automations.tsx";
 import { Composer } from "./components/Composer.tsx";
 import { DialogLayer } from "./components/Dialogs.tsx";
@@ -703,7 +711,7 @@ export default function App() {
 					terminal={terminal}
 					browser={browser}
 					changedFiles={sessionChangedFiles}
-					canApprove={session.alive && session.phase === "plan" && planText.some(m => m.role === "assistant")}
+					canApprove={session.alive && isPlanPhase(session.phase) && planText.some(m => m.role === "assistant")}
 					tab={rightTab}
 					onTab={setRightTab}
 					onApprove={() => void approvePlan()}

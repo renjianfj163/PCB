@@ -4,8 +4,13 @@
  * these frames, so nothing here may invent state the agent did not report.
  */
 
-/** Plan answers only, build acts, chat just talks. */
-export type Phase = "plan" | "build" | "chat";
+/** Plan answers only, deep plan interviews first, build acts, chat just talks. */
+export type Phase = "plan" | "deepplan" | "build" | "chat";
+
+/** The phase a wire/UI value names, or undefined when it names none. */
+export function asPhase(value: unknown): Phase | undefined {
+	return value === "plan" || value === "deepplan" || value === "build" || value === "chat" ? value : undefined;
+}
 
 /** Formats omp's image normalization accepts from the shell. */
 export const PROMPT_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;

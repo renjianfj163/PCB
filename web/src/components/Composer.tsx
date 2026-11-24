@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { asPhase } from "../../../shared/protocol.ts";
 import type {
 	ModelsInfo,
 	Phase,
@@ -225,11 +226,12 @@ export function Composer({
 							disabled={disabled}
 							title={t("下一条消息使用的阶段")}
 							onChange={event => {
-								const value = event.target.value;
-								onPhase(value === "build" ? "build" : value === "chat" ? "chat" : "plan");
+								const next = asPhase(event.target.value);
+								if (next) onPhase(next);
 							}}
 						>
 							<option value="plan">{t("规划")}</option>
+							<option value="deepplan">{t("深规划")}</option>
 							<option value="build">{t("执行")}</option>
 							<option value="chat">{t("聊天")}</option>
 						</select>

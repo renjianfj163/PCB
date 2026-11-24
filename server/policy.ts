@@ -51,9 +51,9 @@ export type ApprovalDecision =
 export function decideApproval(tool: string, phase: Phase, browserAllowed = false): ApprovalDecision {
 	const tier = toolTier(tool);
 	if (tier === "read") return { action: "approve" };
-	// Only the build phase may touch files or run code; plan and chat are read-only.
+	// Only the build phase may touch files or run code; plan, deep plan and chat are read-only.
 	if (phase !== "build") {
-		const label = phase === "chat" ? "聊天阶段" : "规划阶段";
+		const label = phase === "chat" ? "聊天阶段" : phase === "deepplan" ? "深规划阶段" : "规划阶段";
 		return {
 			action: "deny",
 			reason: `${label}不允许${tier === "write" ? "修改文件" : "执行命令"}（${tool}）。`,

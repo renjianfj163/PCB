@@ -5,6 +5,7 @@ import { attachUserEntryIds, rewindFailureText } from "../server/session.ts";
 import { rewindNotice, stripPhaseMarker, userEntryId } from "../web/src/adapters.ts";
 
 const PLAN = "「阶段：规划」";
+const DEEP = "「阶段：深规划」";
 const BUILD = "「阶段：执行」";
 const CHAT = "「阶段：聊天」";
 
@@ -17,8 +18,9 @@ function entry(id: string, message: AgentMessage) {
 	return { type: "message", id, parentId: null, timestamp: 0, message };
 }
 
-test("a phase marker is stripped for all three phases", () => {
+test("a phase marker is stripped for all four phases", () => {
 	assert.equal(stripPhaseMarker(`${PLAN}\n看一下这个项目`), "看一下这个项目");
+	assert.equal(stripPhaseMarker(`${DEEP}\n问几个问题`), "问几个问题");
 	assert.equal(stripPhaseMarker(`${BUILD}\n开始改`), "开始改");
 	assert.equal(stripPhaseMarker(`${CHAT}\n这是什么`), "这是什么");
 });

@@ -1,5 +1,5 @@
 import type { AgentMessage, Phase, TodoPhase } from "../../../shared/protocol.ts";
-import { toolCallLine, toolCallsOf, userText } from "../adapters.ts";
+import { isPlanPhase, toolCallLine, toolCallsOf, userText } from "../adapters.ts";
 import { t } from "../i18n.ts";
 import { Markdown } from "../markdown.tsx";
 
@@ -10,8 +10,8 @@ const STATUS_MARK: Record<string, string> = {
 	pending: "○",
 };
 
-/** Same three words the composer uses, so the chip and the picker never disagree. */
-const PHASE_LABEL: Record<Phase, string> = { plan: "规划", build: "执行", chat: "聊天" };
+/** Same words the composer's picker uses, so the chip and the picker never disagree. */
+const PHASE_LABEL: Record<Phase, string> = { plan: "规划", deepplan: "深规划", build: "执行", chat: "聊天" };
 
 function TodoList({ todos }: { todos: TodoPhase[] }) {
 	return (
@@ -76,6 +76,23 @@ function PlanMessage({ message }: { message: AgentMessage }) {
 }
 
 /**
+ * The line under the buttons: what this phase asks of the user next. Both
+ * planning phases get the approval hint, but only once the plan actually exists.
+ */
+function planHint(phase: Phase, canApprove: boolean): string {
+	if (phase === "build") return t("已经在执行阶段。切回「规划」只影响下一条消息。");
+	if (phase === "chat") return t("聊天阶段只回答问题，不改文件、不跑命令；需要动手时切到「执行」。");
+	if (phase === "deepplan") {
+		return canApprove
+			? t("确认没有开放的问题后，点「按这个做」进执行阶段。")
+			: t("回答这一轮的问题；问题问完，助手才会写计划。");
+	}
+	return canApprove
+		? t("「按这个做」会切到执行阶段；写文件自动进行，跑命令仍会问你。")
+		: t("等助手写出计划后才能批准。");
+}
+
+/**
  * The planning stretch of this conversation, read as one piece: the request, the
  * reasoning and the tool calls (compressed), then the todos and the two ways on.
  */
@@ -126,7 +143,7 @@ export function PlanPage({
 			</div>
 
 			<div className="plan-foot">
-				{phase === "plan" ? (
+				{isPlanPhase(phase) ? (
 					<div className="plan-actions">
 						<button
 							type="button"
@@ -148,15 +165,7 @@ export function PlanPage({
 						</button>
 					</div>
 				)}
-				<p className="plan-hint">
-					{phase === "build"
-						? t("已经在执行阶段。切回「规划」只影响下一条消息。")
-						: phase === "chat"
-							? t("聊天阶段只回答问题，不改文件、不跑命令；需要动手时切到「执行」。")
-							: canApprove
-								? t("「按这个做」会切到执行阶段；写文件自动进行，跑命令仍会问你。")
-								: t("等助手写出计划后才能批准。")}
-				</p>
+				<p className="plan-hint">{planHint(phase, canApprove)}</p>
 			</div>
 		</div>
 	);

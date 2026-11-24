@@ -70,6 +70,14 @@ interface RpcSessionStats {
 	tokens?: { total?: number };
 }
 
+/** The phase line `session.prompt` puts in front of every user message. */
+const PHASE_MARKER: Record<Phase, string> = {
+	plan: "「阶段：规划」",
+	deepplan: "「阶段：深规划」",
+	build: "「阶段：执行」",
+	chat: "「阶段：聊天」",
+};
+
 /** Told to the agent once, at spawn: how this shell expects it to behave. */
 const PROTOCOL_PROMPT = `This session is driven by PCB, a local app for people who do not write code.
 
@@ -80,6 +88,18 @@ Every user message begins with a phase marker:
   subagents that change anything. Use the ask tool when a decision is genuinely the user's to make.
   Keep the todo tool in step with the plan: one short line per step, so the panel beside the chat shows
   exactly what you propose and, later, what is done.
+- 「阶段：深规划」 (deep plan): the same read-only rules as plan, plus an interview. Look at the code
+  first (read files, list folders) so nothing you ask about is guesswork, then treat the work as a tree
+  of decisions: a decision can only be asked once the decisions above it are settled. Ask only the
+  questions whose prerequisites are already answered — at most four per message, numbered Q1, Q2, …,
+  each followed by your recommended answer on its own line starting with \`➡️ 推荐：\`. Then stop and wait
+  for the user; do not answer your own questions. Ask in your message, never through the ask tool: in
+  this phase that call has no way to be answered, so it only stalls the conversation. 「全部按推荐」
+  accepts every recommendation of that round. Findings are yours to look up; decisions are the user's.
+  After each round work out which questions are now open and ask that round. When nothing is open,
+  write the plan exactly as in the plan phase — steps, the files or folders involved, what could go
+  wrong, what you need — record the same steps with the todo tool, and wait for approval. If the request
+  is already unambiguous, say so and go straight to the plan.
 - 「阶段：执行」 (build): carry out the agreed plan. Mark the same todos off as you go.
 - 「阶段：聊天」 (chat): answer the question and stop there. Read freely, but do not edit files or run
   commands, and do not turn the answer into a plan unless the user asks for one.
@@ -898,8 +918,7 @@ export class PcbSession {
 			await this.compact(invocation.instructions);
 			return { agentInvoked: false };
 		}
-		const marker =
-			this.record.phase === "build" ? "「阶段：执行」" : this.record.phase === "chat" ? "「阶段：聊天」" : "「阶段：规划」";
+		const marker = PHASE_MARKER[this.record.phase];
 		// omp reads a slash command only at the very start of the prompt, so a command
 		// goes bare: the phase line would turn it back into ordinary text for the model.
 		if (leadingCommand(text, this.#commands)) return this.#sendCommand(text);
@@ -960,9 +979,11 @@ export class PcbSession {
 		const text =
 			phase === "plan"
 				? "已切换到规划阶段：只读，不会改动文件。"
-				: phase === "chat"
-					? "已切换到聊天阶段：只回答问题，不改文件、不跑命令。"
-					: "已切换到执行阶段。";
+				: phase === "deepplan"
+					? "已切换到深规划阶段：先问清再出计划，只读，不改文件。"
+					: phase === "chat"
+						? "已切换到聊天阶段：只回答问题，不改文件、不跑命令。"
+						: "已切换到执行阶段。";
 		this.#notice("info", text);
 	}
 

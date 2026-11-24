@@ -7,7 +7,7 @@ import { Markdown } from "../markdown.tsx";
 import type { PendingUser, ToolActivity } from "../state.ts";
 
 /** The chip in front of a user message: which phase it was sent in. */
-const PHASE_LABEL = { plan: "规划", build: "执行", chat: "聊天" } as const;
+const PHASE_LABEL = { plan: "规划", deepplan: "深规划", build: "执行", chat: "聊天" } as const;
 
 function argsSummary(args: unknown): string {
 	if (!args || typeof args !== "object") return "";

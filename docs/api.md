@@ -37,7 +37,7 @@ curl -s -H 'x-pcb-request: 1' http://127.0.0.1:7777/api/sessions | head -c 400
 | POST | `/api/sessions/:id/prompt` | `{text}`：发一句；回合中由 PCB 排队 |
 | POST | `/api/sessions/:id/abort` | 中止当前回合 |
 | POST | `/api/sessions/:id/rewind` | `{entryId}`：把当前路径退到这条用户消息之前（只动会话树的叶子，不动文件、不带 summarize），回 `{cancelled, editorText?}`；`session_busy` / `entry_not_found` 等拒绝是 409 + `{error, code}` |
-| POST | `/api/sessions/:id/phase` | `{phase}`：`plan` / `build` / `chat`，只影响下一条消息 |
+| POST | `/api/sessions/:id/phase` | `{phase}`：`plan` / `deepplan` / `build` / `chat`，只影响下一条消息；其它值回 400 |
 | POST | `/api/sessions/:id/dialog` | `{id, answer}`：回答一张等你点的卡片 |
 | POST | `/api/sessions/:id/model` | `{provider, modelId}` |
 | GET | `/api/sessions/:id/models` | 可选模型与当前选择 |

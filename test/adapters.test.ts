@@ -41,6 +41,7 @@ function result(id: string, name: string, value: string, isError = false, timest
 }
 
 const PLAN = "「阶段：规划」";
+const DEEP = "「阶段：深规划」";
 const BUILD = "「阶段：执行」";
 
 test("tool calls and user text survive the phase marker", () => {
@@ -79,6 +80,29 @@ test("consecutive planning turns stay together", () => {
 test("with no planning turn the segment is empty", () => {
 	const messages = [user(BUILD, "做"), assistant([text("好")])];
 	assert.deepEqual(planSegment(messages), []);
+});
+
+test("a deep-plan interview belongs to the same planning stretch as the plan", () => {
+	const messages = [
+		user(DEEP, "给导出功能加进度条"),
+		assistant([text("Q1 … ➡️ 推荐：A")]),
+		user(DEEP, "全部按推荐"),
+		assistant([text("Q1 … ➡️ 推荐：B"), call("t1", "read", { path: "export.ts" })]),
+		user(DEEP, "全部按推荐"),
+		assistant([text("计划：三步")]),
+		user(BUILD, "开始做"),
+		assistant([call("t2", "write", { path: "export.ts" })]),
+	];
+	const segment = planSegment(messages);
+	assert.equal(segment.length, 6, "every interview turn and the plan, but not the build turn");
+	assert.equal(userText(segment[0]!), "给导出功能加进度条");
+	assert.equal(userText(segment[2]!), "全部按推荐");
+	assert.equal(userText(segment[4]!), "全部按推荐");
+});
+
+test("a deep plan with no plain plan turn still fills the segment", () => {
+	const messages = [user(DEEP, "先问几个问题"), assistant([text("Q1 …")])];
+	assert.equal(planSegment(messages).length, 2);
 });
 
 test("tool paths are normalised whether absolute or relative", () => {

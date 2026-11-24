@@ -140,6 +140,7 @@ export function Sidebar({
 					<span className={`dot status-${item.status}`} aria-hidden />
 					<span className="session-name">{item.name}</span>
 					{item.phase === "plan" ? <span className="phase-chip small">{t("规划")}</span> : null}
+					{item.phase === "deepplan" ? <span className="phase-chip small">{t("深规划")}</span> : null}
 					<button
 						type="button"
 						className="row-delete"

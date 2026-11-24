@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import type { Phase, PromptImage, ShellSettings } from "../../../shared/protocol.ts";
+import { asPhase, type Phase, type PromptImage, type ShellSettings } from "../../../shared/protocol.ts";
 import { AttachmentPicker, AttachmentTray, usePromptImages } from "./attachments.tsx";
 import { ShellMenu } from "./ShellMenu.tsx";
 import { t } from "../i18n.ts";
 
 const HOME_NOTE: Record<Phase, string> = {
 	plan: "Enter 发送，Shift+Enter 换行。助手会先给计划，你同意后才动文件；跑命令仍会问你。",
+	deepplan:
+		"Enter 发送，Shift+Enter 换行。助手会先一轮轮问清（每题带推荐答案，回答「全部按推荐」即照单收下），问完才给计划；只读，不改文件。",
 	build: "Enter 发送，Shift+Enter 换行。执行阶段会直接改文件；跑命令仍会问你。",
 	chat: "Enter 发送，Shift+Enter 换行。聊天阶段只回答问题，不改文件、不跑命令；需要动手时切到「执行」。",
 };
@@ -97,11 +99,12 @@ export function Home({
 								value={phase}
 								title={t("下一条消息使用的阶段")}
 								onChange={event => {
-									const value = event.target.value;
-									setPhase(value === "build" ? "build" : value === "chat" ? "chat" : "plan");
+									const next = asPhase(event.target.value);
+									if (next) setPhase(next);
 								}}
 							>
 								<option value="plan">{t("规划")}</option>
+								<option value="deepplan">{t("深规划")}</option>
 								<option value="build">{t("执行")}</option>
 								<option value="chat">{t("聊天")}</option>
 							</select>

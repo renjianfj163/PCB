@@ -26,21 +26,24 @@ test("the browser asks once per message, then rides on the user's yes", () => {
 	assert.equal(decideApproval("browser", "build", true).action, "approve");
 });
 
-test("an allowed browser never loosens plan or chat", () => {
-	for (const phase of ["plan", "chat"] as const) {
+/** The word a refusal uses for each read-only phase. */
+const PHASE_WORD = { plan: /规划阶段/, deepplan: /深规划阶段/, chat: /聊天阶段/ } as const;
+
+test("an allowed browser never loosens plan, deep plan or chat", () => {
+	for (const phase of ["plan", "deepplan", "chat"] as const) {
 		const decision = decideApproval("browser", phase, true);
 		assert.equal(decision.action, "deny", phase);
-		if (decision.action === "deny") assert.match(decision.reason, phase === "chat" ? /聊天阶段/ : /规划阶段/);
+		if (decision.action === "deny") assert.match(decision.reason, PHASE_WORD[phase]);
 	}
 });
 
-test("plan and chat refuse anything that writes or runs", () => {
-	for (const phase of ["plan", "chat"] as const) {
+test("plan, deep plan and chat refuse anything that writes or runs", () => {
+	for (const phase of ["plan", "deepplan", "chat"] as const) {
 		for (const tool of ["write", "edit", "bash", "eval", "task", "unknown_tool"]) {
 			const decision = decideApproval(tool, phase);
 			assert.equal(decision.action, "deny", `${phase}/${tool}`);
 			if (decision.action === "deny") {
-				assert.match(decision.reason, phase === "chat" ? /聊天阶段/ : /规划阶段/);
+				assert.match(decision.reason, PHASE_WORD[phase]);
 			}
 		}
 	}

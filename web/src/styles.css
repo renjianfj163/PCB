@@ -1833,10 +1833,15 @@ pre {
 	color: var(--dim);
 }
 
-/* Three zones: the folder (truncates first), the model/thinking control, the actions. */
+/*
+ * Three zones: the folder (truncates first), the model/thinking control, the actions.
+ * The last two tracks are content-sized and never shrink: the actions (图片/阶段/发送)
+ * are nowrap with `flex: 0 0 auto`, so a squeezed track makes them overflow left onto
+ * the model pill. Only the folder gives way — it has an ellipsis.
+ */
 .home-card-foot {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+	grid-template-columns: minmax(0, 1fr) auto auto;
 	align-items: center;
 	gap: 10px;
 	border-top: 1px solid var(--border);
@@ -1894,7 +1899,8 @@ pre {
 
 .shell-trigger {
 	height: 28px;
-	max-width: 190px;
+	/* Never wider than the column it sits in: the label ellipsizes instead of pushing. */
+	max-width: min(190px, 100%);
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
@@ -2039,8 +2045,13 @@ pre {
 	color: var(--dim);
 }
 
-/* Narrow: the folder gets its own line, the control and actions share the next. */
-@media (max-width: 640px) {
+/*
+ * Narrow: the folder gets its own line, the control and actions share the next.
+ * 880px, not 640: the three-column row needs ~525px of footer for the actions
+ * (folder + model + 图片/阶段/发送), and a 640px window still leaves them ~460 —
+ * the actions column then shrinks below its content and overflows onto the model.
+ */
+@media (max-width: 880px) {
 	.home-card-foot {
 		grid-template-columns: minmax(0, 1fr) auto;
 	}
