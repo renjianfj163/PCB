@@ -10,6 +10,7 @@ import type {
 	ThinkingInfo,
 } from "../../../shared/protocol.ts";
 import { AttachmentPicker, AttachmentTray, usePromptImages } from "./attachments.tsx";
+import type { ProviderAuth } from "../../../shared/providers.ts";
 import { ShellMenu } from "./ShellMenu.tsx";
 import { api } from "../api.ts";
 import { t } from "../i18n.ts";
@@ -37,14 +38,14 @@ export function Composer({
 	onResume,
 	onModel,
 	onThinking,
-	providers,
+	auth,
 }: {
 	phase: Phase;
 	state: SessionState | undefined;
 	/** The open conversation: the pickers under the row read and write it. */
 	session: SessionSummary;
-	/** Providers omp says are logged in; the menu lists only their models. */
-	providers: string[];
+	/** omp's login catalog; providers it reports as logged out are not listed. */
+	auth: readonly ProviderAuth[];
 	disabled: boolean;
 	/** A resume is in flight for this conversation. */
 	resuming: boolean;
@@ -197,7 +198,7 @@ export function Composer({
 					</span>
 					<ShellMenu
 						settings={shell}
-						providers={providers}
+						auth={auth}
 						disabled={!session.alive}
 						onChange={patch =>
 							patch.model

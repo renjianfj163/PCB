@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { approvalAnswer, approvalTool, decideApproval, toolTier } from "../server/policy.ts";
+import { approvalAnswer, approvalTool, decideApproval, formAllowed, toolTier } from "../server/policy.ts";
 
 test("write-tier tools are exactly the ones the build phase may touch", () => {
 	for (const tool of ["write", "edit", "ast_edit", "apply_patch", "notebook_edit"]) {
@@ -67,4 +67,11 @@ test("approval answers pick the label omp actually offers", () => {
 	assert.equal(approvalAnswer(["Approve Once", "Deny"], "approve"), "Approve Once");
 	assert.equal(approvalAnswer(["拒绝", "Deny"], "deny"), "Deny");
 	assert.equal(approvalAnswer(["Allow", "Later"], "deny"), "Later");
+});
+
+test("plan and deep plan never show a form; build and chat do", () => {
+	assert.equal(formAllowed("plan"), false);
+	assert.equal(formAllowed("deepplan"), false);
+	assert.equal(formAllowed("build"), true);
+	assert.equal(formAllowed("chat"), true);
 });

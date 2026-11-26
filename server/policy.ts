@@ -66,6 +66,17 @@ export function decideApproval(tool: string, phase: Phase, browserAllowed = fals
 	return { action: "ask" };
 }
 
+/**
+ * Whether a form dialog may be shown in this phase.
+ *
+ * Plan and deep plan answer questions in the message: omp's `ask` tool sends one
+ * HTML form (no timeout in plan mode), so an unrendered form used to stall the
+ * turn forever. Both phases cancel it instead and tell the model why.
+ */
+export function formAllowed(phase: Phase): boolean {
+	return phase !== "plan" && phase !== "deepplan";
+}
+
 /** The approval labels omp emits (tools/approval.ts: approvalChoiceLabels). */
 export function approvalAnswer(options: string[], decision: "approve" | "deny"): string {
 	if (decision === "approve") {

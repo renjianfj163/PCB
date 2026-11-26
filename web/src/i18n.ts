@@ -393,6 +393,8 @@ const EN: Record<string, string> = {
 
 	// ---- dialogs ----
 	"助手需要你的选择": "The assistant needs your choice",
+	"请填写表单": "Fill in the form",
+	"助手表单": "Assistant form",
 	"或者直接写你的答案": "Or type your answer",
 	"提交": "Submit",
 	"跳过": "Skip",

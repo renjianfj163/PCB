@@ -228,7 +228,7 @@ export default function App() {
 	const activeId = state.activeId;
 	const session = state.sessions.find(item => item.id === activeId) ?? null;
 	const projects = state.boot?.projects ?? [];
-	const providers = loggedInProviders(state.boot?.auth).map(item => item.provider);
+	const auth = state.boot?.auth ?? [];
 	// The list's own spelling wins, so a session recorded as `d:\dev` selects `D:\Dev`.
 	const visibleProject = (cwd: string) => projects.find(item => pathKey(item) === pathKey(cwd)) ?? null;
 
@@ -591,7 +591,7 @@ export default function App() {
 							phase={session.phase}
 							state={state.states[session.id]}
 							session={session}
-							providers={providers}
+							auth={auth}
 							onModel={(provider, id) =>
 								guard(async () => {
 									await api.setModel(session.id, provider, id);
@@ -667,7 +667,7 @@ export default function App() {
 						key={homeEpoch}
 						project={project}
 						shell={shell}
-						providers={providers}
+						auth={auth}
 						busy={sending}
 						onShell={pickShell}
 						onSend={(text, images, phase) => guard(() => sendFromHome(text, images, phase))}

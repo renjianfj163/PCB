@@ -2379,6 +2379,14 @@ pre {
 	max-height: 120px;
 }
 
+.dialog-form-frame {
+	width: 100%;
+	display: block;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	background: transparent;
+}
+
 .dialog-queue {
 	position: absolute;
 	bottom: 12px;

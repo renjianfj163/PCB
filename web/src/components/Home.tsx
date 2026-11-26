@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { asPhase, type Phase, type PromptImage, type ShellSettings } from "../../../shared/protocol.ts";
+import type { ProviderAuth } from "../../../shared/providers.ts";
 import { AttachmentPicker, AttachmentTray, usePromptImages } from "./attachments.tsx";
 import { ShellMenu } from "./ShellMenu.tsx";
 import { t } from "../i18n.ts";
@@ -21,7 +22,7 @@ function shortPath(path: string): string {
 export function Home({
 	project,
 	shell,
-	providers,
+	auth,
 	busy,
 	onShell,
 	onSend,
@@ -29,8 +30,8 @@ export function Home({
 	project: string | null;
 	/** omp's model list and the saved choice; null until the first answer arrives. */
 	shell: ShellSettings | null;
-	/** Providers omp reports as logged in; only their models can be picked. */
-	providers: string[];
+	/** omp's login catalog; providers it reports as logged out are not listed. */
+	auth: readonly ProviderAuth[];
 	busy: boolean;
 	onShell: (patch: { model?: { provider: string; id: string }; thinking?: string }) => Promise<void>;
 	onSend: (text: string, images: PromptImage[], phase: Phase) => Promise<void>;
@@ -91,7 +92,7 @@ export function Home({
 								<span className="project-missing">{t("先在左侧选一个项目")}</span>
 							)}
 						</div>
-						<ShellMenu settings={shell} providers={providers} onChange={onShell} />
+						<ShellMenu settings={shell} auth={auth} onChange={onShell} />
 						<div className="home-actions">
 							<AttachmentPicker disabled={busy || picks.preparing} onFiles={picks.addFiles} />
 							<select

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ShellSettings } from "../../../shared/protocol.ts";
+import { type ProviderAuth, selectableModels } from "../../../shared/providers.ts";
 import { t } from "../i18n.ts";
 
 /**
@@ -10,15 +11,15 @@ import { t } from "../i18n.ts";
  */
 export function ShellMenu({
 	settings,
-	providers,
+	auth,
 	disabled,
 	onChange,
 }: {
 	settings: ShellSettings | null;
 	disabled?: boolean;
 	onChange: (patch: { model?: { provider: string; id: string }; thinking?: string }) => Promise<void>;
-	/** Providers omp says are logged in; an empty list means "not known yet". */
-	providers: string[];
+	/** omp's login catalog; providers it reports as logged out are not listed. */
+	auth: readonly ProviderAuth[];
 }) {
 	const [open, setOpen] = useState(false);
 	const [side, setSide] = useState<"down" | "up">("down");
@@ -31,8 +32,9 @@ export function ShellMenu({
 	const current = settings?.current ?? null;
 	const modelKey = current ? `${current.provider}/${current.id}` : "";
 	const thinking = settings?.thinking ?? "";
-	// omp lists every provider's catalog; a model you cannot sign in to is noise.
-	const usable = providers.length > 0 ? models.filter(model => providers.includes(model.provider)) : models;
+	// omp's model list already drops providers it cannot use; the auth catalog
+	// only knows about login providers, so absence there is not "logged out".
+	const usable = selectableModels(models, auth);
 	const ready = !disabled && (usable.length > 0 || levels.length > 0);
 
 	// Escape closes from anywhere; a pointer outside the control does the same.

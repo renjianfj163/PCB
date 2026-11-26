@@ -146,13 +146,19 @@ export type DialogRequest =
 	| { id: string; method: "confirm"; kind: "confirm"; title: string; message: string }
 	| { id: string; method: "input"; kind: "input"; title: string; placeholder?: string; secret?: boolean }
 	| { id: string; method: "editor"; kind: "editor"; title: string }
-	| { id: string; method: "ask"; kind: "ask"; questions: AskQuestion[] };
+	| { id: string; method: "ask"; kind: "ask"; questions: AskQuestion[] }
+	/**
+	 * omp's `ask` tool: one whole HTML form. Values come back keyed by control
+	 * `name`, the way an HTML form submits them.
+	 */
+	| { id: string; method: "form"; kind: "form"; html: string };
 
 export type DialogAnswer =
 	| { value: string }
 	| { confirmed: boolean }
 	| { cancelled: true }
-	| { answers: Array<{ id: string; selectedOptions: string[]; customInput?: string }> };
+	| { answers: Array<{ id: string; selectedOptions: string[]; customInput?: string }> }
+	| { data: Record<string, string | number | string[]> };
 
 export type NoticeLevel = "info" | "warning" | "error";
 

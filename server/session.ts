@@ -10,7 +10,7 @@
 import { randomUUID } from "node:crypto";
 import { basename } from "node:path";
 import type { Hub } from "./hub.ts";
-import { approvalAnswer, approvalTool, decideApproval } from "./policy.ts";
+import { approvalAnswer, approvalTool, decideApproval, formAllowed } from "./policy.ts";
 import { ckptHost, launchArgs } from "./omp-args.ts";
 import { appendPolicy, loadPolicies, type StoredPolicy } from "./policies.ts";
 import { appendRaw } from "./raw.ts";
@@ -85,7 +85,8 @@ Every user message begins with a phase marker:
 
 - 「阶段：规划」 (plan): read-only. Produce a concrete plan — steps, which files or folders are involved,
   what could go wrong, and anything you need from the user. Do not edit files, run commands, or start
-  subagents that change anything. Use the ask tool when a decision is genuinely the user's to make.
+  subagents that change anything. Ask in your message, never through the ask tool: a form is cancelled
+  in this phase, so it only stalls the conversation.
   Keep the todo tool in step with the plan: one short line per step, so the panel beside the chat shows
   exactly what you propose and, later, what is done.
 - 「阶段：深规划」 (deep plan): the same read-only rules as plan, plus an interview. Look at the code
@@ -94,7 +95,7 @@ Every user message begins with a phase marker:
   questions whose prerequisites are already answered — at most four per message, numbered Q1, Q2, …,
   each followed by your recommended answer on its own line starting with \`➡️ 推荐：\`. Then stop and wait
   for the user; do not answer your own questions. Ask in your message, never through the ask tool: in
-  this phase that call has no way to be answered, so it only stalls the conversation. 「全部按推荐」
+  this phase a form is cancelled, so it only stalls the conversation. 「全部按推荐」
   accepts every recommendation of that round. Findings are yours to look up; decisions are the user's.
   After each round work out which questions are now open and ask that round. When nothing is open,
   write the plan exactly as in the plan phase — steps, the files or folders involved, what could go
@@ -107,7 +108,7 @@ Every user message begins with a phase marker:
 Conversation without a marker is ordinary chat.
 
 If a tool call is refused because of the phase, do not retry it with a different command. Say what you
-needed and use the ask tool instead; the user decides.
+needed and ask the user in your message; the user decides.
 
 Write for a reader who cannot read the code: say what you are about to do and why in short, plain
 sentences before doing it, and report results without jargon. Prefer showing a diff or a short
@@ -259,6 +260,8 @@ export class PcbSession {
 	/** Names omp admits as slash commands; empty until it answers. */
 	#commands = new Set<string>();
 	#replaying = false;
+	/** One warning per message when a plan-phase form is cancelled, not one per retry. */
+	#formRefused = false;
 	/** Set once the user allows the browser in this message; cleared by the next prompt or phase change. */
 	#browserAllowed = false;
 	#started = false;
@@ -382,6 +385,10 @@ export class PcbSession {
 		this.#status = "starting";
 		this.#broadcastSession();
 
+		// omp reports its own session file on the first get_state below, so the
+		// resumed/fresh distinction has to be taken before that overwrites it.
+		const fresh = !this.record.sessionFile;
+
 		const args = launchArgs(
 			{
 				cwd: this.record.cwd,
@@ -439,7 +446,7 @@ export class PcbSession {
 		if (this.#messages.length === 0 && this.record.sessionFile) void this.#probeHistory();
 
 		this.#started = true;
-		if (!this.record.sessionFile) await this.#applyChoice();
+		if (fresh) await this.#applyChoice();
 		const queued = this.#queuedPrompt;
 		if (queued) {
 			this.#queuedPrompt = undefined;
@@ -810,6 +817,21 @@ export class PcbSession {
 			return;
 		}
 
+		if (method === "form") {
+			// omp's ask tool sends one whole HTML form and waits for `data` or a cancellation.
+			if (!formAllowed(this.record.phase)) {
+				this.#client?.respondToDialog(id, { cancelled: true });
+				if (!this.#formRefused) {
+					this.#formRefused = true;
+					const label = this.record.phase === "deepplan" ? "深规划阶段" : "规划阶段";
+					this.#notice("warning", `${label}不弹表单：问题直接写在消息里，助手收到取消后会改用文字提问。`);
+				}
+				return;
+			}
+			this.#openDialog({ id, method: "form", kind: "form", html: typeof frame.html === "string" ? frame.html : "" });
+			return;
+		}
+
 		if (method === "confirm") {
 			this.#openDialog({
 				id,
@@ -909,6 +931,7 @@ export class PcbSession {
 	async #sendPrompt(text: string, images: PromptImage[] = []): Promise<{ agentInvoked: boolean; queued?: boolean }> {
 		// A new user message (or a queued follow-up) starts the browser over: the first call asks again.
 		this.#browserAllowed = false;
+		this.#formRefused = false;
 		const invocation = parseCompactInvocation(text);
 		if (invocation) {
 			if ("error" in invocation) throw new Error(invocation.error);
@@ -975,6 +998,7 @@ export class PcbSession {
 		this.record.phase = phase;
 		// A marker from another phase never carries over.
 		this.#browserAllowed = false;
+		this.#formRefused = false;
 		this.#broadcastSession();
 		const text =
 			phase === "plan"
