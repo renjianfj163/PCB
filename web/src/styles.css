@@ -868,6 +868,14 @@ pre {
 	margin-bottom: 4px;
 }
 
+/* A turn the provider refused: no text came back, so this line is all there is. */
+.message-error {
+	margin: 0;
+	font-size: 13px;
+	line-height: 1.5;
+	color: var(--err);
+}
+
 /* The rewind control rides the end of the last line of the sentence. */
 .user-body {
 	display: flex;

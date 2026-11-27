@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { AgentMessage, SessionState } from "../../../shared/protocol.ts";
+import { turnErrorDetail } from "../../../shared/turn-error.ts";
 import { imageSources, mergePending, phaseOf, promptImageSrc, userEntryId, userText } from "../adapters.ts";
 import { t } from "../i18n.ts";
 import { toolLabel } from "../labels.ts";
@@ -76,6 +77,19 @@ function AssistantMessage({
 }) {
 	const calls = toolCalls(message);
 	const texts = textBlocks(message);
+	const failure = turnErrorDetail(message);
+	if (failure !== null) {
+		// The provider refused the turn: no text, no tool call. Saying so is the
+		// difference between "it is thinking" and "it is broken".
+		return (
+			<div className="message assistant failed">
+				<div className="message-role">{t("助手")}</div>
+				<p className="message-error">
+					{failure ? `${t("模型没有回应")}：${failure}` : t("模型没有回应，也没有说明原因。")}
+				</p>
+			</div>
+		);
+	}
 	const thinking = Array.isArray(message.content)
 		? message.content
 				.map(block => {

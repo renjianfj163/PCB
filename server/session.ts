@@ -17,6 +17,7 @@ import { appendRaw } from "./raw.ts";
 import { RpcClient, type RpcFrame } from "./rpc/client.ts";
 import type { Store, SessionRecord } from "./store.ts";
 import { compactFailureText, compactionOutputNotice, parseCompactInvocation } from "../shared/compact.ts";
+import { turnErrorDetail } from "../shared/turn-error.ts";
 import { leadingCommand } from "../shared/slash.ts";
 import {
 	THINKING_LEVELS,
@@ -582,6 +583,12 @@ export class PcbSession {
 				// answers empty mid-turn, so mirror the message we just saw.
 				const message = asAgentMessage(frame.message);
 				if (message) this.#messages = insertByTimestamp(this.#messages, message);
+				// A turn the provider refused produces no text at all: say why instead
+				// of leaving an empty bubble that reads as a freeze.
+				const failure = turnErrorDetail(message);
+				if (failure !== null) {
+					this.#notice("error", failure ? `模型没有回应：${failure}` : "模型没有回应，也没有说明原因。");
+				}
 				this.#deps.hub.broadcast({ t: "frame", sessionId: this.record.id, frame });
 				return;
 			}

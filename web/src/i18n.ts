@@ -245,6 +245,8 @@ const EN: Record<string, string> = {
 
 	// ---- transcript ----
 	"助手": "Assistant",
+	"模型没有回应": "The model did not answer",
+	"模型没有回应，也没有说明原因。": "The model did not answer, and gave no reason.",
 	"输入中": "Typing",
 	"你": "You",
 	"思考过程": "Thinking",
