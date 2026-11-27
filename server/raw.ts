@@ -35,7 +35,9 @@ function collapse(line: string): string {
 
 /** One line, fit to read: blobs collapsed, then cut at RAW_LINE_MAX. */
 export function fitLine(line: string): string {
-	const short = collapse(line);
+	// A megabyte-sized frame is cut anyway; running both blob patterns over it
+	// first only burns CPU on the stream's hottest path.
+	const short = line.length > 1_000_000 ? line : collapse(line);
 	return short.length > RAW_LINE_MAX ? `${short.slice(0, RAW_LINE_MAX)}${RAW_TRUNCATED}` : short;
 }
 

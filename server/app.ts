@@ -6,7 +6,7 @@ import { createReadStream, existsSync, statSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { userInfo } from "node:os";
 import { extname, join, normalize, resolve } from "node:path";
-import type { Hub } from "./hub.ts";
+import { CLIENT_BUFFER_MAX, type Hub } from "./hub.ts";
 import { readPromptImages } from "./attachments.ts";
 import { readBlob } from "./blobs.ts";
 import { runCommand } from "./exec-box.ts";
@@ -520,7 +520,12 @@ export class App {
 				connection: "keep-alive",
 				"x-accel-buffering": "no",
 			});
-			const stop = watchRaw(event => response.write(`data: ${JSON.stringify(event)}\n\n`));
+			// Same rule as the main stream: a client that stopped reading must not turn
+			// this debug view into a backlog of its own.
+			const stop = watchRaw(event => {
+				if (response.writableLength > CLIENT_BUFFER_MAX) return;
+				response.write(`data: ${JSON.stringify(event)}\n\n`);
+			});
 			// Lines recorded since this connection's predecessor opened — nothing from before the switch.
 			const sessionId = url.searchParams.get("session") ?? "";
 			for (const entry of rawLines(sessionId)) {
