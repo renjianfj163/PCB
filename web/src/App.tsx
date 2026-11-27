@@ -104,8 +104,8 @@ export default function App() {
 	const railWidthRef = useRef(railWidth);
 	railWidthRef.current = railWidth;
 	const composerRef = useRef<HTMLTextAreaElement | null>(null);
-	// A rewound message goes back into the composer as a draft: filled in, never sent.
-	const [draft, setDraft] = useState<{ id: number; text: string } | null>(null);
+	// A rewound message goes back into that conversation's composer: filled in, never sent.
+	const [draft, setDraft] = useState<{ id: number; sessionId: string; text: string } | null>(null);
 	const draftSeq = useRef(0);
 
 	const guard = useCallback(async (run: () => Promise<void>) => {
@@ -307,6 +307,12 @@ export default function App() {
 		setSidebarOpen(false);
 	};
 
+	/** Plus on a project row: same blank conversation as New, in that folder. */
+	const startNewInProject = (cwd: string) => {
+		setProject(cwd);
+		startNew();
+	};
+
 	const selectProject = (cwd: string) => {
 		setProject(cwd);
 		dispatch({ type: "select", id: null });
@@ -384,10 +390,13 @@ export default function App() {
 	 * transcript moves: files are untouched, and the line goes into the composer
 	 * as a draft instead of being sent again.
 	 */
-	const rewindTo = (entryId: string) =>
-		guard(async () => {
-			if (!session) return;
-			const result = await api.rewind(session.id, entryId);
+	const rewindTo = (entryId: string) => {
+		// Captured up front so a click on another chat while this returns
+		// cannot drop the restored line into the conversation now on screen.
+		const sessionId = session?.id;
+		if (!sessionId) return;
+		return guard(async () => {
+			const result = await api.rewind(sessionId, entryId);
 			const notice = rewindNotice(result);
 			if (notice) {
 				setInfo(t(notice));
@@ -395,8 +404,9 @@ export default function App() {
 			}
 			if (!result.editorText) return;
 			draftSeq.current += 1;
-			setDraft({ id: draftSeq.current, text: stripPhaseMarker(result.editorText) });
+			setDraft({ id: draftSeq.current, sessionId, text: stripPhaseMarker(result.editorText) });
 		});
+	};
 
 	/** The composer's phase switch: changes only what the next message carries. */
 	const setPhaseOnly = (phase: Phase) =>
@@ -518,6 +528,7 @@ export default function App() {
 				onNew={startNew}
 				onSearch={() => setPaletteOpen(true)}
 				onSelectProject={selectProject}
+				onNewInProject={startNewInProject}
 				onAddProject={addProject}
 				onRemoveProject={removeProject}
 				onSelectSession={openSession}

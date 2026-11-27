@@ -62,8 +62,8 @@ function IconGear() {
 }
 
 /**
- * One project at a time: the project row shows the current folder plus a "+" for
- * adding folders, and only the selected project carries its conversations.
+ * One project at a time: the header "+" adds a folder, each project row's "+"
+ * starts a new conversation there, and only the selected project lists its chats.
  */
 export function Sidebar({
 	open,
@@ -78,6 +78,7 @@ export function Sidebar({
 	onNew,
 	onSearch,
 	onSelectProject,
+	onNewInProject,
 	onAddProject,
 	onRemoveProject,
 	onSelectSession,
@@ -98,6 +99,7 @@ export function Sidebar({
 	onNew: () => void;
 	onSearch: () => void;
 	onSelectProject: (cwd: string) => void;
+	onNewInProject: (cwd: string) => void;
 	onAddProject: () => Promise<void>;
 	onRemoveProject: (cwd: string) => Promise<void>;
 	onSelectSession: (id: string) => void;
@@ -237,6 +239,15 @@ export function Sidebar({
 									>
 										<span className="project-name">{baseName(cwd)}</span>
 										<span className="project-path">{shortPath(cwd)}</span>
+									</button>
+									<button
+										type="button"
+										className="project-new"
+										title={t("在这个项目里新开对话")}
+										aria-label={t("在这个项目里新开对话")}
+										onClick={() => onNewInProject(cwd)}
+									>
+										<IconPlus />
 									</button>
 									<button
 										type="button"

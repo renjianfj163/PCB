@@ -376,6 +376,36 @@ pre {
 	background: transparent;
 }
 
+/* Right edge of a project row: always-visible new chat, remove on hover. */
+.project-new {
+	flex: 0 0 22px;
+	width: 22px;
+	height: 22px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: 2px;
+	padding: 0;
+	border: none;
+	background: transparent;
+	border-radius: 5px;
+	color: var(--muted);
+}
+
+.project-new svg {
+	width: 14px;
+	height: 14px;
+}
+
+.project-new:hover {
+	background: var(--hover);
+	color: var(--fg);
+}
+
+.project-option.active .project-new:hover {
+	background: color-mix(in srgb, var(--fg) 8%, transparent);
+}
+
 .project-name {
 	white-space: nowrap;
 	overflow: hidden;
@@ -617,9 +647,25 @@ pre {
 	transition: opacity 0.1s;
 }
 
+/* The plus owns the right edge until the row is hovered; the × then joins it. */
+.project-option .row-delete {
+	width: 0;
+	padding: 0;
+	overflow: hidden;
+	pointer-events: none;
+}
+
 .project-option:hover .row-delete,
+.project-option:focus-within .row-delete,
 .session-row:hover .row-delete {
 	opacity: 1;
+}
+
+.project-option:hover .row-delete,
+.project-option:focus-within .row-delete {
+	width: auto;
+	padding: 0 4px;
+	pointer-events: auto;
 }
 
 .nav-sub {

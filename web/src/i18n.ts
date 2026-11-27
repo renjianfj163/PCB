@@ -125,6 +125,7 @@ const EN: Record<string, string> = {
 	"未选择": "None",
 	"等待选择…": "Waiting…",
 	"添加项目": "Add project",
+	"在这个项目里新开对话": "New conversation in this project",
 	"退出项目（对话保留，重新添加后回来）": "Exit project (conversations stay; add it back to restore them)",
 	"还没有项目文件夹，点右上角的 + 添加。": "No project folders yet — use + to add one.",
 	"这个项目还没有对话。": "No conversations here yet.",

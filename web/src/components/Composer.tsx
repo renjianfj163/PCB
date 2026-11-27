@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { asPhase } from "../../../shared/protocol.ts";
 import type {
 	ModelsInfo,
@@ -14,6 +14,7 @@ import type { ProviderAuth } from "../../../shared/providers.ts";
 import { ShellMenu } from "./ShellMenu.tsx";
 import { api } from "../api.ts";
 import { t } from "../i18n.ts";
+import { createSessionSlots } from "../sessionSlots.ts";
 
 /** Small amounts need the extra digits to move at all. */
 function money(usd: number): string {
@@ -51,10 +52,11 @@ export function Composer({
 	resuming: boolean;
 	textAreaRef?: React.RefObject<HTMLTextAreaElement | null>;
 	/**
-	 * Text to put in the box from outside (a rewound message). It is filled in,
-	 * never sent, and it never replaces words the user typed themselves.
+	 * Text to put in one conversation's box from outside (a rewound message).
+	 * It is filled in, never sent, and it never replaces words the user typed
+	 * themselves. A draft for another conversation is ignored.
 	 */
-	draft?: { id: number; text: string } | null;
+	draft?: { id: number; sessionId: string; text: string } | null;
 	/** Called with the draft when the box already had unset text and was left alone. */
 	onDraftBlocked?: (text: string) => void;
 	onSend: (text: string, images: PromptImage[]) => Promise<void>;
@@ -67,12 +69,28 @@ export function Composer({
 	onModel: (provider: string, id: string) => Promise<void>;
 	onThinking: (level: string) => Promise<void>;
 }) {
-	const [text, setText] = useState("");
-	const picks = usePromptImages();
+	const picks = usePromptImages(session.id);
 	const [busy, setBusy] = useState(false);
+	// The box is one per conversation. Switching chats shows that chat's own
+	// unsent line, and a line typed here never appears in another window.
+	const slots = useRef(createSessionSlots(""));
+	const sessionRef = useRef(session.id);
+	sessionRef.current = session.id;
+	const appliedDraft = useRef(0);
+	const onDraftBlockedRef = useRef(onDraftBlocked);
+	onDraftBlockedRef.current = onDraftBlocked;
+	const [boundId, setBoundId] = useState(session.id);
+	const [text, setTextState] = useState("");
+	if (session.id !== boundId) {
+		setBoundId(session.id);
+		setTextState(slots.current.read(session.id));
+	}
+	const writeText = useCallback((sessionId: string, value: string) => {
+		slots.current.write(sessionId, value);
+		if (sessionRef.current === sessionId) setTextState(value);
+	}, []);
 	const streaming = state?.streaming === true;
 	const compacting = state?.compacting === true;
-	const draftId = draft?.id ?? 0;
 
 	// The menu needs this conversation's own catalog: omp answers per run.
 	const [models, setModels] = useState<ModelsInfo["models"]>([]);
@@ -125,27 +143,30 @@ export function Composer({
 		thinking: state?.thinkingLevel ?? thinkingInfo?.current ?? null,
 	};
 
-	// A new draft arrives: fill an empty box, otherwise hand it back untouched.
+	// A rewind fills only the conversation it came from, and only once.
+	// Typing, and opening some other chat, must not pull that line across.
 	useEffect(() => {
-		if (!draft?.text) return;
-		if (text.trim().length > 0) {
-			onDraftBlocked?.(draft.text);
+		if (!draft?.text || draft.sessionId !== session.id) return;
+		if (appliedDraft.current === draft.id) return;
+		appliedDraft.current = draft.id;
+		if (slots.current.read(session.id).trim().length > 0) {
+			onDraftBlockedRef.current?.(draft.text);
 			return;
 		}
-		setText(draft.text);
+		writeText(session.id, draft.text);
 		textAreaRef?.current?.focus();
-		// Only a new draft (its id) may write here; typing is not a trigger.
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [draftId]);
+	}, [draft, session.id, writeText, textAreaRef]);
 
 	const send = async () => {
+		const sessionId = session.id;
 		const body = text.trim();
-		if ((!body && picks.images.length === 0) || busy || picks.preparing) return;
+		const images = picks.images;
+		if ((!body && images.length === 0) || busy || picks.preparing) return;
 		setBusy(true);
 		try {
-			await onSend(body, picks.images);
-			setText("");
-			picks.clear();
+			await onSend(body, images);
+			writeText(sessionId, "");
+			picks.clear(sessionId);
 		} finally {
 			setBusy(false);
 		}
@@ -174,7 +195,7 @@ export function Composer({
 					disabled={disabled}
 					placeholder={disabled ? t("会话已结束，先恢复") : t("说你想做什么…")}
 					rows={2}
-					onChange={event => setText(event.target.value)}
+					onChange={event => writeText(session.id, event.target.value)}
 					onPaste={picks.onPaste}
 					onKeyDown={event => {
 						if (event.key === "Enter" && !event.shiftKey) {
