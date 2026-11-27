@@ -44,7 +44,47 @@ namespace PcbWindow
 			listener.Name = "pcb-show-signal";
 			listener.Start();
 
+			// The service can die while the window is up. Without this the page keeps
+			// its last frame and every button silently fails.
+			host.Restarted += delegate
+			{
+				Diagnostics.Log("service restarted");
+				Reload();
+			};
+			host.GaveUp += delegate
+			{
+				Diagnostics.Log("service gave up");
+				if (form.IsHandleCreated)
+				{
+					try
+					{
+						form.BeginInvoke((Action)delegate
+						{
+							form.ShowMessage("本机服务反复退出，窗口已经不能用了。重开 PCB 会重新起服务；日志：" + Diagnostics.FilePath);
+						});
+					}
+					catch
+					{
+						// the window may be gone by the time this lands
+					}
+				}
+			};
+
 			Task notifier = StartServiceAsync();
+		}
+
+		/// <summary>Marshalled to the UI thread: the page must reload to reach the new service.</summary>
+		private void Reload()
+		{
+			if (!form.IsHandleCreated) return;
+			try
+			{
+				form.BeginInvoke((Action)delegate { form.ReloadService(); });
+			}
+			catch
+			{
+				// the window may be gone by the time this lands
+			}
 		}
 
 		private async Task StartServiceAsync()

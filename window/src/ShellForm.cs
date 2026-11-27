@@ -94,6 +94,29 @@ namespace PcbWindow
 			}
 		}
 
+		/// <summary>
+		/// The service died and came back: reload the page so it reconnects instead of
+		/// showing the last frame it painted. Falls back to a first load if the
+		/// WebView never came up.
+		/// </summary>
+		public void ReloadService()
+		{
+			try
+			{
+				if (web.CoreWebView2 != null)
+				{
+					Diagnostics.Log("reloading the page after a service restart");
+					web.CoreWebView2.Reload();
+					return;
+				}
+			}
+			catch
+			{
+				// fall through to a full load
+			}
+			LoadService();
+		}
+
 		private void OnNavigationCompleted(object sender, CoreWebView2NavigationCompletedEventArgs e)
 		{
 			if (e.IsSuccess)

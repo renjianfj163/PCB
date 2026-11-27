@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace PcbWindow
@@ -19,10 +21,26 @@ namespace PcbWindow
 
 		private static readonly TimeSpan StartTimeout = TimeSpan.FromSeconds(20);
 		private static readonly TimeSpan StopTimeout = TimeSpan.FromSeconds(3.5);
+		/// <summary>Deaths closer together than this count as one crash loop.</summary>
+		private static readonly TimeSpan CrashWindow = TimeSpan.FromMinutes(2);
+		private const int RestartTries = 3;
+		private const int TailLines = 200;
 
 		private readonly string root;
+		private readonly object gate = new object();
+		/// <summary>The last lines node wrote, kept for the exit record.</summary>
+		private readonly Queue<string> tail = new Queue<string>();
 		private Process child;
 		private IntPtr job;
+		private bool stopping;
+		private bool restarting;
+		private int deaths;
+		private DateTime firstDeath = DateTime.MinValue;
+
+		/// <summary>The service came back after dying: the page has to reload to reconnect.</summary>
+		public event EventHandler Restarted;
+		/// <summary>Three deaths inside the crash window: the window says so instead of retrying forever.</summary>
+		public event EventHandler GaveUp;
 
 		public ServerHost(string root)
 		{
@@ -107,22 +125,149 @@ namespace PcbWindow
 			info.CreateNoWindow = true;
 			info.RedirectStandardOutput = true;
 			info.RedirectStandardError = true;
+			// node writes UTF-8; the default decode would turn Chinese into mojibake in the log.
+			info.StandardOutputEncoding = System.Text.Encoding.UTF8;
+			info.StandardErrorEncoding = System.Text.Encoding.UTF8;
 			info.EnvironmentVariables["PCB_HOST"] = Host;
 			info.EnvironmentVariables["PCB_PORT"] = Port.ToString();
 			string bundledOmp = Path.Combine(root, "omp.exe");
 			if (File.Exists(bundledOmp)) info.EnvironmentVariables["PCB_OMP"] = bundledOmp;
 
-			child = new Process();
-			child.StartInfo = info;
-			child.EnableRaisingEvents = true;
-			// The pipes are drained and dropped: a full buffer would stall node.
-			child.OutputDataReceived += delegate { };
-			child.ErrorDataReceived += delegate { };
-			child.Start();
-			job = Job.Attach(child.Handle);
-			Diagnostics.Log("node started pid=" + child.Id + " job=" + job);
-			child.BeginOutputReadLine();
-			child.BeginErrorReadLine();
+			Process started = new Process();
+			started.StartInfo = info;
+			started.EnableRaisingEvents = true;
+			// Both pipes must be drained or a full buffer stalls node. stderr is the
+			// only evidence a crash leaves, so it goes to the log as it arrives; both
+			// streams are also kept so the exit record can quote them.
+			started.OutputDataReceived += delegate(object sender, DataReceivedEventArgs e) { Remember(e.Data, false); };
+			started.ErrorDataReceived += delegate(object sender, DataReceivedEventArgs e) { Remember(e.Data, true); };
+			started.Exited += delegate { OnExit(started); };
+			started.Start();
+			if (job != IntPtr.Zero)
+			{
+				Job.Release(job);
+				job = IntPtr.Zero;
+			}
+			job = Job.Attach(started.Handle);
+			child = started;
+			Diagnostics.Log("node started pid=" + started.Id + " job=" + job);
+			started.BeginOutputReadLine();
+			started.BeginErrorReadLine();
+		}
+
+		private void Remember(string line, bool isError)
+		{
+			if (line == null) return;
+			if (line.Length > 400) line = line.Substring(0, 400) + "…";
+			lock (tail)
+			{
+				tail.Enqueue(line);
+				while (tail.Count > TailLines) tail.Dequeue();
+			}
+			if (isError) Diagnostics.Log("node stderr " + line);
+		}
+
+		private void DrainTail()
+		{
+			string[] lines;
+			lock (tail)
+			{
+				lines = tail.ToArray();
+				tail.Clear();
+			}
+			if (lines.Length == 0)
+			{
+				Diagnostics.Log("node left no output");
+				return;
+			}
+			Diagnostics.Log("node output before exit (" + lines.Length + " lines):");
+			foreach (string line in lines) Diagnostics.Log("  | " + line);
+		}
+
+		/// <summary>
+		/// Node died on its own. Its output is already in the log; restart it, and
+		/// after a crash loop say so instead of spinning forever. Runs off the UI
+		/// thread, so the subscribers marshal what they do.
+		/// </summary>
+		private void OnExit(Process process)
+		{
+			string code = "?";
+			try { code = process.ExitCode.ToString(); } catch { }
+			Diagnostics.Log("node exited pid=" + process.Id + " code=" + code);
+			if (stopping) return;
+			DrainTail();
+
+			lock (gate)
+			{
+				// A start already in flight owns the retry loop; this death is its business.
+				if (restarting) return;
+				restarting = true;
+				DateTime now = DateTime.UtcNow;
+				if (deaths == 0 || now - firstDeath > CrashWindow)
+				{
+					deaths = 0;
+					firstDeath = now;
+				}
+				deaths++;
+				if (deaths > RestartTries)
+				{
+					stopping = true;
+					restarting = false;
+					Diagnostics.Log("node died " + deaths + " times in " + (int)CrashWindow.TotalMinutes + " min; giving up");
+					EventHandler giveUp = GaveUp;
+					if (giveUp != null) giveUp(this, EventArgs.Empty);
+					return;
+				}
+			}
+
+			for (int attempt = 1; attempt <= RestartTries; attempt++)
+			{
+				if (stopping) break;
+				Thread.Sleep(1000);
+				if (Listening(400)) { SignalRestarted("another process took the port"); return; }
+				try
+				{
+					Start();
+				}
+				catch (Exception error)
+				{
+					Diagnostics.Log("restart " + attempt + " failed to start: " + error.Message);
+					continue;
+				}
+				Diagnostics.Log("restart " + attempt + ": waiting for the port");
+				DateTime deadline = DateTime.UtcNow + StartTimeout;
+				while (DateTime.UtcNow < deadline && !stopping)
+				{
+					if (Listening(400)) { SignalRestarted("attempt " + attempt); return; }
+					Process current = child;
+					bool exited = false;
+					if (current != null)
+					{
+						try { exited = current.HasExited; } catch { }
+					}
+					if (exited)
+					{
+						Diagnostics.Log("restart " + attempt + ": node exited again");
+						break;
+					}
+					Thread.Sleep(250);
+				}
+			}
+
+			lock (gate) { restarting = false; }
+			if (stopping) return;
+			Diagnostics.Log("node is not listening after " + RestartTries + " restarts");
+			EventHandler failed = GaveUp;
+			if (failed != null) failed(this, EventArgs.Empty);
+		}
+
+		private void SignalRestarted(string why)
+		{
+			lock (gate) { restarting = false; }
+			Process process = child;
+			Diagnostics.Log("node is listening again (" + why + ", pid=" + (process == null ? "?" : process.Id.ToString()) + ")");
+			EventHandler restarted = Restarted;
+			if (restarted != null) restarted(this, EventArgs.Empty);
 		}
 
 		/// <summary>
@@ -131,6 +276,7 @@ namespace PcbWindow
 		/// </summary>
 		public void Stop()
 		{
+			stopping = true;
 			Process process = child;
 			child = null;
 			if (process == null) return;
